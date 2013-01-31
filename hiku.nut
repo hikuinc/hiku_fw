@@ -1,4 +1,4 @@
-// Copyright 2013 Katmandu Technology, Inc. All rights reserved. 
+// Copyright 2013 Katmandu Technology, Inc. All rights reserved. Confidential.
 
 // Globals
 gScannerOutput <- "";
@@ -28,7 +28,7 @@ function readButton()
     }
     else
     {
-        //server.log(format("Button pressed", but));
+        // Button pressed
         return 0;
     }
 }
@@ -36,7 +36,40 @@ function readButton()
 
 function scannerCallback()
 {
-    server.log("Got scanner callback! Data available.")
+    server.log("Got scanner callback.")
+}
+
+
+// TODO: replace with button event handler
+function loop()
+{
+    local data = -1;
+    if (readButton())
+    {
+        hardware.pin8.write(1);
+    }
+    else
+    {
+        hardware.pin8.write(0); // trigger the scanner
+    }
+
+    data = hardware.uart12.read();
+    if (data != -1)  // TODO: should be while, to get all data
+    {
+        gScannerOutput = gScannerOutput + data.tochar();
+        if ( data == '\n')
+        {
+            // Scan successful
+            server.log("Data: " + gScannerOutput);
+            beep();
+            
+            // Reset for next scan
+            gScannerOutput = "";
+            data = -1;
+        } 
+    } 
+
+    imp.wakeup(0.01, loop);
 }
 
 
@@ -52,7 +85,7 @@ function init()
     hardware.pin5.configure(DIGITAL_OUT); // Piezo  
 
     hardware.configure(UART_12); // RX-from-scanner (pin 2)
-    hardware.uart12.configur(9600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
+    hardware.uart12.configure(9600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
                              scannerCallback);
 
     // Initialization complete notification
@@ -60,41 +93,6 @@ function init()
     beep(); 
 }
 
-// TODO: replace with button event handler
-function loop()
-{
-    if (readButton())
-    {
-        hardware.pin8.write(1);
-    }
-    else
-    {
-        hardware.pin8.write(0); // trigger the scanner
-    }
-
-        b = hardware.uart12.read();
-    if (b >= 0)
-    {
-        //server.log("got scan data!!!");
-        //server.log("char: " + b);
-        s = s + b.tochar();
-        if ( b == '\n')
-        {
-            // send the upc to the server
-            local val = "scan="+s;
-            server.log(val);
-            packetOut.set(val);
-            hardware.uart12.write(val);
-            beep();
-            
-            //now clear out 
-            s = "";
-            b=-1;
-        } 
-    } // if (b >= 0)
-
-    imp.wakeup(0.01, loop);
-}
 
 init();
 loop();
