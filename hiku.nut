@@ -2,7 +2,8 @@
 
 // Globals
 gScannerOutput <- "";   // String containing barcode data
-gButtonState <- "UP";  // Button state ("down", "up")
+gButtonState <- "UP";  // Button state ("down", "up") 
+                       // TODO: use enumeration/const
 
 //TODO: review
 function beep() 
@@ -58,35 +59,23 @@ function scannerCallback()
 }
 
 
-//TODO: review
-function readButton()
-{
-    local but = 0;
-    but = hardware.pin9.read();
-    imp.sleep(0.001); //1ms sleep / sample period for the button
-    but = but + hardware.pin9.read();
-    if (but>1)
-    {
-        return 1;
-    }
-    else
-    {
-        // Button pressed
-        return 0;
-    }
-}
-
-
-// Button handler callback. 
+// Button handler callback 
 // Not a true interrupt handler, this cannot interrupt other Squirrel code. 
 // The event is queued and the callback is called next time the Imp is idle. 
 function buttonCallback()
 {
-    // Sample the button twice in x ms
+    // Sample the button multiple times to debounce. Total time 
+    // taken is (numSamples-1)*sleepSecs
+    const numSamples = 4;
+    const sleepSecs = 0.003; 
     local buttonState = hardware.pin9.read()
-    imp.sleep(0.001)  // In seconds
-    buttonState += hardware.pin9.read()
-    
+    for (local i=1;i<numSamples;i++)
+    {
+        buttonState += hardware.pin9.read()
+        imp.sleep(sleepSecs)
+    }
+
+    // Handle the button state transition
     switch(buttonState) 
     {
         case 0:
@@ -94,40 +83,24 @@ function buttonCallback()
             if (gButtonState == "UP")
             {
                 gButtonState = "DOWN";
-                server.log("Button state change: " + gButtonState);
+                //server.log("Button state change: " + gButtonState);
                 hardware.pin8.write(0); // Trigger the scanner
             }
             break;
-        case 2:
+        case numSamples:
             // Button in released state
             if (gButtonState == "DOWN")
             {
                 gButtonState = "UP";
-                server.log("Button state change: " + gButtonState);
+                //server.log("Button state change: " + gButtonState);
                 hardware.pin8.write(1); // Release scanner trigger
             }
             break;
         default:
             // Button is in transition (not settled)
+            //server.log("Bouncing! " + buttonState);
             break;
     }
-}
-
-
-// TODO: replace with button event handler
-function loop()
-{
-/*
-    if (readButton())
-    {
-        hardware.pin8.write(1);
-    }
-    else
-    {
-        hardware.pin8.write(0); // trigger the scanner
-    }
-    imp.wakeup(0.01, loop);
-*/
 }
 
 
@@ -152,5 +125,8 @@ function init()
 }
 
 
+// **********************************************************
+// main
+// **********************************************************
 init();
-loop();
+
