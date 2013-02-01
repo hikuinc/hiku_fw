@@ -5,7 +5,13 @@ gScannerOutput <- "";   // String containing barcode data
 gButtonState <- "UP";  // Button state ("down", "up") 
                        // TODO: use enumeration/const
 
-//TODO: review
+//TODO: review and cleanup
+//TODO: instead of reconfiguring, just change duty cycle to zero via
+//      pin.write(0). Does this have power impact? 
+//TODO: minimize impact of busy wait -- slows responsiveness. Can do 
+//      async and maintain sound?
+//TODO: support different sounds for boot, scan success, scan fail, 
+//      product found, product not found (via table of ([1/Hz],[duration]))
 function beep() 
 {
     hardware.pin7.configure(PWM_OUT, 0.0015, 0.5);
@@ -120,7 +126,6 @@ function init()
                              scannerCallback);
 
     // Initialization complete notification
-    // TODO: change boot sound
     beep(); 
 }
 
