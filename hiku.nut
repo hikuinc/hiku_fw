@@ -118,8 +118,6 @@ function init()
     // Pin configuration
     hardware.pin9.configure(DIGITAL_IN_PULLUP, buttonCallback); // Button
     hardware.pin8.configure(DIGITAL_OUT); // Scanner trigger
-    // TODO: why configure pin 5 now, if we change to PWM later?
-    hardware.pin5.configure(DIGITAL_OUT); // Piezo  
 
     hardware.configure(UART_12); // RX-from-scanner (pin 2)
     hardware.uart12.configure(9600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
