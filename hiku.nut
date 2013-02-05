@@ -1,10 +1,20 @@
 // Copyright 2013 Katmandu Technology, Inc. All rights reserved. Confidential.
 
+
 // Globals
-gScannerOutput <- "";   // String containing barcode data
+gAudioOut <- OutputPort("Audio", "string");  // Test audio output
+gScannerOutput <- "";  // String containing barcode data
 gButtonState <- "UP";  // Button state ("down", "up") 
                        // TODO: use enumeration/const
+gNumBuffersReady <- 0;    // Number of buffers recorded in latest button press
 
+// Audio buffers   (TODO: review)
+buf1 <- blob(2000);
+buf2 <- blob(2000);
+buf3 <- blob(2000);
+
+
+//****************************************************************************
 //TODO: review and cleanup
 //TODO: instead of reconfiguring, just change duty cycle to zero via
 //      pin.write(0). Does this have power impact? 
@@ -23,6 +33,7 @@ function beep()
 }
 
 
+//****************************************************************************
 // UART12 callback, called whenever there is data from scanner
 // Reads the bytes, and detects and handles a full barcode string
 function scannerCallback()
@@ -65,6 +76,7 @@ function scannerCallback()
 }
 
 
+//****************************************************************************
 // Button handler callback 
 // Not a true interrupt handler, this cannot interrupt other Squirrel code. 
 // The event is queued and the callback is called next time the Imp is idle. 
@@ -89,8 +101,15 @@ function buttonCallback()
             if (gButtonState == "UP")
             {
                 gButtonState = "DOWN";
-                //server.log("Button state change: " + gButtonState);
-                hardware.pin8.write(0); // Trigger the scanner
+                server.log("Button state change: " + gButtonState);
+                server.log(format("Free memory: %d", imp.getmemoryfree()));
+
+                // Trigger the scanner
+                hardware.pin8.write(0);
+
+                // Trigger the mic recording
+                gNumBuffersReady = 0; 
+                hardware.sampler.start();
             }
             break;
         case numSamples:
@@ -98,8 +117,16 @@ function buttonCallback()
             if (gButtonState == "DOWN")
             {
                 gButtonState = "UP";
-                //server.log("Button state change: " + gButtonState);
-                hardware.pin8.write(1); // Release scanner trigger
+                server.log(format("Free memory up: %d", imp.getmemoryfree()));
+
+                // Release scanner trigger
+                hardware.pin8.write(1); 
+
+                // Stop mic recording
+                hardware.sampler.stop();
+
+                server.log("Button state change: " + gButtonState);
+                server.log(format("Free memory stop: %d", imp.getmemoryfree()));
             }
             break;
         default:
@@ -110,16 +137,50 @@ function buttonCallback()
 }
 
 
+//****************************************************************************
+// Called when an audio sampler buffer is ready.  It is called 
+// ((sample rate * bytes per sample)/buffer size) times per second.  
+// So for 16 kHz sampling of 8-bit A law and 2000 byte buffers, 
+// it is called 8x/sec. 
+function samplerCallback(buffer, length)
+{
+    gNumBuffersReady++;
+    server.log("SAMPLER CALLBACK: size " + length + " num " + gNumBuffersReady);
+    if (length <= 0)
+    {
+        server.log("Audio sampler buffer overrun!!!!!!");
+    }
+    else 
+    {
+        // Output the buffer 
+        //gAudioOut.set(buffer);
+        while(!buffer.eos())
+        {
+            server.log(buffer.readn('c'));
+        }
+
+        gAudioOut.set(format("Got %d samples", gNumBuffersReady));
+    }
+}
+
+
+//****************************************************************************
 function init()
 {
-    imp.configure("hiku", [], [])
+    imp.configure("hiku", [], [gAudioOut])
     imp.setpowersave(false);
 
     // Pin configuration
     hardware.pin9.configure(DIGITAL_IN_PULLUP, buttonCallback); // Button
     hardware.pin8.configure(DIGITAL_OUT); // Scanner trigger
 
-    hardware.configure(UART_12); // RX-from-scanner (pin 2)
+    // Microphone sampler config
+    hardware.sampler.configure(hardware.pin5, 16000, [buf1, buf2, buf3], 
+                               samplerCallback, NORMALISE | A_LAW_COMPRESS); 
+    
+
+    // Scanner UART config 
+    hardware.configure(UART_12); 
     hardware.uart12.configure(9600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
                              scannerCallback);
 
@@ -128,8 +189,7 @@ function init()
 }
 
 
-// **********************************************************
+//****************************************************************************
 // main
-// **********************************************************
 init();
 
