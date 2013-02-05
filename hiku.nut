@@ -9,9 +9,25 @@ gButtonState <- "UP";  // Button state ("down", "up")
 gNumBuffersReady <- 0;    // Number of buffers recorded in latest button press
 
 // Audio buffers   (TODO: review)
-buf1 <- blob(2000);
-buf2 <- blob(2000);
-buf3 <- blob(2000);
+// TODO: doc says A-law is signed, but I see 0-256. 
+// TODO: A-law sampler does not return partial buffers. This means that up to 
+// the last buffer size of data is dropped. What size is optimal?
+//buf1 <- blob(2000);
+//buf2 <- blob(2000);
+//buf3 <- blob(2000);
+buf1 <- blob(10);
+buf2 <- blob(10);
+buf3 <- blob(10);
+
+
+//****************************************************************************
+// Agent callback: do_beep: beep in response to callback
+agent.on(("do_beep"), function(msg) {
+    server.log(format("in do_beep, msg=%d", msg));
+    beep();
+    beep();
+});
+
 
 
 //****************************************************************************
@@ -102,7 +118,6 @@ function buttonCallback()
             {
                 gButtonState = "DOWN";
                 server.log("Button state change: " + gButtonState);
-                server.log(format("Free memory: %d", imp.getmemoryfree()));
 
                 // Trigger the scanner
                 hardware.pin8.write(0);
@@ -117,7 +132,6 @@ function buttonCallback()
             if (gButtonState == "DOWN")
             {
                 gButtonState = "UP";
-                server.log(format("Free memory up: %d", imp.getmemoryfree()));
 
                 // Release scanner trigger
                 hardware.pin8.write(1); 
@@ -126,7 +140,6 @@ function buttonCallback()
                 hardware.sampler.stop();
 
                 server.log("Button state change: " + gButtonState);
-                server.log(format("Free memory stop: %d", imp.getmemoryfree()));
             }
             break;
         default:
@@ -153,13 +166,31 @@ function samplerCallback(buffer, length)
     else 
     {
         // Output the buffer 
-        //gAudioOut.set(buffer);
-        while(!buffer.eos())
+        //gAudioOut.set(buffer);  TODO: remove gAudioOut
+        //agent.send("sendAudioBuffer", format("length=%d", length));
+        server.log("START sending audio");
+        agent.send("sendAudioBuffer", buffer);
+        server.log("END sending audio");
+        
+        // Print buffer to the log
+        /*
+        local str = "";
+        local i = 0;
+        buffer.seek(0);
+        while(!buffer.eos() && i < length)
         {
-            server.log(buffer.readn('c'));
+            str += buffer.readn('c').tostring(); // read signed 8 bit
+            //str += buffer.readn('w').tostring(); // read unsigned 16 bit
+            //str += buffer.readn('s').tostring(); // read signed 16 bit
+            str += " ";
+            i++;  // One byte for 8 bit data (TODO bulletproof)
+            //i+=2;  // Two bytes for 16 bit data (TODO bulletproof)
         }
+        server.log(str);
+        */
 
-        gAudioOut.set(format("Got %d samples", gNumBuffersReady));
+        // Debug print
+        //gAudioOut.set(format("Got %d samples", gNumBuffersReady));
     }
 }
 
@@ -167,7 +198,8 @@ function samplerCallback(buffer, length)
 //****************************************************************************
 function init()
 {
-    imp.configure("hiku", [], [gAudioOut])
+    //imp.configure("hiku", [], [gAudioOut])
+    imp.configure("hiku", [], [])
     imp.setpowersave(false);
 
     // Pin configuration
@@ -175,8 +207,10 @@ function init()
     hardware.pin8.configure(DIGITAL_OUT); // Scanner trigger
 
     // Microphone sampler config
-    hardware.sampler.configure(hardware.pin5, 16000, [buf1, buf2, buf3], 
+    hardware.sampler.configure(hardware.pin5, 1, [buf1, buf2, buf3], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
+                               //samplerCallback);
+                               //samplerCallback, NORMALISE); 
     
 
     // Scanner UART config 
@@ -185,6 +219,7 @@ function init()
                              scannerCallback);
 
     // Initialization complete notification
+    server.log(format("Free memory at boot: %d", imp.getmemoryfree()));
     beep(); 
 }
 
