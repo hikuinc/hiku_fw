@@ -12,12 +12,9 @@ gNumBuffersReady <- 0;    // Number of buffers recorded in latest button press
 // TODO: doc says A-law is signed, but I see 0-256. 
 // TODO: A-law sampler does not return partial buffers. This means that up to 
 // the last buffer size of data is dropped. What size is optimal?
-//buf1 <- blob(2000);
-//buf2 <- blob(2000);
-//buf3 <- blob(2000);
-buf1 <- blob(10);
-buf2 <- blob(10);
-buf3 <- blob(10);
+buf1 <- blob(2000);
+buf2 <- blob(2000);
+buf3 <- blob(2000);
 
 
 //****************************************************************************
@@ -169,6 +166,7 @@ function samplerCallback(buffer, length)
         //gAudioOut.set(buffer);  TODO: remove gAudioOut
         //agent.send("sendAudioBuffer", format("length=%d", length));
         server.log("START sending audio");
+        // TODO: only send the valid part of the buffer (i.e. use length)
         agent.send("sendAudioBuffer", buffer);
         server.log("END sending audio");
         
@@ -207,7 +205,7 @@ function init()
     hardware.pin8.configure(DIGITAL_OUT); // Scanner trigger
 
     // Microphone sampler config
-    hardware.sampler.configure(hardware.pin5, 1, [buf1, buf2, buf3], 
+    hardware.sampler.configure(hardware.pin5, 1000, [buf1, buf2, buf3], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
                                //samplerCallback);
                                //samplerCallback, NORMALISE); 
