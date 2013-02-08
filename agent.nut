@@ -1,31 +1,73 @@
 // Copyright 2013 Katmandu Technology, Inc. All rights reserved. Confidential.
 
+
 // Global containing the audio data for the current session.  Resized as 
-// new buffers come in. 
+// new buffers come in.  
 gAudioBuffer <- blob(0);
 
 
 //****************************************************************************
-// Device callback: handle an audio buffer from the device
-device.on(("sendAudioBuffer"), function(data) {
-    agentLog(format("in sendAudioBuffer"));
-    agentLog(format("data type=%s", typeof(data)));
-    dumpBlob(data);
+// Prepare to receive audio from the device
+device.on(("startAudioUpload"), function(data) {
+    //agentLog("in startAudioUpload");
 
-    // Add the new data to the audio buffer
-    //gAudioBuffer.writeblob(data);
+    // Reset our audio buffer
+    gAudioBuffer.resize(0);
 });
 
 
 //****************************************************************************
-// HTTP callback onrequest: called in response to HTTP request to us
+// Send complete audio sample to the server
+device.on(("endAudioUpload"), function(data) {
+    //agentLog("in endAudioUpload");
+    agentLog(format("Audio ready to send. Size=%d", gAudioBuffer.len()));
+
+    // TODO: Will we have all of our audio data here?  It is coming in 
+    // asynchronously, so we may have more, right?  How to handle? 
+    // For now, we assume we have all the data, since A-law data is 
+    // dropped if it does not have a full buffer. However, that is a 
+    // bad assumption, since these events are all asynchronous. 
+
+    // Send audio to server
+    local req = http.post("http://bobert.net:4444", 
+                         {"Content-Type": "application/octet-stream"}, 
+                         base64_encode(gAudioBuffer));
+    local res = req.sendsync();
+
+    if (res.statuscode != 200)
+    {
+        agentLog("An error occurred:");
+        agentLog(format("statuscode=%d", res.statuscode));
+    }
+    else
+    {
+        agentLog("Audio sent to server.");
+    }
+});
+
+
+//****************************************************************************
+// Handle an audio buffer from the device
+device.on(("uploadAudioChunk"), function(data) {
+    //agentLog(format("in device.on uploadAudioChunk"));
+    //agentLog(format("chunk length=%d", data.length));
+    //dumpBlob(data.buffer);
+
+    // Add the new data to the audio buffer, truncating if necessary
+    data.buffer.resize(data.length);  // Most efficient way to truncate? 
+    gAudioBuffer.writeblob(data.buffer);
+});
+
+
+//****************************************************************************
+// Called in response to HTTP request to us
 http.onrequest(function(request, res){
     agentLog("in http.onrequest");
 
-    // Handle commands and send response (TODO: remove test command)
+    // Handle commands and send response 
     if (request.body == "beep") 
     {
-        device.send("do_beep", 1);
+        device.send("doBeep", 1);
         res.send(200, "OK\n");
     }
     else
@@ -115,3 +157,64 @@ function dumpBlob(data)
         agentLog(str);
     }
 }
+
+
+//****************************************************************************
+const base64_keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+
+// Input can be a string or blob. Output is a string. 
+function base64_encode(input)
+/*
+ * From http://singbot.googlecode.com/svn-history/r2/trunk/trunk/Debug/resources/users/crypto.nut
+ *
+ *  The contents of this function are subject to the Mozilla Public License  
+ *
+ *  Version 1.1 (the "License"); you may not use this file except in         
+ *  compliance with the License. You may obtain a copy of the License at     
+ *  http://www.mozilla.org/MPL/                                              
+ *                                                                           
+ *  Software distributed under the License is distributed on an "AS IS"      
+ *  basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the  
+ *  License for the specific language governing rights and limitations       
+ *  under the License.                                                       
+ *
+ *  The Original Code is All-In-One Crypto System
+ *
+ *  The Initial Developer of the Original Code is Jones Nathan Sperandio.
+ *  Contributor(s): Flávio Toribio.
+ */
+{
+    local
+        output = "",
+        tmp,
+        i = 0;
+
+    while(i < input.len())
+    {
+        output += base64_keyStr[input[i] >> 0x02].tochar();
+        
+        tmp = (input[i++] & 0x03) << 0x04;
+        if(i++ < input.len())
+        {
+            tmp = tmp | (input[i-1] >> 0x04);
+        }
+        output += base64_keyStr[tmp].tochar();
+        
+        if(i++ > input.len())
+        {
+            output += "==";
+        }
+        else if(i > input.len())
+        {
+            output += base64_keyStr[(input[i-2] & 0x0F) << 0x02].tochar() + "=";
+        }
+        else
+        {
+            output += base64_keyStr[((input[i-2] & 0x0F) << 0x02) | (input[i-1] >> 0x06)].tochar();
+            output += base64_keyStr[input[i-1] & 0x3F].tochar();
+        }            
+    }   
+    return output;
+}
+
+

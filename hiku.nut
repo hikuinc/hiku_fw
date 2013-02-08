@@ -2,14 +2,11 @@
 
 
 // Globals
-gAudioOut <- OutputPort("Audio", "string");  // Test audio output
 gScannerOutput <- "";  // String containing barcode data
 gButtonState <- "UP";  // Button state ("down", "up") 
                        // TODO: use enumeration/const
 gNumBuffersReady <- 0;    // Number of buffers recorded in latest button press
 
-// Audio buffers   (TODO: review)
-// TODO: doc says A-law is signed, but I see 0-256. 
 // TODO: A-law sampler does not return partial buffers. This means that up to 
 // the last buffer size of data is dropped. What size is optimal?
 buf1 <- blob(2000);
@@ -18,9 +15,9 @@ buf3 <- blob(2000);
 
 
 //****************************************************************************
-// Agent callback: do_beep: beep in response to callback
-agent.on(("do_beep"), function(msg) {
-    server.log(format("in do_beep, msg=%d", msg));
+// Agent callback: doBeep: beep in response to callback
+agent.on(("doBeep"), function(msg) {
+    server.log(format("in doBeep, msg=%d", msg));
     beep();
     beep();
 });
@@ -33,8 +30,6 @@ agent.on(("do_beep"), function(msg) {
 //      pin.write(0). Does this have power impact? 
 //TODO: minimize impact of busy wait -- slows responsiveness. Can do 
 //      async and maintain sound?
-//TODO: support different sounds for boot, scan success, scan fail, 
-//      product found, product not found (via table of ([1/Hz],[duration]))
 function beep() 
 {
     hardware.pin7.configure(PWM_OUT, 0.0015, 0.5);
@@ -114,13 +109,14 @@ function buttonCallback()
             if (gButtonState == "UP")
             {
                 gButtonState = "DOWN";
-                server.log("Button state change: " + gButtonState);
+                //server.log("Button state change: " + gButtonState);
 
                 // Trigger the scanner
                 hardware.pin8.write(0);
 
                 // Trigger the mic recording
                 gNumBuffersReady = 0; 
+                agent.send("startAudioUpload", "");
                 hardware.sampler.start();
             }
             break;
@@ -135,8 +131,9 @@ function buttonCallback()
 
                 // Stop mic recording
                 hardware.sampler.stop();
+                agent.send("endAudioUpload", "");
 
-                server.log("Button state change: " + gButtonState);
+                //server.log("Button state change: " + gButtonState);
             }
             break;
         default:
@@ -155,40 +152,20 @@ function buttonCallback()
 function samplerCallback(buffer, length)
 {
     gNumBuffersReady++;
-    server.log("SAMPLER CALLBACK: size " + length + " num " + gNumBuffersReady);
+    //server.log("SAMPLER CALLBACK: size " + length + " num " + gNumBuffersReady);
     if (length <= 0)
     {
         server.log("Audio sampler buffer overrun!!!!!!");
     }
     else 
     {
-        // Output the buffer 
-        //gAudioOut.set(buffer);  TODO: remove gAudioOut
-        //agent.send("sendAudioBuffer", format("length=%d", length));
-        server.log("START sending audio");
-        // TODO: only send the valid part of the buffer (i.e. use length)
-        agent.send("sendAudioBuffer", buffer);
-        server.log("END sending audio");
-        
-        // Print buffer to the log
-        /*
-        local str = "";
-        local i = 0;
-        buffer.seek(0);
-        while(!buffer.eos() && i < length)
-        {
-            str += buffer.readn('c').tostring(); // read signed 8 bit
-            //str += buffer.readn('w').tostring(); // read unsigned 16 bit
-            //str += buffer.readn('s').tostring(); // read signed 16 bit
-            str += " ";
-            i++;  // One byte for 8 bit data (TODO bulletproof)
-            //i+=2;  // Two bytes for 16 bit data (TODO bulletproof)
-        }
-        server.log(str);
-        */
-
-        // Debug print
-        //gAudioOut.set(format("Got %d samples", gNumBuffersReady));
+        // Output the buffer.  Since A-law seems to only send full
+        // buffers, we send the whole buffer and truncate if necessary 
+        // on the server side, instead of making a (possibly truncated) 
+        // copy each time here. 
+        //server.log("START uploading chunk");
+        agent.send("uploadAudioChunk", {buffer=buffer, length=length});
+        //server.log("END uploading chunk");
     }
 }
 
@@ -196,16 +173,18 @@ function samplerCallback(buffer, length)
 //****************************************************************************
 function init()
 {
-    //imp.configure("hiku", [], [gAudioOut])
     imp.configure("hiku", [], [])
     imp.setpowersave(false);
 
     // Pin configuration
     hardware.pin9.configure(DIGITAL_IN_PULLUP, buttonCallback); // Button
     hardware.pin8.configure(DIGITAL_OUT); // Scanner trigger
+    hardware.pin8.write(1); // De-assert trigger by default
+    hardware.pin7.configure(DIGITAL_OUT); // Piezo 
+    hardware.pin7.write(0); // Turn off by default
 
     // Microphone sampler config
-    hardware.sampler.configure(hardware.pin5, 1000, [buf1, buf2, buf3], 
+    hardware.sampler.configure(hardware.pin5, 16000, [buf1, buf2, buf3], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
                                //samplerCallback);
                                //samplerCallback, NORMALISE); 
@@ -217,7 +196,7 @@ function init()
                              scannerCallback);
 
     // Initialization complete notification
-    server.log(format("Free memory at boot: %d", imp.getmemoryfree()));
+    server.log(format("Your impee ID=%s", hardware.getimpeeid()));
     beep(); 
 }
 
