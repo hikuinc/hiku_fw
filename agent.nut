@@ -20,7 +20,6 @@ device.on(("startAudioUpload"), function(data) {
 // Send complete audio sample to the server
 device.on(("endAudioUpload"), function(data) {
     //agentLog("in endAudioUpload");
-    agentLog(format("Audio ready to send. Size=%d", gAudioBuffer.len()));
 
     // TODO: Will we have all of our audio data here?  It is coming in 
     // asynchronously, so we may have more, right?  How to handle? 
@@ -28,10 +27,22 @@ device.on(("endAudioUpload"), function(data) {
     // dropped if it does not have a full buffer. However, that is a 
     // bad assumption, since these events are all asynchronous. 
 
+    // If  no audio data, just exit
+    if (gAudioBuffer.len() == 0)
+    {
+        agentLog("No audio data to send to server.");
+        return;
+    }
+
     // Send audio to server
+    agentLog(format("Audio ready to send. Size=%d", gAudioBuffer.len()));
     local req = http.post("http://bobert.net:4444", 
                          {"Content-Type": "application/octet-stream"}, 
                          base64_encode(gAudioBuffer));
+    // TODO: if the server is down, this will block all other events
+    // until it times out.  Events seem to be queued on the server 
+    // with no ill effects.  They do not block the device.  Move 
+    // to async? 
     local res = req.sendsync();
 
     if (res.statuscode != 200)
@@ -49,6 +60,7 @@ device.on(("endAudioUpload"), function(data) {
 //****************************************************************************
 // Handle an audio buffer from the device
 device.on(("uploadAudioChunk"), function(data) {
+    //agentLog("in uploadAudioChunk");
     //agentLog(format("in device.on uploadAudioChunk"));
     //agentLog(format("chunk length=%d", data.length));
     //dumpBlob(data.buffer);

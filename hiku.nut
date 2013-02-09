@@ -7,12 +7,17 @@ gButtonState <- "UP";  // Button state ("down", "up")
                        // TODO: use enumeration/const
 gNumBuffersReady <- 0;    // Number of buffers recorded in latest button press
 
+// If we use fewer than four or smaller than 6000 byte buffers, we 
+// get buffer overruns during scanner RX. Even with this 
+// setup, we still (rarely) get an overrun.  We may not care, as we 
+// currently throw away audio if we get a successful scan. 
+// TODO: can we increase the scanner UART baud rate to improve this? 
 // TODO: A-law sampler does not return partial buffers. This means that up to 
 // the last buffer size of data is dropped. What size is optimal?
-buf1 <- blob(2000);
-buf2 <- blob(2000);
-buf3 <- blob(2000);
-
+buf1 <- blob(6000);
+buf2 <- blob(6000);
+buf3 <- blob(6000);
+buf4 <- blob(6000);
 
 //****************************************************************************
 // Agent callback: doBeep: beep in response to callback
@@ -184,7 +189,7 @@ function init()
     hardware.pin7.write(0); // Turn off by default
 
     // Microphone sampler config
-    hardware.sampler.configure(hardware.pin5, 16000, [buf1, buf2, buf3], 
+    hardware.sampler.configure(hardware.pin5, 16000, [buf1, buf2, buf3, buf4], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
                                //samplerCallback);
                                //samplerCallback, NORMALISE); 
