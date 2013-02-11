@@ -7,6 +7,24 @@ gAudioBuffer <- blob(0);
 
 
 //****************************************************************************
+// Receive and send out the beep packet
+device.on(("uploadBeep"), function(data) {
+    //agentLog("in uploadBeep");
+
+    if (!data.barcode)
+    {
+        agentLog("Failed to receive barcode");
+        device.send("uploadCompleted", "failure");
+    }
+    else
+    {
+        agentLog(format("Barcode received: %s", data.barcode));
+        device.send("uploadCompleted", "success");
+    }
+});
+
+
+//****************************************************************************
 // Prepare to receive audio from the device
 device.on(("startAudioUpload"), function(data) {
     //agentLog("in startAudioUpload");
@@ -49,10 +67,12 @@ device.on(("endAudioUpload"), function(data) {
     {
         agentLog("An error occurred:");
         agentLog(format("statuscode=%d", res.statuscode));
+        device.send("uploadCompleted", "failure");
     }
     else
     {
         agentLog("Audio sent to server.");
+        device.send("uploadCompleted", "success");
     }
 });
 
@@ -60,7 +80,6 @@ device.on(("endAudioUpload"), function(data) {
 //****************************************************************************
 // Handle an audio buffer from the device
 device.on(("uploadAudioChunk"), function(data) {
-    //agentLog("in uploadAudioChunk");
     //agentLog(format("in device.on uploadAudioChunk"));
     //agentLog(format("chunk length=%d", data.length));
     //dumpBlob(data.buffer);
@@ -68,27 +87,6 @@ device.on(("uploadAudioChunk"), function(data) {
     // Add the new data to the audio buffer, truncating if necessary
     data.buffer.resize(data.length);  // Most efficient way to truncate? 
     gAudioBuffer.writeblob(data.buffer);
-});
-
-
-//****************************************************************************
-// Called in response to HTTP request to us
-http.onrequest(function(request, res){
-    agentLog("in http.onrequest");
-
-    // Handle commands and send response 
-    if (request.body == "beep") 
-    {
-        device.send("doBeep", 1);
-        res.send(200, "OK\n");
-    }
-    else
-    {
-        res.send(400, "Command not recognized\n");
-    }
-
-    // Print the request fields to the log
-    // logServerRequest(request);
 });
 
 

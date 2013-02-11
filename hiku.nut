@@ -1,11 +1,37 @@
 // Copyright 2013 Katmandu Technology, Inc. All rights reserved. Confidential.
 
 
+// Consts and enums
+enum ButtonState
+{
+    BUTTON_UP,
+    BUTTON_DOWN,
+}
+
+enum DeviceState
+/*
+                           ---> SCAN_CAPTURED ------>
+                          /                          \
+    IDLE ---> SCAN_RECORD ---> BUTTON_TIMEOUT -->     \
+                          \                      \     \
+                           -------------------> BUTTON_RELEASED ---> IDLE
+    
+
+*/
+{
+    IDLE,             // Not recording or processing data
+    SCAN_RECORD,      // Scanning and recording audio
+    SCAN_CAPTURED,    // Processing scan data
+    BUTTON_TIMEOUT,   // Timeout limit reached while holding button
+    BUTTON_RELEASED,  // Button released, may have audio to send
+}
+
+
 // Globals
+gDeviceState <- DeviceState.IDLE;  // Hiku device current state
+gButtonState <- ButtonState.BUTTON_UP;  // Button current state
 gScannerOutput <- "";  // String containing barcode data
-gButtonState <- "UP";  // Button state ("down", "up") 
-                       // TODO: use enumeration/const
-gNumBuffersReady <- 0;    // Number of buffers recorded in latest button press
+gAudioBufferOverran <- false;
 
 // If we use fewer than four or smaller than 6000 byte buffers, we 
 // get buffer overruns during scanner RX. Even with this 
@@ -19,14 +45,13 @@ buf2 <- blob(6000);
 buf3 <- blob(6000);
 buf4 <- blob(6000);
 
-//****************************************************************************
-// Agent callback: doBeep: beep in response to callback
-agent.on(("doBeep"), function(msg) {
-    server.log(format("in doBeep, msg=%d", msg));
-    beep();
-    beep();
-});
 
+//****************************************************************************
+// Agent callback: upload complete
+agent.on(("uploadCompleted"), function(msg) {
+    server.log(format("in agent.on uploadCompleted, msg=%s", msg));
+    beep(msg);
+});
 
 
 //****************************************************************************
@@ -35,14 +60,46 @@ agent.on(("doBeep"), function(msg) {
 //      pin.write(0). Does this have power impact? 
 //TODO: minimize impact of busy wait -- slows responsiveness. Can do 
 //      async and maintain sound?
-function beep() 
+function beep(tone = "success") 
 {
-    hardware.pin7.configure(PWM_OUT, 0.0015, 0.5);
-    imp.sleep(0.2);
-    hardware.pin7.configure(PWM_OUT, 0.00075, 0.5);
-    imp.sleep(0.2);
-    hardware.pin7.configure(DIGITAL_OUT);
-    hardware.pin7.write(0);
+    switch (tone) 
+    {
+        case "success":
+            hardware.pin7.configure(PWM_OUT, 0.0015, 0.5);
+            imp.sleep(0.2);
+            hardware.pin7.configure(PWM_OUT, 0.00075, 0.5);
+            imp.sleep(0.2);
+            hardware.pin7.configure(DIGITAL_OUT);
+            hardware.pin7.write(0);
+            break;
+        case "failure":
+            hardware.pin7.configure(PWM_OUT, 0.00075, 0.5);
+            imp.sleep(0.2);
+            hardware.pin7.configure(PWM_OUT, 0.0015, 0.5);
+            imp.sleep(0.2);
+            hardware.pin7.configure(DIGITAL_OUT);
+            hardware.pin7.write(0);
+            break;
+        case "info":
+            hardware.pin7.configure(PWM_OUT, 0.00075, 0.5);
+            imp.sleep(0.2);
+            hardware.pin7.configure(DIGITAL_OUT);
+            hardware.pin7.write(0);
+            break;
+        case "startup":
+            hardware.pin7.configure(PWM_OUT, 0.0015, 0.5);
+            imp.sleep(0.2);
+            hardware.pin7.configure(PWM_OUT, 0.0015, 0.5);
+            imp.sleep(0.2);
+            hardware.pin7.configure(PWM_OUT, 0.00075, 0.5);
+            imp.sleep(0.2);
+            hardware.pin7.configure(DIGITAL_OUT);
+            hardware.pin7.write(0);
+            break;
+        default:
+            server.log(format("Unknown beep tone requested: \"%s\"", msg));
+            break;
+    }
 }
 
 
@@ -62,11 +119,19 @@ function scannerCallback()
         {
             case '\n':
                 // Scan complete. Discard the line ending,
-                // do something with the string, and reset state.
-                server.log("Code: \"" + gScannerOutput + "\" (" + 
-                           gScannerOutput.len() + " chars)");
-                beep();
+                // upload the beep, and reset state.
+                gDeviceState = DeviceState.SCAN_CAPTURED;
+
+                //server.log("Code: \"" + gScannerOutput + "\" (" + 
+                           //gScannerOutput.len() + " chars)");
+                agent.send("uploadBeep", {barcode=gScannerOutput});
                 
+                // Release scanner trigger
+                hardware.pin8.write(1); 
+
+                // Stop mic recording
+                hardware.sampler.stop();
+
                 // Reset for next scan
                 gScannerOutput = "";
                 break;
@@ -111,32 +176,71 @@ function buttonCallback()
     {
         case 0:
             // Button in held state
-            if (gButtonState == "UP")
+            if (gButtonState == ButtonState.BUTTON_UP)
             {
-                gButtonState = "DOWN";
+                if (gDeviceState != DeviceState.IDLE)
+                {
+                    server.log(format("ERROR: expected IDLE, got state %d", 
+                               gDeviceState));
+                }
+
+                gDeviceState = DeviceState.SCAN_RECORD;
+                gButtonState = ButtonState.BUTTON_DOWN;
                 //server.log("Button state change: " + gButtonState);
 
                 // Trigger the scanner
                 hardware.pin8.write(0);
 
                 // Trigger the mic recording
-                gNumBuffersReady = 0; 
+                gAudioBufferOverran = false;
                 agent.send("startAudioUpload", "");
                 hardware.sampler.start();
             }
             break;
         case numSamples:
             // Button in released state
-            if (gButtonState == "DOWN")
+            if (gButtonState == ButtonState.BUTTON_DOWN)
             {
-                gButtonState = "UP";
+                gButtonState = ButtonState.BUTTON_UP;
 
-                // Release scanner trigger
-                hardware.pin8.write(1); 
+                switch (gDeviceState) 
+                {
+                    case DeviceState.BUTTON_TIMEOUT:
+                    case DeviceState.SCAN_CAPTURED:
+                        // Handling complete, so go straight to idle
+                        gDeviceState = DeviceState.IDLE;
+                        break;
 
-                // Stop mic recording
-                hardware.sampler.stop();
-                agent.send("endAudioUpload", "");
+                    case DeviceState.SCAN_RECORD:
+                        // Audio captured. Validate and send it
+                        gDeviceState = DeviceState.BUTTON_RELEASED;
+
+                        // Release scanner trigger
+                        hardware.pin8.write(1); 
+
+                        // Stop mic recording
+                        hardware.sampler.stop();
+
+                        // If we have good data, send it to the server
+                        if (gAudioBufferOverran)
+                        {
+                            beep("failure");
+                        }
+                        else
+                        {
+                            agent.send("endAudioUpload", "");
+                        }
+
+                        // No more work to do, so go to idle
+                        gDeviceState = DeviceState.IDLE;
+                        break;
+
+                    default:
+                        // IDLE, BUTTON_RELEASED, or unknown
+                        server.log("ERROR: unexpected state %d", gDeviceState)
+                        gDeviceState = DeviceState.IDLE;
+                        break;
+                }
 
                 //server.log("Button state change: " + gButtonState);
             }
@@ -156,10 +260,10 @@ function buttonCallback()
 // it is called 8x/sec. 
 function samplerCallback(buffer, length)
 {
-    gNumBuffersReady++;
-    //server.log("SAMPLER CALLBACK: size " + length + " num " + gNumBuffersReady);
+    //server.log("SAMPLER CALLBACK: size " + length");
     if (length <= 0)
     {
+        gAudioBufferOverran = true;
         server.log("Audio sampler buffer overrun!!!!!!");
     }
     else 
@@ -202,11 +306,10 @@ function init()
 
     // Initialization complete notification
     server.log(format("Your impee ID=%s", hardware.getimpeeid()));
-    beep(); 
+    beep("startup"); 
 }
 
 
 //****************************************************************************
 // main
 init();
-
