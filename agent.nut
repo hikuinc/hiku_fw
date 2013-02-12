@@ -6,7 +6,7 @@
 gAudioBuffer <- blob(0);
 
 
-//****************************************************************************
+//**********************************************************************
 // Receive and send out the beep packet
 device.on(("uploadBeep"), function(data) {
     //agentLog("in uploadBeep");
@@ -24,7 +24,7 @@ device.on(("uploadBeep"), function(data) {
 });
 
 
-//****************************************************************************
+//**********************************************************************
 // Prepare to receive audio from the device
 device.on(("startAudioUpload"), function(data) {
     //agentLog("in startAudioUpload");
@@ -34,7 +34,7 @@ device.on(("startAudioUpload"), function(data) {
 });
 
 
-//****************************************************************************
+//**********************************************************************
 // Send complete audio sample to the server
 device.on(("endAudioUpload"), function(data) {
     //agentLog("in endAudioUpload");
@@ -77,7 +77,7 @@ device.on(("endAudioUpload"), function(data) {
 });
 
 
-//****************************************************************************
+//**********************************************************************
 // Handle an audio buffer from the device
 device.on(("uploadAudioChunk"), function(data) {
     //agentLog(format("in device.on uploadAudioChunk"));
@@ -90,12 +90,12 @@ device.on(("uploadAudioChunk"), function(data) {
 });
 
 
-//****************************************************************************
+//**********************************************************************
 // Utility Functions
-//****************************************************************************
+//**********************************************************************
 
 
-//****************************************************************************
+//**********************************************************************
 // Print all ServerRequest fields 
 function logServerRequest(request)
 {
@@ -109,7 +109,7 @@ function logServerRequest(request)
 }
 
 
-//****************************************************************************
+//**********************************************************************
 // Proxy for server.log that prints a line prefix showing it is from the agent
 function agentLog(str)
 {
@@ -117,7 +117,7 @@ function agentLog(str)
 }
 
 
-//****************************************************************************
+//**********************************************************************
 // Print the contents of a blob to the log in a formatted way
 function dumpBlob(data)
 {
@@ -169,7 +169,7 @@ function dumpBlob(data)
 }
 
 
-//****************************************************************************
+//**********************************************************************
 const base64_keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
 
 // Input can be a string or blob. Output is a string. 

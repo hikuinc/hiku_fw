@@ -1,11 +1,11 @@
 // Copyright 2013 Katmandu Technology, Inc. All rights reserved. Confidential.
 
-//****************************************************************************
+//**********************************************************************
 // Utility functions that can be copied and pasted into EImp code
-//****************************************************************************
+//**********************************************************************
 
 
-//****************************************************************************
+//**********************************************************************
 // Print all ServerRequest fields 
 function logServerRequest(request)
 {
@@ -19,7 +19,7 @@ function logServerRequest(request)
 }
 
 
-//****************************************************************************
+//**********************************************************************
 // Prints out the key value pairs of a Squirrel table
 function printTableFields(data)
 {
@@ -31,7 +31,7 @@ function printTableFields(data)
 }
 
 
-//****************************************************************************
+//**********************************************************************
 // Proxy for server.log that prints a line prefix showing it is from the agent
 function agentLog(str)
 {
@@ -39,7 +39,7 @@ function agentLog(str)
 }
 
 
-//****************************************************************************
+//**********************************************************************
 // Print the contents of a blob to the log in a formatted way
 function dumpBlob(data)
 {

@@ -2,6 +2,8 @@
 
 
 // Consts and enums
+const cButtonTimeout = 6000;  // in milliseconds
+
 enum ButtonState
 {
     BUTTON_UP,
@@ -15,8 +17,6 @@ enum DeviceState
     IDLE ---> SCAN_RECORD ---> BUTTON_TIMEOUT -->     \
                           \                      \     \
                            -------------------> BUTTON_RELEASED ---> IDLE
-    
-
 */
 {
     IDLE,             // Not recording or processing data
@@ -28,10 +28,12 @@ enum DeviceState
 
 
 // Globals
-gDeviceState <- DeviceState.IDLE;  // Hiku device current state
-gButtonState <- ButtonState.BUTTON_UP;  // Button current state
-gScannerOutput <- "";  // String containing barcode data
-gAudioBufferOverran <- false;
+gDeviceState <- DeviceState.IDLE; // Hiku device current state
+gButtonState <- ButtonState.BUTTON_UP; // Button current state
+
+gScannerOutput <- ""; // String containing barcode data
+gAudioBufferOverran <- false; // True if an overrun occurred
+gTimeButtonPressed <- null; // Used for held-too-long timeout
 
 // If we use fewer than four or smaller than 6000 byte buffers, we 
 // get buffer overruns during scanner RX. Even with this 
@@ -46,15 +48,40 @@ buf3 <- blob(6000);
 buf4 <- blob(6000);
 
 
-//****************************************************************************
+//**********************************************************************
 // Agent callback: upload complete
 agent.on(("uploadCompleted"), function(msg) {
-    server.log(format("in agent.on uploadCompleted, msg=%s", msg));
+    //server.log(format("in agent.on uploadCompleted, msg=%s", msg));
     beep(msg);
 });
 
 
-//****************************************************************************
+//**********************************************************************
+// If we are gathering data and the button has been held down 
+// too long, we abort recording and scanning.
+function buttonTimerCallback()
+{
+    if (gDeviceState == DeviceState.SCAN_RECORD)
+    {
+        // In theory millis can wrap, but it is reset when we sleep
+        local elapsedTime = hardware.millis() - gTimeButtonPressed;
+        //server.log(format("in buttonTimerCallback, time = %d", elapsedTime));
+        
+        if (elapsedTime > cButtonTimeout)
+        {
+            // We have timed out.  Update state and give an error. 
+            gDeviceState = DeviceState.BUTTON_TIMEOUT;
+            stopScanRecord();
+            beep("failure");
+            server.log("Timeout reached. Aborting scan and record.");
+        }
+    }
+
+    imp.wakeup(0.5, buttonTimerCallback);
+}
+
+
+//**********************************************************************
 //TODO: review and cleanup
 //TODO: instead of reconfiguring, just change duty cycle to zero via
 //      pin.write(0). Does this have power impact? 
@@ -103,7 +130,22 @@ function beep(tone = "success")
 }
 
 
-//****************************************************************************
+//**********************************************************************
+// Stop the scanner and sampler
+function stopScanRecord()
+{
+    // Release scanner trigger
+    hardware.pin8.write(1); 
+
+    // Reset for next scan
+    gScannerOutput = "";
+
+    // Stop mic recording
+    hardware.sampler.stop();
+}
+
+
+//**********************************************************************
 // UART12 callback, called whenever there is data from scanner
 // Reads the bytes, and detects and handles a full barcode string
 function scannerCallback()
@@ -126,14 +168,8 @@ function scannerCallback()
                            //gScannerOutput.len() + " chars)");
                 agent.send("uploadBeep", {barcode=gScannerOutput});
                 
-                // Release scanner trigger
-                hardware.pin8.write(1); 
-
-                // Stop mic recording
-                hardware.sampler.stop();
-
-                // Reset for next scan
-                gScannerOutput = "";
+                // Stop collecting data
+                stopScanRecord();
                 break;
 
             case '\r':
@@ -154,7 +190,7 @@ function scannerCallback()
 }
 
 
-//****************************************************************************
+//**********************************************************************
 // Button handler callback 
 // Not a true interrupt handler, this cannot interrupt other Squirrel code. 
 // The event is queued and the callback is called next time the Imp is idle. 
@@ -195,6 +231,9 @@ function buttonCallback()
                 gAudioBufferOverran = false;
                 agent.send("startAudioUpload", "");
                 hardware.sampler.start();
+
+                // Start timing button press
+                gTimeButtonPressed = hardware.millis();
             }
             break;
         case numSamples:
@@ -215,11 +254,8 @@ function buttonCallback()
                         // Audio captured. Validate and send it
                         gDeviceState = DeviceState.BUTTON_RELEASED;
 
-                        // Release scanner trigger
-                        hardware.pin8.write(1); 
-
-                        // Stop mic recording
-                        hardware.sampler.stop();
+                        // Stop collecting data
+                        stopScanRecord();
 
                         // If we have good data, send it to the server
                         if (gAudioBufferOverran)
@@ -253,7 +289,7 @@ function buttonCallback()
 }
 
 
-//****************************************************************************
+//**********************************************************************
 // Called when an audio sampler buffer is ready.  It is called 
 // ((sample rate * bytes per sample)/buffer size) times per second.  
 // So for 16 kHz sampling of 8-bit A law and 2000 byte buffers, 
@@ -279,7 +315,7 @@ function samplerCallback(buffer, length)
 }
 
 
-//****************************************************************************
+//**********************************************************************
 function init()
 {
     imp.configure("hiku", [], [])
@@ -304,12 +340,15 @@ function init()
     hardware.uart12.configure(9600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
                              scannerCallback);
 
+    // Set up button timeout callback
+    imp.wakeup(0.5, buttonTimerCallback);
+
     // Initialization complete notification
     server.log(format("Your impee ID=%s", hardware.getimpeeid()));
     beep("startup"); 
 }
 
 
-//****************************************************************************
+//**********************************************************************
 // main
 init();
