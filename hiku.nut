@@ -92,36 +92,36 @@ function beep(tone = "success")
     switch (tone) 
     {
         case "success":
-            hardware.pin7.configure(PWM_OUT, 0.0015, 0.5);
+            hwPiezo.configure(PWM_OUT, 0.0015, 0.5);
             imp.sleep(0.2);
-            hardware.pin7.configure(PWM_OUT, 0.00075, 0.5);
+            hwPiezo.configure(PWM_OUT, 0.00075, 0.5);
             imp.sleep(0.2);
-            hardware.pin7.configure(DIGITAL_OUT);
-            hardware.pin7.write(0);
+            hwPiezo.configure(DIGITAL_OUT);
+            hwPiezo.write(0);
             break;
         case "failure":
-            hardware.pin7.configure(PWM_OUT, 0.00075, 0.5);
+            hwPiezo.configure(PWM_OUT, 0.00075, 0.5);
             imp.sleep(0.2);
-            hardware.pin7.configure(PWM_OUT, 0.0015, 0.5);
+            hwPiezo.configure(PWM_OUT, 0.0015, 0.5);
             imp.sleep(0.2);
-            hardware.pin7.configure(DIGITAL_OUT);
-            hardware.pin7.write(0);
+            hwPiezo.configure(DIGITAL_OUT);
+            hwPiezo.write(0);
             break;
         case "info":
-            hardware.pin7.configure(PWM_OUT, 0.00075, 0.5);
+            hwPiezo.configure(PWM_OUT, 0.00075, 0.5);
             imp.sleep(0.2);
-            hardware.pin7.configure(DIGITAL_OUT);
-            hardware.pin7.write(0);
+            hwPiezo.configure(DIGITAL_OUT);
+            hwPiezo.write(0);
             break;
         case "startup":
-            hardware.pin7.configure(PWM_OUT, 0.0015, 0.5);
+            hwPiezo.configure(PWM_OUT, 0.0015, 0.5);
             imp.sleep(0.2);
-            hardware.pin7.configure(PWM_OUT, 0.0015, 0.5);
+            hwPiezo.configure(PWM_OUT, 0.0015, 0.5);
             imp.sleep(0.2);
-            hardware.pin7.configure(PWM_OUT, 0.00075, 0.5);
+            hwPiezo.configure(PWM_OUT, 0.00075, 0.5);
             imp.sleep(0.2);
-            hardware.pin7.configure(DIGITAL_OUT);
-            hardware.pin7.write(0);
+            hwPiezo.configure(DIGITAL_OUT);
+            hwPiezo.write(0);
             break;
         default:
             server.log(format("Unknown beep tone requested: \"%s\"", msg));
@@ -135,7 +135,7 @@ function beep(tone = "success")
 function stopScanRecord()
 {
     // Release scanner trigger
-    hardware.pin8.write(1); 
+    hwTrigger.write(1); 
 
     // Reset for next scan
     gScannerOutput = "";
@@ -146,12 +146,12 @@ function stopScanRecord()
 
 
 //**********************************************************************
-// UART12 callback, called whenever there is data from scanner
-// Reads the bytes, and detects and handles a full barcode string
+// Scanner data ready callback, called whenever there is data from scanner.
+// Reads the bytes, and detects and handles a full barcode string.
 function scannerCallback()
 {
     // Read the first byte
-    local data = hardware.uart12.read();
+    local data = hwScannerUart.read();
     while (data != -1)  
     {
         //server.log("char " + data + " \"" + data.tochar() + "\"");
@@ -183,7 +183,7 @@ function scannerCallback()
         }
 
         // Read the next byte
-        data = hardware.uart12.read();
+        data = hwScannerUart.read();
     } 
 
     //server.log("EXITING CALLBACK");
@@ -200,17 +200,17 @@ function buttonCallback()
     // taken is (numSamples-1)*sleepSecs
     const numSamples = 4;
     const sleepSecs = 0.003; 
-    local buttonState = hardware.pin9.read()
+    local buttonState = hwButton.read()
     for (local i=1;i<numSamples;i++)
     {
-        buttonState += hardware.pin9.read()
+        buttonState += hwButton.read()
         imp.sleep(sleepSecs)
     }
 
     // Handle the button state transition
     switch(buttonState) 
     {
-        case 0:
+        case numSamples:
             // Button in held state
             if (gButtonState == ButtonState.BUTTON_UP)
             {
@@ -222,10 +222,10 @@ function buttonCallback()
 
                 gDeviceState = DeviceState.SCAN_RECORD;
                 gButtonState = ButtonState.BUTTON_DOWN;
-                //server.log("Button state change: " + gButtonState);
+                //server.log("Button state change: DOWN " + gButtonState);
 
                 // Trigger the scanner
-                hardware.pin8.write(0);
+                hwTrigger.write(0);
 
                 // Trigger the mic recording
                 gAudioBufferOverran = false;
@@ -236,11 +236,12 @@ function buttonCallback()
                 gTimeButtonPressed = hardware.millis();
             }
             break;
-        case numSamples:
+        case 0:
             // Button in released state
             if (gButtonState == ButtonState.BUTTON_DOWN)
             {
                 gButtonState = ButtonState.BUTTON_UP;
+                //server.log("Button state change: UP " + gButtonState);
 
                 switch (gDeviceState) 
                 {
@@ -277,8 +278,6 @@ function buttonCallback()
                         gDeviceState = DeviceState.IDLE;
                         break;
                 }
-
-                //server.log("Button state change: " + gButtonState);
             }
             break;
         default:
@@ -319,25 +318,32 @@ function samplerCallback(buffer, length)
 function init()
 {
     imp.configure("hiku", [], [])
+
+    // We will always be in deep sleep unless button pressed, in which
+    // case we need to be as responsive as possible. 
     imp.setpowersave(false);
 
+    // Pin assignment
+    hwButton <-hardware.pin1;         // Move to IO expander
+    hwMicrophone <- hardware.pin2;
+    hwPiezo <- hardware.pin5;
+    hwScannerUart <- hardware.uart57;
+    hwTrigger <-hardware.pin8;        // Move to IO expander
+
     // Pin configuration
-    hardware.pin9.configure(DIGITAL_IN_PULLUP, buttonCallback); // Button
-    hardware.pin8.configure(DIGITAL_OUT); // Scanner trigger
-    hardware.pin8.write(1); // De-assert trigger by default
-    hardware.pin7.configure(DIGITAL_OUT); // Piezo 
-    hardware.pin7.write(0); // Turn off by default
+    hwButton.configure(DIGITAL_IN_WAKEUP, buttonCallback);
+    hwTrigger.configure(DIGITAL_OUT);
+    hwTrigger.write(1); // De-assert trigger by default
+    hwPiezo.configure(DIGITAL_OUT);
+    hwPiezo.write(0); // Turn off piezo by default
 
     // Microphone sampler config
-    hardware.sampler.configure(hardware.pin5, 16000, [buf1, buf2, buf3, buf4], 
+    hardware.sampler.configure(hwMicrophone, 16000, [buf1, buf2, buf3, buf4], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
-                               //samplerCallback);
-                               //samplerCallback, NORMALISE); 
-    
 
     // Scanner UART config 
-    hardware.configure(UART_12); 
-    hardware.uart12.configure(9600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
+    hardware.configure(UART_57); 
+    hwScannerUart.configure(9600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
                              scannerCallback);
 
     // Set up button timeout callback
