@@ -3,8 +3,8 @@
 
 // Consts and enums
 const cButtonTimeout = 6;  // in seconds
-const cDelayBeforeDeepSleep = 10.0;  // in seconds
-const cDeepSleepDuration = 120.0;  // in seconds
+const cDelayBeforeDeepSleep = 20.0;  // in seconds
+const cDeepSleepDuration = 600.0;  // in seconds
 
 // Audio generation constants
 const noteB4 = 0.002025 // 494 Hz 
@@ -38,11 +38,11 @@ enum DeviceState
                            -------------------> BUTTON_RELEASED ---> IDLE
 */
 {
-    IDLE,             // Not recording or processing data
-    SCAN_RECORD,      // Scanning and recording audio
-    SCAN_CAPTURED,    // Processing scan data
-    BUTTON_TIMEOUT,   // Timeout limit reached while holding button
-    BUTTON_RELEASED,  // Button released, may have audio to send
+    IDLE,             // 0: Not recording or processing data
+    SCAN_RECORD,      // 1: Scanning and recording audio
+    SCAN_CAPTURED,    // 2: Processing scan data
+    BUTTON_TIMEOUT,   // 3: Timeout limit reached while holding button
+    BUTTON_RELEASED,  // 4: Button released, may have audio to send
 }
 
 
@@ -216,25 +216,12 @@ function updateDeviceState(newState)
         gButtonTimer.disable();
     }
 
+    // Log the state change, for debugging
+    //local os = (oldState==null) ? "null" : oldState.tostring();
+    //local ns = (newState==null) ? "null" : newState.tostring();
+    //server.log(format("State change: %s -> %s", os, ns));
+
     // Verify state machine is in order 
-    /*
-    if (oldState != null && newState != null )
-    {
-        server.log(format("State change: %d -> %d", oldState, newState));
-    }
-    else if (oldState != null)
-    {
-        server.log(format("State change: %d -> null", oldState));
-    }
-    else if (newState != null)
-    {
-        server.log(format("State change: null -> %d", newState));
-    }
-    else
-    {
-        server.log(format("State change: null -> null"));
-    }
-    */
     switch (newState) 
     {
         case DeviceState.IDLE:
@@ -245,11 +232,7 @@ function updateDeviceState(newState)
             assert(oldState == DeviceState.IDLE);
             break;
         case DeviceState.SCAN_CAPTURED:
-            // Can get capture after button released or timeout
-            assert(oldState == DeviceState.SCAN_RECORD ||
-                   oldState == DeviceState.BUTTON_RELEASED ||
-                   oldState == DeviceState.BUTTON_TIMEOUT ||
-                   oldState == DeviceState.IDLE);
+            assert(oldState == DeviceState.SCAN_RECORD);
             break;
         case DeviceState.BUTTON_TIMEOUT:
             assert(oldState == DeviceState.SCAN_RECORD);
@@ -303,6 +286,8 @@ function playSound(tone = Tone.SUCCESS)
 
 //**********************************************************************
 // Stop the scanner and sampler
+// Note: this function may be called multiple times in a row, so
+// it must support that. 
 function stopScanRecord()
 {
     // Release scanner trigger
@@ -333,6 +318,17 @@ function scannerCallback()
             case '\n':
                 // Scan complete. Discard the line ending,
                 // upload the beep, and reset state.
+
+                // If the scan came in late (e.g. after button up), 
+                // discard it, to maintain the state machine. 
+                if (gDeviceState != DeviceState.SCAN_RECORD)
+                {
+                    //server.log(format(
+                               //"Got capture too late. Dropping scan %d",
+                               //gDeviceState));
+                    gScannerOutput = "";
+                    return;
+                }
                 updateDeviceState(DeviceState.SCAN_CAPTURED);
 
                 //server.log("Code: \"" + gScannerOutput + "\" (" + 
@@ -411,6 +407,8 @@ function buttonCallback()
                 if (oldState == DeviceState.SCAN_RECORD)
                 {
                     // Audio captured. Validate and send it
+                    // TODO: if we have not uploaded any audio, we should
+                    // save time and power by not asking server to send?
 
                     // Stop collecting data
                     stopScanRecord();
@@ -550,7 +548,6 @@ function init()
             });
 
     // Transition to the idle state
-    server.log("Setting initial device state");
     updateDeviceState(DeviceState.IDLE);
 
     // Print debug info
