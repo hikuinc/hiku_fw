@@ -30,7 +30,6 @@ enum DeviceState
 
 
 // Globals
-// TODO: reduce frequency and scope of global variable access
 gDeviceState <- null; // Hiku device current state
 gButtonState <- ButtonState.BUTTON_UP; // Button current state
 
@@ -180,8 +179,31 @@ function updateDeviceState(newState)
         gButtonTimer.disable();
     }
 
-
-    // TODO: assert to verify state machine is in order 
+    // Verify state machine is in order 
+    switch (newState) 
+    {
+        case DeviceState.IDLE:
+            assert(oldState == DeviceState.BUTTON_RELEASED ||
+                   oldState == null);
+            break;
+        case DeviceState.SCAN_RECORD:
+            assert(oldState == DeviceState.IDLE);
+            break;
+        case DeviceState.SCAN_CAPTURED:
+            assert(oldState == DeviceState.SCAN_RECORD);
+            break;
+        case DeviceState.BUTTON_TIMEOUT:
+            assert(oldState == DeviceState.SCAN_RECORD);
+            break;
+        case DeviceState.BUTTON_RELEASED:
+            assert(oldState == DeviceState.SCAN_RECORD ||
+                   oldState == DeviceState.SCAN_CAPTURED ||
+                   oldState == DeviceState.BUTTON_TIMEOUT);
+            break;
+        default:
+            assert(false);
+            break;
+    }
 }
 
 
@@ -332,13 +354,6 @@ function buttonCallback()
             // Button in held state
             if (gButtonState == ButtonState.BUTTON_UP)
             {
-                // TODO: move to updateDeviceState
-                if (gDeviceState != DeviceState.IDLE)
-                {
-                    server.log(format("ERROR: expected IDLE, got state %d", 
-                               gDeviceState));
-                }
-
                 updateDeviceState(DeviceState.SCAN_RECORD);
                 gButtonState = ButtonState.BUTTON_DOWN;
                 //server.log("Button state change: DOWN " + gButtonState);
@@ -359,41 +374,28 @@ function buttonCallback()
                 gButtonState = ButtonState.BUTTON_UP;
                 //server.log("Button state change: UP " + gButtonState);
 
-                switch (gDeviceState) 
+                local oldState = gDeviceState;
+                updateDeviceState(DeviceState.BUTTON_RELEASED);
+
+                if (oldState == DeviceState.SCAN_RECORD)
                 {
-                    case DeviceState.BUTTON_TIMEOUT:
-                    case DeviceState.SCAN_CAPTURED:
-                        // Handling complete, so go straight to idle
-                        updateDeviceState(DeviceState.IDLE);
-                        break;
+                    // Audio captured. Validate and send it
 
-                    case DeviceState.SCAN_RECORD:
-                        // Audio captured. Validate and send it
-                        updateDeviceState(DeviceState.BUTTON_RELEASED);
+                    // Stop collecting data
+                    stopScanRecord();
 
-                        // Stop collecting data
-                        stopScanRecord();
-
-                        // If we have good data, send it to the server
-                        if (gAudioBufferOverran)
-                        {
-                            beep("failure");
-                        }
-                        else
-                        {
-                            agent.send("endAudioUpload", "");
-                        }
-
-                        // No more work to do, so go to idle
-                        updateDeviceState(DeviceState.IDLE);
-                        break;
-
-                    default:
-                        // IDLE, BUTTON_RELEASED, or unknown
-                        server.log("ERROR: unexpected state %d", gDeviceState)
-                        updateDeviceState(DeviceState.IDLE);
-                        break;
+                    // If we have good data, send it to the server
+                    if (gAudioBufferOverran)
+                    {
+                        beep("failure");
+                    }
+                    else
+                    {
+                        agent.send("endAudioUpload", "");
+                    }
                 }
+                // No more work to do, so go to idle
+                updateDeviceState(DeviceState.IDLE);
             }
             break;
         default:
