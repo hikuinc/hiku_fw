@@ -6,6 +6,23 @@ const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 10.0;  // in seconds
 const cDeepSleepDuration = 120.0;  // in seconds
 
+// Audio generation constants
+const noteB4 = 0.002025 // 494 Hz 
+const noteE5 = 0.001517 // 659 Hz
+const noteE6 = 0.000759 // 1318 Hz
+const dCycle = 0.5; // 50%, or maximum power for a piezo
+const longTone = 0.2; // duration in seconds
+const shortTone = 0.15; // duration in seconds
+
+enum Tone
+{
+    SUCCESS,
+    FAILURE,
+    SLEEP,
+    STARTUP,
+    NUMTONES, // dummy for bounds checking
+}
+
 enum ButtonState
 {
     BUTTON_UP,
@@ -30,6 +47,16 @@ enum DeviceState
 
 
 // Globals
+
+// The params slots map to the Tone enum above
+gToneParams <- [
+    // [[period, duty cycle, duration], ...]
+    [[noteE5, dCycle, longTone], [noteE6, dCycle, shortTone]],
+    [[noteE6, dCycle, longTone], [noteE5, dCycle, shortTone]],
+    [[noteE5, dCycle, longTone], [noteB4, dCycle, shortTone]],
+    [[noteB4, dCycle, longTone], [noteE5, dCycle, shortTone]],
+];
+
 gDeviceState <- null; // Hiku device current state
 gButtonState <- ButtonState.BUTTON_UP; // Button current state
 
@@ -134,7 +161,17 @@ function print(str)
 // Agent callback: upload complete
 agent.on(("uploadCompleted"), function(msg) {
     //server.log(format("in agent.on uploadCompleted, msg=%s", msg));
-    beep(msg);
+    switch (msg)
+    {
+        case "success":
+            playSound(Tone.SUCCESS);
+            break;
+        case "failure":
+            playSound(Tone.FAILURE);
+            break;
+        default:
+            server.log("Error: unknown msg");
+    }
 });
 
 
@@ -180,6 +217,24 @@ function updateDeviceState(newState)
     }
 
     // Verify state machine is in order 
+    /*
+    if (oldState != null && newState != null )
+    {
+        server.log(format("State change: %d -> %d", oldState, newState));
+    }
+    else if (oldState != null)
+    {
+        server.log(format("State change: %d -> null", oldState));
+    }
+    else if (newState != null)
+    {
+        server.log(format("State change: null -> %d", newState));
+    }
+    else
+    {
+        server.log(format("State change: null -> null"));
+    }
+    */
     switch (newState) 
     {
         case DeviceState.IDLE:
@@ -190,7 +245,11 @@ function updateDeviceState(newState)
             assert(oldState == DeviceState.IDLE);
             break;
         case DeviceState.SCAN_CAPTURED:
-            assert(oldState == DeviceState.SCAN_RECORD);
+            // Can get capture after button released or timeout
+            assert(oldState == DeviceState.SCAN_RECORD ||
+                   oldState == DeviceState.BUTTON_RELEASED ||
+                   oldState == DeviceState.BUTTON_TIMEOUT ||
+                   oldState == DeviceState.IDLE);
             break;
         case DeviceState.BUTTON_TIMEOUT:
             assert(oldState == DeviceState.SCAN_RECORD);
@@ -214,59 +273,31 @@ function handleButtonTimeout()
 {
     updateDeviceState(DeviceState.BUTTON_TIMEOUT);
     stopScanRecord();
-    beep("failure");
+    playSound(Tone.FAILURE);
     server.log("Timeout reached. Aborting scan and record.");
 }
 
 
 //**********************************************************************
-//TODO: review and cleanup
-//TODO: instead of reconfiguring, just change duty cycle to zero via
-//      pin.write(0). Does this have power impact? 
-//TODO: minimize impact of busy wait -- slows responsiveness. Can do 
+// Play a set of notes
+// TODO: minimize impact of busy wait -- slows responsiveness. Can do 
 //      async and maintain sound?
-function beep(tone = "success") 
+function playSound(tone = Tone.SUCCESS) 
 {
-    switch (tone) 
+    // Handle invalid tone values
+    if (tone >= Tone.NUMTONES)
     {
-        case "success":
-            hwPiezo.configure(PWM_OUT, 0.0015, 0.5);
-            imp.sleep(0.2);
-            hwPiezo.configure(PWM_OUT, 0.00075, 0.5);
-            imp.sleep(0.2);
-            hwPiezo.configure(DIGITAL_OUT);
-            hwPiezo.write(0);
-            break;
-        case "failure":
-            hwPiezo.configure(PWM_OUT, 0.00075, 0.5);
-            imp.sleep(0.2);
-            hwPiezo.configure(PWM_OUT, 0.0015, 0.5);
-            imp.sleep(0.2);
-            hwPiezo.configure(DIGITAL_OUT);
-            hwPiezo.write(0);
-            break;
-        case "sleep":
-            hwPiezo.configure(PWM_OUT, 0.0015, 0.5);
-            imp.sleep(0.2);
-            hwPiezo.configure(PWM_OUT, 0.0020, 0.5);
-            imp.sleep(0.2);
-            hwPiezo.configure(DIGITAL_OUT);
-            hwPiezo.write(0);
-            break;
-        case "startup":
-            hwPiezo.configure(PWM_OUT, 0.0015, 0.5);
-            imp.sleep(0.2);
-            hwPiezo.configure(PWM_OUT, 0.0015, 0.5);
-            imp.sleep(0.2);
-            hwPiezo.configure(PWM_OUT, 0.00075, 0.5);
-            imp.sleep(0.2);
-            hwPiezo.configure(DIGITAL_OUT);
-            hwPiezo.write(0);
-            break;
-        default:
-            server.log(format("Unknown beep tone requested: \"%s\"", msg));
-            break;
+        server.log("Error: unknown tone");
+        return;
     }
+
+    // Play the tones
+    foreach (params in gToneParams[tone])
+    {
+        hwPiezo.configure(PWM_OUT, params[0], params[1]);
+        imp.sleep(params[2]);
+    }
+    hwPiezo.write(0);
 }
 
 
@@ -387,7 +418,7 @@ function buttonCallback()
                     // If we have good data, send it to the server
                     if (gAudioBufferOverran)
                     {
-                        beep("failure");
+                        playSound(Tone.FAILURE);
                     }
                     else
                     {
@@ -480,7 +511,7 @@ function printStartupDebugInfo()
 //**********************************************************************
 function init()
 {
-    imp.configure("hiku", [], [])
+    imp.configure("hiku", [], []);
 
     // We will always be in deep sleep unless button pressed, in which
     // case we need to be as responsive as possible. 
@@ -513,19 +544,20 @@ function init()
     gButtonTimer = ActionTimer(cButtonTimeout, handleButtonTimeout);
     gDeepSleepTimer = ActionTimer(cDelayBeforeDeepSleep,
             function() {
-                beep("sleep");
+                playSound(Tone.SLEEP);
                 server.log("going to sleep..."); 
                 server.sleepfor(cDeepSleepDuration); 
             });
 
     // Transition to the idle state
+    server.log("Setting initial device state");
     updateDeviceState(DeviceState.IDLE);
 
     // Print debug info
     printStartupDebugInfo();
 
     // Initialization complete notification
-    beep("startup"); 
+    playSound(Tone.STARTUP); 
 
     // If we booted with the button held down, we are most likely
     // woken up by the button, so go directly to button handling.  
