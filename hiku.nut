@@ -3,6 +3,8 @@
 
 // Consts and enums
 const cButtonTimeout = 6000;  // in milliseconds
+const cDelayBeforeDeepSleep = 10.0;  // in seconds
+const cDeepSleepDuration = 120.0;  // in seconds
 
 enum ButtonState
 {
@@ -28,12 +30,14 @@ enum DeviceState
 
 
 // Globals
-gDeviceState <- DeviceState.IDLE; // Hiku device current state
+// TODO: reduce frequency and scope of global variable access
+gDeviceState <- null; // Hiku device current state
 gButtonState <- ButtonState.BUTTON_UP; // Button current state
 
 gScannerOutput <- ""; // String containing barcode data
 gAudioBufferOverran <- false; // True if an overrun occurred
 gTimeButtonPressed <- null; // Used for held-too-long timeout
+gDeepSleepTimer <- null; // Handles deep sleep timeouts
 
 // If we use fewer than four or smaller than 6000 byte buffers, we 
 // get buffer overruns during scanner RX. Even with this 
@@ -49,11 +53,116 @@ buf4 <- blob(6000);
 
 
 //**********************************************************************
+// Timer that can be canceled and executes a function when expiring
+// 
+// Example usage: set up a timer to call dosomething() in 10 minutes
+//   doSomethingTimer = ActionTimer(60*10, function(){dosomething();});
+//   doSomethingTimer.enable()
+//   doSomethingTimer.disable()
+class ActionTimer
+{
+    enabled = null;
+    startTime = null; // Timer starting time, in milliseconds
+    duration = null; // How long the timer should run before doing the action
+    actionFn = null; // Function to call when timer expires
+    static _frequency = 0.5; // How often to check on timer, in seconds
+    _callbackActive = false; // Used to ensure that only one callback
+                             // is active at a time. 
+
+    // Duration in seconds, and function to execute
+    constructor(secs, func)
+    {
+        duration = secs*1000;
+        actionFn = func;
+    }
+
+    // Start the timer
+    function enable() 
+    {
+        enabled = true;
+        startTime = hardware.millis();
+        if (!_callbackActive)
+        {
+            imp.wakeup(_frequency, _timerCallback.bindenv(this));
+            _callbackActive = true;
+        }
+    }
+
+    // Stop the timer
+    function disable() 
+    {
+        if(enabled)
+        {
+            enabled = false;
+            startTime = null;
+        }
+    }
+
+    // Internal function to manage cancelation and expiration
+    function _timerCallback()
+    {
+        _callbackActive = false;
+        if (enabled)
+        {
+            local elapsedTime = hardware.millis() - startTime;
+            //server.log(format("%d/%d to sleep", elapsedTime, duration));
+            if (elapsedTime > duration)
+            {
+                enabled = false;
+                startTime = null;
+                actionFn();
+            }
+            else
+            {
+                imp.wakeup(_frequency, _timerCallback.bindenv(this));
+                _callbackActive = true;
+            }
+        }
+    }
+}
+
+
+//**********************************************************************
+// Temporary function to catch dumb mistakes
+function print(str)
+{
+    server.log("ERROR USED PRINT FUNCTION. USE SERVER.LOG INSTEAD.");
+}
+
+
+//**********************************************************************
 // Agent callback: upload complete
 agent.on(("uploadCompleted"), function(msg) {
     //server.log(format("in agent.on uploadCompleted, msg=%s", msg));
     beep(msg);
 });
+
+
+//**********************************************************************
+function updateDeviceState(newState)
+{
+    // Update the state 
+    local oldState = gDeviceState;
+    gDeviceState = newState;
+
+    // If we are transitioning to idle, start the sleep timer. 
+    // If transitioning out of idle, clear it.
+    if (newState == DeviceState.IDLE)
+    {
+        if (oldState != DeviceState.IDLE)
+        {
+            // Start deep sleep timer
+            gDeepSleepTimer.enable();
+        }
+    }
+    else
+    {
+        // Disable deep sleep timer
+        gDeepSleepTimer.disable();
+    }
+
+    // TODO: assert to verify state machine is in order 
+}
 
 
 //**********************************************************************
@@ -70,7 +179,7 @@ function buttonTimerCallback()
         if (elapsedTime > cButtonTimeout)
         {
             // We have timed out.  Update state and give an error. 
-            gDeviceState = DeviceState.BUTTON_TIMEOUT;
+            updateDeviceState(DeviceState.BUTTON_TIMEOUT);
             stopScanRecord();
             beep("failure");
             server.log("Timeout reached. Aborting scan and record.");
@@ -107,8 +216,10 @@ function beep(tone = "success")
             hwPiezo.configure(DIGITAL_OUT);
             hwPiezo.write(0);
             break;
-        case "info":
-            hwPiezo.configure(PWM_OUT, 0.00075, 0.5);
+        case "sleep":
+            hwPiezo.configure(PWM_OUT, 0.0015, 0.5);
+            imp.sleep(0.2);
+            hwPiezo.configure(PWM_OUT, 0.0020, 0.5);
             imp.sleep(0.2);
             hwPiezo.configure(DIGITAL_OUT);
             hwPiezo.write(0);
@@ -162,7 +273,7 @@ function scannerCallback()
             case '\n':
                 // Scan complete. Discard the line ending,
                 // upload the beep, and reset state.
-                gDeviceState = DeviceState.SCAN_CAPTURED;
+                updateDeviceState(DeviceState.SCAN_CAPTURED);
 
                 //server.log("Code: \"" + gScannerOutput + "\" (" + 
                            //gScannerOutput.len() + " chars)");
@@ -214,13 +325,14 @@ function buttonCallback()
             // Button in held state
             if (gButtonState == ButtonState.BUTTON_UP)
             {
+                // TODO: move to updateDeviceState
                 if (gDeviceState != DeviceState.IDLE)
                 {
                     server.log(format("ERROR: expected IDLE, got state %d", 
                                gDeviceState));
                 }
 
-                gDeviceState = DeviceState.SCAN_RECORD;
+                updateDeviceState(DeviceState.SCAN_RECORD);
                 gButtonState = ButtonState.BUTTON_DOWN;
                 //server.log("Button state change: DOWN " + gButtonState);
 
@@ -248,12 +360,12 @@ function buttonCallback()
                     case DeviceState.BUTTON_TIMEOUT:
                     case DeviceState.SCAN_CAPTURED:
                         // Handling complete, so go straight to idle
-                        gDeviceState = DeviceState.IDLE;
+                        updateDeviceState(DeviceState.IDLE);
                         break;
 
                     case DeviceState.SCAN_RECORD:
                         // Audio captured. Validate and send it
-                        gDeviceState = DeviceState.BUTTON_RELEASED;
+                        updateDeviceState(DeviceState.BUTTON_RELEASED);
 
                         // Stop collecting data
                         stopScanRecord();
@@ -269,13 +381,13 @@ function buttonCallback()
                         }
 
                         // No more work to do, so go to idle
-                        gDeviceState = DeviceState.IDLE;
+                        updateDeviceState(DeviceState.IDLE);
                         break;
 
                     default:
                         // IDLE, BUTTON_RELEASED, or unknown
                         server.log("ERROR: unexpected state %d", gDeviceState)
-                        gDeviceState = DeviceState.IDLE;
+                        updateDeviceState(DeviceState.IDLE);
                         break;
                 }
             }
@@ -315,6 +427,51 @@ function samplerCallback(buffer, length)
 
 
 //**********************************************************************
+function printStartupDebugInfo()
+{
+    // impee ID
+    server.log(format("Your impee ID: %s", hardware.getimpeeid()));
+
+    // free memory
+    server.log(format("Free memory: %d bytes", imp.getmemoryfree()));
+
+    // hardware voltage
+    server.log(format("Power supply voltage: %.2fv", hardware.voltage()));
+
+    // Wi-Fi signal strength
+    local bars = 0;
+    local rssi = imp.rssi();
+    if (rssi == 0)
+        bars = -1;
+    else if (rssi > -67)
+        bars = 5;
+    else if (rssi > -72)
+        bars = 4;
+    else if (rssi > -77)
+        bars = 3; 
+    else if (rssi > -82)
+        bars = 2;
+    else if (rssi > -87)
+        bars = 1; 
+
+    if (bars == -1)
+    {
+        server.log("Wi-Fi not connected");
+    }
+    else
+    {
+        server.log(format("Wi-Fi signal: %d bars (%d dBm)", bars, rssi));
+    }
+
+    // Wi-Fi base station ID
+    server.log(format("Wi-Fi SSID: %s", imp.getbssid()));
+
+    // Wi-Fi MAC address
+    server.log(format("Wi-Fi MAC: %s", imp.getmacaddress()));
+}
+
+
+//**********************************************************************
 function init()
 {
     imp.configure("hiku", [], [])
@@ -346,15 +503,35 @@ function init()
     hwScannerUart.configure(9600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
                              scannerCallback);
 
-    // Set up button timeout callback
+    // Set up button timer callback, to detect long presses
     imp.wakeup(0.5, buttonTimerCallback);
 
+    // Print debug info
+    printStartupDebugInfo();
+
     // Initialization complete notification
-    server.log(format("Your impee ID=%s", hardware.getimpeeid()));
     beep("startup"); 
+
+    // Create our timers
+    gDeepSleepTimer = ActionTimer(cDelayBeforeDeepSleep,
+            function() {
+                beep("sleep");
+                server.log("going to sleep..."); 
+                server.sleepfor(cDeepSleepDuration); 
+            });
+
+    // Transition to the idle state
+    updateDeviceState(DeviceState.IDLE);
+
+    // If we booted with the button held down, we are most likely
+    // woken up by the button, so go directly to button handling.  
+    // TODO: change when we get the IO expander.  In that case we need
+    // to check the interrupt source. 
+    buttonCallback();
 }
 
 
 //**********************************************************************
 // main
 init();
+
