@@ -2,7 +2,7 @@
 
 
 // Consts and enums
-const cButtonTimeout = 6000;  // in milliseconds
+const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 10.0;  // in seconds
 const cDeepSleepDuration = 120.0;  // in seconds
 
@@ -34,10 +34,11 @@ enum DeviceState
 gDeviceState <- null; // Hiku device current state
 gButtonState <- ButtonState.BUTTON_UP; // Button current state
 
+gButtonTimer <- null; // Handles button-held-too-long
+gDeepSleepTimer <- null; // Handles deep sleep timeouts
+
 gScannerOutput <- ""; // String containing barcode data
 gAudioBufferOverran <- false; // True if an overrun occurred
-gTimeButtonPressed <- null; // Used for held-too-long timeout
-gDeepSleepTimer <- null; // Handles deep sleep timeouts
 
 // If we use fewer than four or smaller than 6000 byte buffers, we 
 // get buffer overruns during scanner RX. Even with this 
@@ -161,6 +162,25 @@ function updateDeviceState(newState)
         gDeepSleepTimer.disable();
     }
 
+    // If we are transitioning to SCAN_RECORD, start the button timer. 
+    // If transitioning out of SCAN_RECORD, clear it. The reason 
+    // we don't time the actual button press is that, if we have 
+    // captured a scan, we don't want to abort.
+    if (newState == DeviceState.SCAN_RECORD)
+    {
+        if (oldState != DeviceState.SCAN_RECORD)
+        {
+            // Stop timing button press
+            gButtonTimer.enable();
+        }
+    }
+    else
+    {
+        // Stop timing button press
+        gButtonTimer.disable();
+    }
+
+
     // TODO: assert to verify state machine is in order 
 }
 
@@ -168,25 +188,12 @@ function updateDeviceState(newState)
 //**********************************************************************
 // If we are gathering data and the button has been held down 
 // too long, we abort recording and scanning.
-function buttonTimerCallback()
+function handleButtonTimeout()
 {
-    if (gDeviceState == DeviceState.SCAN_RECORD)
-    {
-        // In theory millis can wrap, but it is reset when we sleep
-        local elapsedTime = hardware.millis() - gTimeButtonPressed;
-        //server.log(format("in buttonTimerCallback, time = %d", elapsedTime));
-        
-        if (elapsedTime > cButtonTimeout)
-        {
-            // We have timed out.  Update state and give an error. 
-            updateDeviceState(DeviceState.BUTTON_TIMEOUT);
-            stopScanRecord();
-            beep("failure");
-            server.log("Timeout reached. Aborting scan and record.");
-        }
-    }
-
-    imp.wakeup(0.5, buttonTimerCallback);
+    updateDeviceState(DeviceState.BUTTON_TIMEOUT);
+    stopScanRecord();
+    beep("failure");
+    server.log("Timeout reached. Aborting scan and record.");
 }
 
 
@@ -343,9 +350,6 @@ function buttonCallback()
                 gAudioBufferOverran = false;
                 agent.send("startAudioUpload", "");
                 hardware.sampler.start();
-
-                // Start timing button press
-                gTimeButtonPressed = hardware.millis();
             }
             break;
         case 0:
@@ -503,16 +507,8 @@ function init()
     hwScannerUart.configure(9600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
                              scannerCallback);
 
-    // Set up button timer callback, to detect long presses
-    imp.wakeup(0.5, buttonTimerCallback);
-
-    // Print debug info
-    printStartupDebugInfo();
-
-    // Initialization complete notification
-    beep("startup"); 
-
     // Create our timers
+    gButtonTimer = ActionTimer(cButtonTimeout, handleButtonTimeout);
     gDeepSleepTimer = ActionTimer(cDelayBeforeDeepSleep,
             function() {
                 beep("sleep");
@@ -522,6 +518,12 @@ function init()
 
     // Transition to the idle state
     updateDeviceState(DeviceState.IDLE);
+
+    // Print debug info
+    printStartupDebugInfo();
+
+    // Initialization complete notification
+    beep("startup"); 
 
     // If we booted with the button held down, we are most likely
     // woken up by the button, so go directly to button handling.  
