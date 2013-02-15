@@ -535,7 +535,7 @@ function init()
 
     // Scanner UART config 
     hardware.configure(UART_57); 
-    hwScannerUart.configure(9600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
+    hwScannerUart.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
                              scannerCallback);
 
     // Create our timers
