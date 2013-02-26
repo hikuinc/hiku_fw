@@ -4,7 +4,7 @@
 // Consts and enums
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 20.0;  // in seconds
-const cDeepSleepDuration = 600.0;  // in seconds
+const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
 
 // Audio generation constants
 const noteB4 = 0.002025 // 494 Hz 
@@ -543,7 +543,6 @@ function init()
     gDeepSleepTimer = ActionTimer(cDelayBeforeDeepSleep,
             function() {
                 playSound(Tone.SLEEP);
-                server.log("going to sleep..."); 
                 server.sleepfor(cDeepSleepDuration); 
             });
 
