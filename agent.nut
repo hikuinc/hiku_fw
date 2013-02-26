@@ -51,12 +51,12 @@ device.on(("endAudioUpload"), function(data) {
         agentLog("No audio data to send to server.");
         return;
     }
-
+    
     // Send audio to server
     agentLog(format("Audio ready to send. Size=%d", gAudioBuffer.len()));
     local req = http.post("http://bobert.net:4444", 
                          {"Content-Type": "application/octet-stream"}, 
-                         base64_encode(gAudioBuffer));
+                         http.base64encode(gAudioBuffer));
     // TODO: if the server is down, this will block all other events
     // until it times out.  Events seem to be queued on the server 
     // with no ill effects.  They do not block the device.  Move 
@@ -167,64 +167,4 @@ function dumpBlob(data)
         agentLog(str);
     }
 }
-
-
-//**********************************************************************
-const base64_keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-
-// Input can be a string or blob. Output is a string. 
-function base64_encode(input)
-/*
- * From http://singbot.googlecode.com/svn-history/r2/trunk/trunk/Debug/resources/users/crypto.nut
- *
- *  The contents of this function are subject to the Mozilla Public License  
- *
- *  Version 1.1 (the "License"); you may not use this file except in         
- *  compliance with the License. You may obtain a copy of the License at     
- *  http://www.mozilla.org/MPL/                                              
- *                                                                           
- *  Software distributed under the License is distributed on an "AS IS"      
- *  basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the  
- *  License for the specific language governing rights and limitations       
- *  under the License.                                                       
- *
- *  The Original Code is All-In-One Crypto System
- *
- *  The Initial Developer of the Original Code is Jones Nathan Sperandio.
- *  Contributor(s): Flávio Toribio.
- */
-{
-    local
-        output = "",
-        tmp,
-        i = 0;
-
-    while(i < input.len())
-    {
-        output += base64_keyStr[input[i] >> 0x02].tochar();
-        
-        tmp = (input[i++] & 0x03) << 0x04;
-        if(i++ < input.len())
-        {
-            tmp = tmp | (input[i-1] >> 0x04);
-        }
-        output += base64_keyStr[tmp].tochar();
-        
-        if(i++ > input.len())
-        {
-            output += "==";
-        }
-        else if(i > input.len())
-        {
-            output += base64_keyStr[(input[i-2] & 0x0F) << 0x02].tochar() + "=";
-        }
-        else
-        {
-            output += base64_keyStr[((input[i-2] & 0x0F) << 0x02) | (input[i-1] >> 0x06)].tochar();
-            output += base64_keyStr[input[i-1] & 0x3F].tochar();
-        }            
-    }   
-    return output;
-}
-
 
