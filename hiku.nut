@@ -125,6 +125,9 @@ class Piezo
         }
     }
         
+    //**********************************************************
+    // Continue playing an asynchronous sound. This is the 
+    // callback that plays all notes after the first. 
     function _continueSound()
     {
         // Turn off the previous note
