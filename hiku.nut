@@ -3,7 +3,7 @@
 
 // Consts and enums
 const cButtonTimeout = 6;  // in seconds
-const cDelayBeforeDeepSleep = 20.0;  // in seconds
+const cDelayBeforeDeepSleep = 30.0;  // in seconds
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
 
 // Audio generation constants
@@ -49,7 +49,7 @@ enum DeviceState
 // Globals
 
 // The params slots map to the Tone enum above
-gToneParams <- [
+gToneParamsList <- [
     // [[period, duty cycle, duration], ...]
     [[noteE5, dCycle, longTone], [noteE6, dCycle, shortTone]],
     [[noteE6, dCycle, longTone], [noteE5, dCycle, shortTone]],
@@ -64,19 +64,24 @@ gButtonTimer <- null; // Handles button-held-too-long
 gDeepSleepTimer <- null; // Handles deep sleep timeouts
 
 gScannerOutput <- ""; // String containing barcode data
-gAudioBufferOverran <- false; // True if an overrun occurred
 
+gAudioBufferOverran <- false; // True if an overrun occurred
+gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
+gAudioBufferSize <- 1000; // Size of each audio buffer 
+gAudioSampleRate <- 16000; // in Hz
+
+// Each 1k of buffer will hold 1/16 of a second of audio, or 63ms.
+// TODO: why are we no longer getting the buffer overruns described below?
 // If we use fewer than four or smaller than 6000 byte buffers, we 
 // get buffer overruns during scanner RX. Even with this 
 // setup, we still (rarely) get an overrun.  We may not care, as we 
 // currently throw away audio if we get a successful scan. 
-// TODO: can we increase the scanner UART baud rate to improve this? 
 // TODO: A-law sampler does not return partial buffers. This means that up to 
 // the last buffer size of data is dropped. What size is optimal?
-buf1 <- blob(6000);
-buf2 <- blob(6000);
-buf3 <- blob(6000);
-buf4 <- blob(6000);
+buf1 <- blob(gAudioBufferSize);
+buf2 <- blob(gAudioBufferSize);
+buf3 <- blob(gAudioBufferSize);
+buf4 <- blob(gAudioBufferSize);
 
 
 //**********************************************************************
@@ -275,7 +280,7 @@ function playSound(tone = Tone.SUCCESS)
     }
 
     // Play the tones
-    foreach (params in gToneParams[tone])
+    foreach (params in gToneParamsList[tone])
     {
         hwPiezo.configure(PWM_OUT, params[0], params[1]);
         imp.sleep(params[2]);
@@ -290,14 +295,14 @@ function playSound(tone = Tone.SUCCESS)
 // it must support that. 
 function stopScanRecord()
 {
+    // Stop mic recording
+    hardware.sampler.stop();
+
     // Release scanner trigger
     hwTrigger.write(1); 
 
     // Reset for next scan
     gScannerOutput = "";
-
-    // Stop mic recording
-    hardware.sampler.stop();
 }
 
 
@@ -390,6 +395,7 @@ function buttonCallback()
 
                 // Trigger the mic recording
                 gAudioBufferOverran = false;
+                gAudioChunkCount = 0;
                 agent.send("startAudioUpload", "");
                 hardware.sampler.start();
             }
@@ -407,21 +413,15 @@ function buttonCallback()
                 if (oldState == DeviceState.SCAN_RECORD)
                 {
                     // Audio captured. Validate and send it
-                    // TODO: if we have not uploaded any audio, we should
-                    // save time and power by not asking server to send?
 
                     // Stop collecting data
                     stopScanRecord();
 
-                    // If we have good data, send it to the server
-                    if (gAudioBufferOverran)
-                    {
-                        playSound(Tone.FAILURE);
-                    }
-                    else
-                    {
-                        agent.send("endAudioUpload", "");
-                    }
+                    // Tell the server we are done uploading data. We
+                    // first wait in case one more chunk comes in. 
+                    // TODO: how long to wait??
+                    imp.wakeup(gAudioBufferSize/gAudioSampleRate, 
+                               notifyAudioUploadComplete);
                 }
                 // No more work to do, so go to idle
                 updateDeviceState(DeviceState.IDLE);
@@ -431,6 +431,36 @@ function buttonCallback()
             // Button is in transition (not settled)
             //server.log("Bouncing! " + buttonState);
             break;
+    }
+}
+
+
+
+//**********************************************************************
+// Tell the server that we are done uploading audio.  This function
+// should be called a bit after sampler.stop(), to wait for the last
+// chunk to arrive. 
+function notifyAudioUploadComplete()
+{
+    // If there is less than x secs of audio, abandon it
+    local secs = gAudioChunkCount*gAudioBufferSize/
+                       gAudioSampleRate.tofloat();
+    //server.log(format("Captured %0.2f secs of audio in %d chunks", 
+    //             secs, gAudioChunkCount));
+    if (secs < 0.4) 
+    {
+        return;
+    }
+
+    // If we have bad data, abandon it and play error tone.  Else tell 
+    // the server we are done uploading chunks. 
+    if (gAudioBufferOverran)
+    {
+        playSound(Tone.FAILURE);
+    }
+    else
+    {
+        agent.send("endAudioUpload", gAudioChunkCount);
     }
 }
 
@@ -455,6 +485,7 @@ function samplerCallback(buffer, length)
         // on the server side, instead of making a (possibly truncated) 
         // copy each time here. 
         //server.log("START uploading chunk");
+        gAudioChunkCount++;
         agent.send("uploadAudioChunk", {buffer=buffer, length=length});
         //server.log("END uploading chunk");
     }
@@ -530,7 +561,8 @@ function init()
     hwPiezo.write(0); // Turn off piezo by default
 
     // Microphone sampler config
-    hardware.sampler.configure(hwMicrophone, 16000, [buf1, buf2, buf3, buf4], 
+    hardware.sampler.configure(hwMicrophone, gAudioSampleRate, 
+                               [buf1, buf2, buf3, buf4], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
 
     // Scanner UART config 

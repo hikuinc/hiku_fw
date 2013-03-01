@@ -4,6 +4,7 @@
 // Global containing the audio data for the current session.  Resized as 
 // new buffers come in.  
 gAudioBuffer <- blob(0);
+gChunkCount <- 0;
 
 
 //**********************************************************************
@@ -31,12 +32,13 @@ device.on(("startAudioUpload"), function(data) {
 
     // Reset our audio buffer
     gAudioBuffer.resize(0);
+    gChunkCount = 0;
 });
 
 
 //**********************************************************************
 // Send complete audio sample to the server
-device.on(("endAudioUpload"), function(data) {
+device.on(("endAudioUpload"), function(numChunksTotal) {
     //agentLog("in endAudioUpload");
 
     // TODO: Will we have all of our audio data here?  It is coming in 
@@ -50,6 +52,12 @@ device.on(("endAudioUpload"), function(data) {
     {
         agentLog("No audio data to send to server.");
         return;
+    }
+
+    if (gChunkCount != numChunksTotal)
+    {
+        server.log(format("ERROR: expected %d chunks, got %d"), 
+                   numChunksTotal, gChunkCount);
     }
     
     // Send audio to server
@@ -87,6 +95,7 @@ device.on(("uploadAudioChunk"), function(data) {
     // Add the new data to the audio buffer, truncating if necessary
     data.buffer.resize(data.length);  // Most efficient way to truncate? 
     gAudioBuffer.writeblob(data.buffer);
+    gChunkCount++;
 });
 
 
