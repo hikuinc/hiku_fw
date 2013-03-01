@@ -44,11 +44,6 @@ gAudioBufferSize <- 1000; // Size of each audio buffer
 gAudioSampleRate <- 16000; // in Hz
 
 // Each 1k of buffer will hold 1/16 of a second of audio, or 63ms.
-// TODO: why are we no longer getting the buffer overruns described below?
-// If we use fewer than four or smaller than 6000 byte buffers, we 
-// get buffer overruns during scanner RX. Even with this 
-// setup, we still (rarely) get an overrun.  We may not care, as we 
-// currently throw away audio if we get a successful scan. 
 // TODO: A-law sampler does not return partial buffers. This means that up to 
 // the last buffer size of data is dropped. What size is optimal?
 buf1 <- blob(gAudioBufferSize);
@@ -68,6 +63,10 @@ class Piezo
     // In Squirrel, if you initialize a member array or table, all
     // instances will point to the same one.  So init in the constructor.
     tonesParamsList = {};
+
+    // State for playing tones asynchronously
+    currentToneIdx = 0;
+    currentTone = null;
 
     // Audio generation constants
     static noteB4 = 0.002025; // 494 Hz 
@@ -92,10 +91,9 @@ class Piezo
     }
 
     //**********************************************************
-    // Play a set of notes
-    // TODO: minimize impact of busy wait -- slows responsiveness. Can do 
-    //      async and maintain sound?
-    function playSound(tone = "success") 
+    // Play a tone (a set of notes).  Defaults to asynchronous
+    // playback, but also supports synchronous via busy waits
+    function playSound(tone = "success", async = true) 
     {
         // Handle invalid tone values
         if (!(tone in tonesParamsList))
@@ -104,15 +102,59 @@ class Piezo
             return;
         }
 
-        // Play the tones
-        foreach (params in tonesParamsList[tone])
+        if (async)
         {
+            // Play the first note
+            local params = tonesParamsList[tone][0];
             pin.configure(PWM_OUT, params[0], params[1]);
-            imp.sleep(params[2]);
+            
+            // Play the next note after the specified delay
+            currentTone = tone;
+            currentToneIdx = 1;
+            imp.wakeup(params[2], _continueSound.bindenv(this));
         }
-        pin.write(0);
+        else 
+        {
+            // Play synchronously
+            foreach (params in tonesParamsList[tone])
+            {
+                pin.configure(PWM_OUT, params[0], params[1]);
+                imp.sleep(params[2]);
+            }
+            pin.write(0);
+        }
     }
         
+    function _continueSound()
+    {
+        // Turn off the previous note
+        pin.write(0);
+
+        // This happens when playing more than one tone concurrently, 
+        // which can happen if you scan again before the first tone
+        // finishes.  Long term solution is to create a queue of notes
+        // to play. 
+        if (currentTone == null)
+        {
+            server.log("ERROR: tried to play null tone");
+            return;
+        }
+
+        // Play the next note, if any
+        if (tonesParamsList[currentTone].len() > currentToneIdx)
+        {
+            local params = tonesParamsList[currentTone][currentToneIdx];
+            pin.configure(PWM_OUT, params[0], params[1]);
+
+            currentToneIdx++;
+            imp.wakeup(params[2], _continueSound.bindenv(this));
+        }
+        else 
+        {
+            currentToneIdx = 0;
+            currentTone = null;
+        }
+    }
 }
 
 
@@ -578,7 +620,7 @@ function init()
     gButtonTimer = CancellableTimer(cButtonTimeout, handleButtonTimeout);
     gDeepSleepTimer = CancellableTimer(cDelayBeforeDeepSleep,
             function() {
-                hwPiezo.playSound("sleep");
+                hwPiezo.playSound("sleep", false /*async*/);
                 server.sleepfor(cDeepSleepDuration); 
             });
 
