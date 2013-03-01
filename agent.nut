@@ -41,11 +41,8 @@ device.on(("startAudioUpload"), function(data) {
 device.on(("endAudioUpload"), function(numChunksTotal) {
     //agentLog("in endAudioUpload");
 
-    // TODO: Will we have all of our audio data here?  It is coming in 
-    // asynchronously, so we may have more, right?  How to handle? 
-    // For now, we assume we have all the data, since A-law data is 
-    // dropped if it does not have a full buffer. However, that is a 
-    // bad assumption, since these events are all asynchronous. 
+    // For now, we assume we have all the data, and responsibility 
+    // for ensuring this is on the device. 
 
     // If  no audio data, just exit
     if (gAudioBuffer.len() == 0)

@@ -45,7 +45,8 @@ gAudioSampleRate <- 16000; // in Hz
 
 // Each 1k of buffer will hold 1/16 of a second of audio, or 63ms.
 // TODO: A-law sampler does not return partial buffers. This means that up to 
-// the last buffer size of data is dropped. What size is optimal?
+// the last buffer size of data is dropped. Filed issue with IE here: 
+// http://forums.electricimp.com/discussion/780/. So keep buffers small. 
 buf1 <- blob(gAudioBufferSize);
 buf2 <- blob(gAudioBufferSize);
 buf3 <- blob(gAudioBufferSize);
@@ -468,7 +469,11 @@ function buttonCallback()
 
                     // Tell the server we are done uploading data. We
                     // first wait in case one more chunk comes in. 
-                    // TODO: how long to wait??
+                    // Right now we wait an arbitrary amount of
+                    // time (the time it takes one buffer to fill). 
+                    // That really doesn't make sense, but there is no 
+                    // deterministic method. Filed an issue with EI 
+                    // here: http://forums.electricimp.com/discussion/781
                     imp.wakeup(gAudioBufferSize/gAudioSampleRate, 
                                notifyAudioUploadComplete);
                 }
