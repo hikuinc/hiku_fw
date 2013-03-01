@@ -6,23 +6,6 @@ const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
 
-// Audio generation constants
-const noteB4 = 0.002025 // 494 Hz 
-const noteE5 = 0.001517 // 659 Hz
-const noteE6 = 0.000759 // 1318 Hz
-const dCycle = 0.5; // 50%, or maximum power for a piezo
-const longTone = 0.2; // duration in seconds
-const shortTone = 0.15; // duration in seconds
-
-enum Tone
-{
-    SUCCESS,
-    FAILURE,
-    SLEEP,
-    STARTUP,
-    NUMTONES, // dummy for bounds checking
-}
-
 enum ButtonState
 {
     BUTTON_UP,
@@ -47,16 +30,6 @@ enum DeviceState
 
 
 // Globals
-
-// The params slots map to the Tone enum above
-gToneParamsList <- [
-    // [[period, duty cycle, duration], ...]
-    [[noteE5, dCycle, longTone], [noteE6, dCycle, shortTone]],
-    [[noteE6, dCycle, longTone], [noteE5, dCycle, shortTone]],
-    [[noteE5, dCycle, longTone], [noteB4, dCycle, shortTone]],
-    [[noteB4, dCycle, longTone], [noteE5, dCycle, shortTone]],
-];
-
 gDeviceState <- null; // Hiku device current state
 gButtonState <- ButtonState.BUTTON_UP; // Button current state
 
@@ -85,13 +58,73 @@ buf4 <- blob(gAudioBufferSize);
 
 
 //**********************************************************************
+//**********************************************************************
+// Piezo class
+class Piezo
+{
+    // The hardware pin controlling the piezo 
+    pin = null;
+
+    // In Squirrel, if you initialize a member array or table, all
+    // instances will point to the same one.  So init in the constructor.
+    tonesParamsList = {};
+
+    // Audio generation constants
+    static noteB4 = 0.002025; // 494 Hz 
+    static noteE5 = 0.001517; // 659 Hz
+    static noteE6 = 0.000759; // 1318 Hz
+    static cycle = 0.5; // 50% duty cycle, maximum power for a piezo
+    static longTone = 0.2; // duration in seconds
+    static shortTone = 0.15; // duration in seconds
+
+    //**********************************************************
+    constructor(hwPin)
+    {
+        pin = hwPin;
+
+        tonesParamsList = {
+            // [[period, duty cycle, duration], ...]
+            "success": [[noteE5, cycle, longTone], [noteE6, cycle, shortTone]],
+            "failure": [[noteE6, cycle, longTone], [noteE5, cycle, shortTone]],
+            "sleep":   [[noteE5, cycle, longTone], [noteB4, cycle, shortTone]],
+            "startup": [[noteB4, cycle, longTone], [noteE5, cycle, shortTone]],
+        };
+    }
+
+    //**********************************************************
+    // Play a set of notes
+    // TODO: minimize impact of busy wait -- slows responsiveness. Can do 
+    //      async and maintain sound?
+    function playSound(tone = "success") 
+    {
+        // Handle invalid tone values
+        if (!(tone in tonesParamsList))
+        {
+            server.log("Error: unknown tone");
+            return;
+        }
+
+        // Play the tones
+        foreach (params in tonesParamsList[tone])
+        {
+            pin.configure(PWM_OUT, params[0], params[1]);
+            imp.sleep(params[2]);
+        }
+        pin.write(0);
+    }
+        
+}
+
+
+//**********************************************************************
+//**********************************************************************
 // Timer that can be canceled and executes a function when expiring
 // 
 // Example usage: set up a timer to call dosomething() in 10 minutes
-//   doSomethingTimer = ActionTimer(60*10, function(){dosomething();});
+//   doSomethingTimer = CancellableTimer(60*10, function(){dosomething();});
 //   doSomethingTimer.enable()
 //   doSomethingTimer.disable()
-class ActionTimer
+class CancellableTimer
 {
     enabled = null;
     startTime = null; // Timer starting time, in milliseconds
@@ -101,6 +134,7 @@ class ActionTimer
     _callbackActive = false; // Used to ensure that only one callback
                              // is active at a time. 
 
+    //**********************************************************
     // Duration in seconds, and function to execute
     constructor(secs, func)
     {
@@ -108,6 +142,7 @@ class ActionTimer
         actionFn = func;
     }
 
+    //**********************************************************
     // Start the timer
     function enable() 
     {
@@ -120,6 +155,7 @@ class ActionTimer
         }
     }
 
+    //**********************************************************
     // Stop the timer
     function disable() 
     {
@@ -130,6 +166,7 @@ class ActionTimer
         }
     }
 
+    //**********************************************************
     // Internal function to manage cancelation and expiration
     function _timerCallback()
     {
@@ -164,19 +201,9 @@ function print(str)
 
 //**********************************************************************
 // Agent callback: upload complete
-agent.on(("uploadCompleted"), function(msg) {
-    //server.log(format("in agent.on uploadCompleted, msg=%s", msg));
-    switch (msg)
-    {
-        case "success":
-            playSound(Tone.SUCCESS);
-            break;
-        case "failure":
-            playSound(Tone.FAILURE);
-            break;
-        default:
-            server.log("Error: unknown msg");
-    }
+agent.on(("uploadCompleted"), function(result) {
+    //server.log(format("in agent.on uploadCompleted, result=%s", result));
+    hwPiezo.playSound(result);
 });
 
 
@@ -261,31 +288,8 @@ function handleButtonTimeout()
 {
     updateDeviceState(DeviceState.BUTTON_TIMEOUT);
     stopScanRecord();
-    playSound(Tone.FAILURE);
+    hwPiezo.playSound("failure");
     server.log("Timeout reached. Aborting scan and record.");
-}
-
-
-//**********************************************************************
-// Play a set of notes
-// TODO: minimize impact of busy wait -- slows responsiveness. Can do 
-//      async and maintain sound?
-function playSound(tone = Tone.SUCCESS) 
-{
-    // Handle invalid tone values
-    if (tone >= Tone.NUMTONES)
-    {
-        server.log("Error: unknown tone");
-        return;
-    }
-
-    // Play the tones
-    foreach (params in gToneParamsList[tone])
-    {
-        hwPiezo.configure(PWM_OUT, params[0], params[1]);
-        imp.sleep(params[2]);
-    }
-    hwPiezo.write(0);
 }
 
 
@@ -456,7 +460,7 @@ function notifyAudioUploadComplete()
     // the server we are done uploading chunks. 
     if (gAudioBufferOverran)
     {
-        playSound(Tone.FAILURE);
+        hwPiezo.playSound("failure");
     }
     else
     {
@@ -549,7 +553,7 @@ function init()
     // Pin assignment
     hwButton <-hardware.pin1;         // Move to IO expander
     hwMicrophone <- hardware.pin2;
-    hwPiezo <- hardware.pin5;
+    hwPiezo <- Piezo(hardware.pin5);
     hwScannerUart <- hardware.uart57;
     hwTrigger <-hardware.pin8;        // Move to IO expander
 
@@ -557,8 +561,8 @@ function init()
     hwButton.configure(DIGITAL_IN_WAKEUP, buttonCallback);
     hwTrigger.configure(DIGITAL_OUT);
     hwTrigger.write(1); // De-assert trigger by default
-    hwPiezo.configure(DIGITAL_OUT);
-    hwPiezo.write(0); // Turn off piezo by default
+    hwPiezo.pin.configure(DIGITAL_OUT);
+    hwPiezo.pin.write(0); // Turn off piezo by default
 
     // Microphone sampler config
     hardware.sampler.configure(hwMicrophone, gAudioSampleRate, 
@@ -571,10 +575,10 @@ function init()
                              scannerCallback);
 
     // Create our timers
-    gButtonTimer = ActionTimer(cButtonTimeout, handleButtonTimeout);
-    gDeepSleepTimer = ActionTimer(cDelayBeforeDeepSleep,
+    gButtonTimer = CancellableTimer(cButtonTimeout, handleButtonTimeout);
+    gDeepSleepTimer = CancellableTimer(cDelayBeforeDeepSleep,
             function() {
-                playSound(Tone.SLEEP);
+                hwPiezo.playSound("sleep");
                 server.sleepfor(cDeepSleepDuration); 
             });
 
@@ -585,7 +589,7 @@ function init()
     printStartupDebugInfo();
 
     // Initialization complete notification
-    playSound(Tone.STARTUP); 
+    hwPiezo.playSound("startup"); 
 
     // If we booted with the button held down, we are most likely
     // woken up by the button, so go directly to button handling.  
