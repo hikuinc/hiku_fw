@@ -86,6 +86,7 @@ class Piezo
             // [[period, duty cycle, duration], ...]
             "success": [[noteE5, cycle, longTone], [noteE6, cycle, shortTone]],
             "failure": [[noteE6, cycle, longTone], [noteE5, cycle, shortTone]],
+            "timeout": [[noteE6, cycle, longTone], [noteE5, cycle, shortTone]],
             "sleep":   [[noteE5, cycle, longTone], [noteB4, cycle, shortTone]],
             "startup": [[noteB4, cycle, longTone], [noteE5, cycle, shortTone]],
         };
@@ -334,7 +335,7 @@ function handleButtonTimeout()
 {
     updateDeviceState(DeviceState.BUTTON_TIMEOUT);
     stopScanRecord();
-    hwPiezo.playSound("failure");
+    hwPiezo.playSound("timeout");
     server.log("Timeout reached. Aborting scan and record.");
 }
 
