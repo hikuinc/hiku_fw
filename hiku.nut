@@ -73,7 +73,7 @@ class Piezo
     static noteB4 = 0.002025; // 494 Hz 
     static noteE5 = 0.001517; // 659 Hz
     static noteE6 = 0.000759; // 1318 Hz
-    static cycle = 0.5; // 50% duty cycle, maximum power for a piezo
+    static dc = 0.5; // 50% duty cycle, maximum power for a piezo
     static longTone = 0.2; // duration in seconds
     static shortTone = 0.15; // duration in seconds
 
@@ -84,11 +84,15 @@ class Piezo
 
         tonesParamsList = {
             // [[period, duty cycle, duration], ...]
-            "success": [[noteE5, cycle, longTone], [noteE6, cycle, shortTone]],
-            "failure": [[noteE6, cycle, longTone], [noteE5, cycle, shortTone]],
-            "timeout": [[noteE6, cycle, longTone], [noteE5, cycle, shortTone]],
-            "sleep":   [[noteE5, cycle, longTone], [noteB4, cycle, shortTone]],
-            "startup": [[noteB4, cycle, longTone], [noteE5, cycle, shortTone]],
+            "success": [[noteE5, dc, longTone], [noteE6, dc, shortTone]],
+            "failure": [[noteB4, dc, shortTone], [noteB4, 0, shortTone], 
+            [noteB4, dc, shortTone], [noteB4, 0, shortTone], 
+            [noteB4, dc, shortTone], [noteB4, 0, shortTone]],
+            "timeout": [[noteB4, dc, shortTone], [noteB4, 0, shortTone], 
+            [noteB4, dc, shortTone], [noteB4, 0, shortTone], 
+            [noteB4, dc, shortTone], [noteB4, 0, shortTone]],
+            "sleep":   [[noteE5, dc, longTone], [noteB4, dc, shortTone]],
+            "startup": [[noteB4, dc, longTone], [noteE5, dc, shortTone]],
         };
     }
 
