@@ -91,3 +91,21 @@ function dumpBlob(data)
     }
 }
 
+//**********************************************************************
+// Print the contents of a table
+function dumpTable(data)
+{
+    foreach (k, v in data)
+    {
+        if (typeof v == "table")
+        {
+            agentLog(">>>");
+            dumpTable(v);
+            agentLog("<<<");
+        }
+        else
+        {
+            agentLog(k.tostring() + "=" + v.tostring());
+        }
+    }
+}

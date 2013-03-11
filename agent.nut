@@ -8,18 +8,66 @@ gChunkCount <- 0;
 
 
 //**********************************************************************
+// Send the barcode to hiku's server
+function sendToBeepIt(data)
+{
+    // Error checking (TODO: improve)
+    if (!"scandata" in data)
+    {
+        agentLog("Error: no barcode data to send");
+        return;
+    }
+
+    // Build the packet to the current specs
+    local rawData = "BeepIt=00.01\n";
+    foreach (k, v in data)
+        rawData += k.tostring() + "=" + v.tostring() + "\n";
+    rawData = http.urlencode({rawData=rawData});
+
+    // Send the packet to our server
+    // TODO: verify the headers, consider using sendasync()
+    local res = http.post(
+            "http://www.beepit.us/prod/cgi-bin/readRawDeviceData.py",
+            {"Content-type": "application/x-www-form-urlencoded", 
+            "Accept": "text/plain"}, 
+            rawData).sendsync();
+
+    // Check response status code
+    if (res.statuscode != 200)
+    {
+        agentLog(format("Error: got status code %d, expected 200", 
+                    res.statuscode));
+    }
+    else
+    {
+        agentLog("Barcode accepted by hiku server");
+    }
+}
+
+
+//**********************************************************************
 // Receive and send out the beep packet
 device.on(("uploadBeep"), function(data) {
     //agentLog("in uploadBeep");
 
-    if (!data.barcode)
+    if (!data.scandata)
     {
         agentLog("Failed to receive barcode");
         device.send("uploadCompleted", "failure");
     }
     else
     {
-        agentLog(format("Barcode received: %s", data.barcode));
+        agentLog(format("Barcode received: %s", data.scandata));
+        // TODO: disabled for bring-up
+        local enableHikuServer = false;
+        if (enableHikuServer)
+        {
+            sendToBeepIt(data);  
+        }
+        else
+        {
+            agentLog("(sending to hiku server not enabled)");
+        }
         device.send("uploadCompleted", "success");
     }
 });
@@ -120,6 +168,26 @@ function logServerRequest(request)
 function agentLog(str)
 {
     server.log(format("AGENT: %s", str));
+}
+
+
+//**********************************************************************
+// Print the contents of a table
+function dumpTable(data)
+{
+    foreach (k, v in data)
+    {
+        if (typeof v == "table")
+        {
+            agentLog(">>>");
+            dumpTable(v);
+            agentLog("<<<");
+        }
+        else
+        {
+            agentLog(k.tostring() + "=" + v.tostring());
+        }
+    }
 }
 
 

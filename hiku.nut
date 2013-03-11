@@ -2,6 +2,7 @@
 
 
 // Consts and enums
+const cFirmwareVersion = "0.5.0"
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
@@ -393,7 +394,13 @@ function scannerCallback()
 
                 //server.log("Code: \"" + gScannerOutput + "\" (" + 
                            //gScannerOutput.len() + " chars)");
-                agent.send("uploadBeep", {barcode=gScannerOutput});
+                agent.send("uploadBeep", {scandata=gScannerOutput,
+                                          scansize=gScannerOutput.len(),
+                                          serial=hardware.getimpeeid(),
+                                          instance=0, // TODO: server seems 
+                                          // to need this when writing file
+                                          fw_version=cFirmwareVersion,
+                                          });
                 
                 // Stop collecting data
                 stopScanRecord();
@@ -428,7 +435,7 @@ function buttonCallback()
     const numSamples = 4;
     const sleepSecs = 0.003; 
     local buttonState = hwButton.read()
-    for (local i=1;i<numSamples;i++)
+    for (local i=1; i<numSamples; i++)
     {
         buttonState += hwButton.read()
         imp.sleep(sleepSecs)
@@ -641,7 +648,7 @@ function init()
     updateDeviceState(DeviceState.IDLE);
 
     // Print debug info
-    printStartupDebugInfo();
+    //printStartupDebugInfo();
 
     // Initialization complete notification
     hwPiezo.playSound("startup"); 
