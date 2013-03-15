@@ -54,8 +54,7 @@ buf3 <- blob(gAudioBufferSize);
 buf4 <- blob(gAudioBufferSize);
 
 
-//**********************************************************************
-//**********************************************************************
+//======================================================================
 // Piezo class
 class Piezo
 {
@@ -168,8 +167,7 @@ class Piezo
 }
 
 
-//**********************************************************************
-//**********************************************************************
+//======================================================================
 // Timer that can be canceled and executes a function when expiring
 // 
 // Example usage: set up a timer to call dosomething() in 10 minutes
@@ -243,21 +241,243 @@ class CancellableTimer
 }
 
 
-//**********************************************************************
-// Temporary function to catch dumb mistakes
-function print(str)
+//======================================================================
+// IO Expander Class for SX1508
+class IoExpanderDevice
 {
-    server.log("ERROR USED PRINT FUNCTION. USE SERVER.LOG INSTEAD.");
+    i2cPort = null;
+    i2cAddress = null;
+    irqCallbacks = array(8); //BP ADDED.  TODO move out? 
+
+    constructor(port, address)
+    {
+        if(port == I2C_12)
+        {
+            // Configure I2C bus on pins 1 & 2
+            hardware.configure(I2C_12);
+            i2cPort = hardware.i2c12;
+        }
+        else if(port == I2C_89)
+        {
+            // Configure I2C bus on pins 8 & 9
+            hardware.configure(I2C_89);
+            i2cPort = hardware.i2c89;
+        }
+        else
+        {
+            server.log(format("Invalid I2C port specified: %c", port));
+        }
+
+        i2cAddress = address << 1;
+
+        // BP ADDED
+        // TODO Move configure, as this would get called for each 
+        // of multiple IOExpanders
+        if (!gPin1HandlerSet) {
+            server.log("--------Setting interrupt handler for pin1--------");
+            hwInterrupt.configure(DIGITAL_IN_WAKEUP, getIrqSources.bindenv(this));
+            gPin1HandlerSet = true;
+        }
+    }
+
+    // Read a byte
+    function read(register)
+    {
+        local data = i2cPort.read(i2cAddress, format("%c", register), 1);
+        if(data == null)
+        {
+            server.log("I2C read failure");
+            // TODO: this should return null, right??? Do better handling.
+            return -1;
+        }
+
+        return data[0];
+    }
+
+    // Write a byte
+    function write(register, data)
+    {
+        i2cPort.write(i2cAddress, format("%c%c", register, data));
+    }
+
+    // Write a bit to a register
+    function writeBit(register, bitn, level)
+    {
+        local value = read(register);
+        value = (level == 0)?(value & ~(1<<bitn)):(value | (1<<bitn));
+        write(register, value);
+    }
+
+    // Write a masked bit pattern
+    function writeMasked(register, data, mask)
+    {
+        local value = read(register);
+        value = (value & ~mask) | (data & mask);
+        write(register, value);
+    }
+
+    // Get a GPIO input pin level
+    function getPin(gpio)
+    {
+        return (read(0x08)&(1<<(gpio&7)))?1:0;
+    }
+
+    // Set a GPIO level
+    function setPin(gpio, level)
+    {
+        writeBit(0x08, gpio&7, level?1:0);
+    }
+
+    // Set a GPIO direction
+    function setDir(gpio, input)
+    {
+        writeBit(0x07, gpio&7, input?1:0);
+    }
+
+    // Set a GPIO internal pull up
+    function setPullUp(gpio, enable)
+    {
+        writeBit(0x03, gpio&7, enable);
+    }
+
+    // Set GPIO interrupt mask
+    // "0" means disable interrupt, "1" means enable (opposite of datasheet)
+    function setIrqMask(gpio, enable)
+    {
+        writeBit(0x09, gpio&7, enable?0:1); 
+    }
+
+    // Set GPIO interrupt edges
+    function setIrqEdges(gpio, rising, falling)
+    {
+        local addr = 0x0B - (gpio>>2);
+        local mask = 0x03 << ((gpio&3)<<1);
+        local data = (2*falling + rising) << ((gpio&3)<<1);
+        writeMasked(addr, data, mask);
+    }
+
+    // Clear an interrupt
+    function clearIrq(gpio)
+    {
+        writeBit(0x0C, gpio&7, 1);
+    }
+
+    // BP ADDED
+    function setIrqCallback(pin, func){
+        irqCallbacks[pin] = func;
+    }
+
+    // BP ADDED
+    function clearIrqCallback(pin){
+        irqCallbacks[pin] = null;
+    }
+
+    // BP ADDED
+    // TODO: why does the get function also handle interrupts??
+    // TODO: do we need to return an array of active interrupts? 
+    function getIrqSources(){
+        server.log("INTERRUPT!");
+
+        // Get the active interrupt sources
+        local regInterruptSource = read(0x0C);
+
+        // Convert this into an array of pins who have active interrupts
+        local irqSources = array(8);
+
+        local i = 0;
+        for(local z=1; z<=0xFF; z=z<<1){
+            irqSources[i] = ((regInterruptSource & z) == z);
+            i++;
+        }
+
+        // Call the interrupt handlers for all active interrupts
+        for(local pin=0; pin < 8; pin++){
+            if(irqSources[pin]){
+                server.log(format("-Calling irq callback for pin %d", pin));
+                irqCallbacks[pin]();
+                // clearIrq(pin); by default interrupts auto-clear on RegRead
+            }
+        }
+
+        server.log("CLEARING ALL INTERRUPTS");
+        write(0x0C, 0xFF); // TODO remove; clear all interrupts
+
+        //Return array of the IO pins who have active interrupts
+        return irqSources;
+    }
+
+    // Print all registers (well, the first 18)
+    function printExpanderRegs()
+    {
+        local label = "";
+        for (local i=0; i<0x11; i++)
+        {
+            switch (i) {
+                case 0x03:
+                    label = "RegPullUp";
+                    break;
+                case 0x07:
+                    label = "RegDir";
+                    break;
+                case 0x08:
+                    label = "RegData";
+                    break;
+                case 0x09:
+                    label = "RegInterruptMask";
+                    break;
+                case 0x0A:
+                    label = "RegSenseHigh";
+                    break;
+                case 0x0B:
+                    label = "RegSenseLow";
+                    break;
+                case 0x0C:
+                    label = "RegInterruptSource";
+                    break;
+                case 0x0D:
+                    label = "RegEventStatus";
+                    break;
+                case 0x10:
+                    label = "RegMisc";
+                    break;
+                default:
+                    label = "";
+                    break;
+            }
+            printRegister(i, label);
+        }
+    }
+
+    // Print register contents in hex and binary
+    function printRegister(regIdx, label="")
+    {
+        local reg = read(regIdx);
+        local regStr = "";
+        for(local j=7; j>=0; j--)
+        {
+            if (reg & 1<<j) 
+            {
+                regStr += "1";
+            }
+            else
+            {
+                regStr += "0";
+            }
+
+            if (j==4) 
+            {
+                regStr += " ";
+            }
+        }
+
+        server.log(format("REG 0x%2X=%s (0x%2X) %s", regIdx, regStr, 
+                          reg, label));
+    }
 }
 
 
-//**********************************************************************
-// Agent callback: upload complete
-agent.on(("uploadCompleted"), function(result) {
-    //server.log(format("in agent.on uploadCompleted, result=%s", result));
-    hwPiezo.playSound(result);
-});
-
+//======================================================================
+// State Machine
 
 //**********************************************************************
 function updateDeviceState(newState)
@@ -333,17 +553,8 @@ function updateDeviceState(newState)
 }
 
 
-//**********************************************************************
-// If we are gathering data and the button has been held down 
-// too long, we abort recording and scanning.
-function handleButtonTimeout()
-{
-    updateDeviceState(DeviceState.BUTTON_TIMEOUT);
-    stopScanRecord();
-    hwPiezo.playSound("timeout");
-    server.log("Timeout reached. Aborting scan and record.");
-}
-
+//======================================================================
+// Scanner
 
 //**********************************************************************
 // Stop the scanner and sampler
@@ -424,6 +635,21 @@ function scannerCallback()
 }
 
 
+//======================================================================
+// Button
+
+//**********************************************************************
+// If we are gathering data and the button has been held down 
+// too long, we abort recording and scanning.
+function handleButtonTimeout()
+{
+    updateDeviceState(DeviceState.BUTTON_TIMEOUT);
+    stopScanRecord();
+    hwPiezo.playSound("timeout");
+    server.log("Timeout reached. Aborting scan and record.");
+}
+
+
 //**********************************************************************
 // Button handler callback 
 // Not a true interrupt handler, this cannot interrupt other Squirrel code. 
@@ -501,6 +727,16 @@ function buttonCallback()
 }
 
 
+//======================================================================
+// Sampler/Audio In
+
+//**********************************************************************
+// Agent callback: upload complete
+agent.on(("uploadCompleted"), function(result) {
+    //server.log(format("in agent.on uploadCompleted, result=%s", result));
+    hwPiezo.playSound(result);
+});
+
 
 //**********************************************************************
 // Tell the server that we are done uploading audio.  This function
@@ -555,6 +791,17 @@ function samplerCallback(buffer, length)
         agent.send("uploadAudioChunk", {buffer=buffer, length=length});
         //server.log("END uploading chunk");
     }
+}
+
+
+//======================================================================
+// Utilities
+
+//**********************************************************************
+// Temporary function to catch dumb mistakes
+function print(str)
+{
+    server.log("ERROR USED PRINT FUNCTION. USE SERVER.LOG INSTEAD.");
 }
 
 
@@ -652,16 +899,16 @@ function init()
 
     // Initialization complete notification
     hwPiezo.playSound("startup"); 
-
-    // If we booted with the button held down, we are most likely
-    // woken up by the button, so go directly to button handling.  
-    // TODO: change when we get the IO expander.  In that case we need
-    // to check the interrupt source. 
-    buttonCallback();
 }
 
 
 //**********************************************************************
 // main
 init();
+
+// If we booted with the button held down, we are most likely
+// woken up by the button, so go directly to button handling.  
+// TODO: change when we get the IO expander.  In that case we need
+// to check the interrupt source. 
+buttonCallback();
 
