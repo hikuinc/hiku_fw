@@ -1066,7 +1066,7 @@ function init()
     printStartupDebugInfo();
 
     // Initialization complete notification
-    hwPiezo.playSound("startup"); 
+    hwPiezo.playSound("startup\x00"); 
 }
 
 
