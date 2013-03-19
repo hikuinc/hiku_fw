@@ -4,7 +4,7 @@
 // Consts and enums
 const cFirmwareVersion = "0.5.0"
 const cButtonTimeout = 6;  // in seconds
-const cDelayBeforeDeepSleep = 30.0;  // in seconds
+const cDelayBeforeDeepSleep = 3000.0;  // in seconds  HWDEBUG
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
 
 enum ButtonState
@@ -44,6 +44,8 @@ gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
 gAudioBufferSize <- 1000; // Size of each audio buffer 
 gAudioSampleRate <- 16000; // in Hz
 
+gPin1HandlerSet <- false;
+
 // Each 1k of buffer will hold 1/16 of a second of audio, or 63ms.
 // TODO: A-law sampler does not return partial buffers. This means that up to 
 // the last buffer size of data is dropped. Filed issue with IE here: 
@@ -55,7 +57,7 @@ buf4 <- blob(gAudioBufferSize);
 
 
 //======================================================================
-// Piezo class
+// Handles all audio output
 class Piezo
 {
     // The hardware pin controlling the piezo 
@@ -101,6 +103,10 @@ class Piezo
     // playback, but also supports synchronous via busy waits
     function playSound(tone = "success", async = true) 
     {
+        //TODO HWDEBUG: remove after piezo HW fixed
+        server.log(format("(skipping playing %s tone)", tone));
+        return;
+
         // Handle invalid tone values
         if (!(tone in tonesParamsList))
         {
@@ -242,12 +248,11 @@ class CancellableTimer
 
 
 //======================================================================
-// IO Expander Class for SX1508
-class IoExpanderDevice
+// Handles any I2C device
+class I2cDevice
 {
     i2cPort = null;
     i2cAddress = null;
-    irqCallbacks = array(8); //BP ADDED.  TODO move out? 
 
     constructor(port, address)
     {
@@ -268,16 +273,8 @@ class IoExpanderDevice
             server.log(format("Invalid I2C port specified: %c", port));
         }
 
+        // Takes a 7-bit I2C address
         i2cAddress = address << 1;
-
-        // BP ADDED
-        // TODO Move configure, as this would get called for each 
-        // of multiple IOExpanders
-        if (!gPin1HandlerSet) {
-            server.log("--------Setting interrupt handler for pin1--------");
-            hwInterrupt.configure(DIGITAL_IN_WAKEUP, getIrqSources.bindenv(this));
-            gPin1HandlerSet = true;
-        }
     }
 
     // Read a byte
@@ -298,6 +295,65 @@ class IoExpanderDevice
     function write(register, data)
     {
         i2cPort.write(i2cAddress, format("%c%c", register, data));
+    }
+
+    // Print all registers in a range
+    function printI2cRegs(min, max)
+    {
+        for (local i=min; i<max+1; i++)
+        {
+            printRegister(i, label);
+        }
+    }
+
+    // Print register contents in hex and binary
+    function printRegister(regIdx, label="")
+    {
+        local reg = read(regIdx);
+        local regStr = "";
+        for(local j=7; j>=0; j--)
+        {
+            if (reg & 1<<j) 
+            {
+                regStr += "1";
+            }
+            else
+            {
+                regStr += "0";
+            }
+
+            if (j==4) 
+            {
+                regStr += " ";
+            }
+        }
+
+        server.log(format("REG 0x%02X=%s (0x%02X) %s", regIdx, regStr, 
+                          reg, label));
+    }
+}
+
+
+//======================================================================
+// Handles the SX1508 GPIO expander
+class IoExpanderDevice extends I2cDevice
+{
+    i2cPort = null;
+    i2cAddress = null;
+    irqCallbacks = array(8); //BP ADDED.  TODO move out? 
+
+    constructor(port, address)
+    {
+        base.constructor(port, address);
+
+        // BP ADDED
+        // TODO Move this, as it would get called for each 
+        // of multiple IOExpanders.  Or design it in better?
+        if (!gPin1HandlerSet) {
+            server.log("--------Setting interrupt handler for pin1--------");
+            hwInterrupt.configure(DIGITAL_IN_WAKEUP, handleInterrupt.bindenv(this));
+            gPin1HandlerSet = true;
+        }
     }
 
     // Write a bit to a register
@@ -362,55 +418,37 @@ class IoExpanderDevice
         writeBit(0x0C, gpio&7, 1);
     }
 
-    // BP ADDED
+    // Set an interrupt handler callback for a particular pin
     function setIrqCallback(pin, func){
         irqCallbacks[pin] = func;
     }
 
-    // BP ADDED
-    function clearIrqCallback(pin){
-        irqCallbacks[pin] = null;
-    }
-
-    // BP ADDED
-    // TODO: why does the get function also handle interrupts??
-    // TODO: do we need to return an array of active interrupts? 
-    function getIrqSources(){
-        server.log("INTERRUPT!");
-
-        // Get the active interrupt sources
+    // Handle all expander callbacks
+    // TODO: if you have multiple IoExpanderDevice's, which instance is called?
+    function handleInterrupt(){
+        // Get the active interrupt sources. Ignore if there are none, 
+        // which occurs on every pin 1 falling edge. 
         local regInterruptSource = read(0x0C);
-
-        // Convert this into an array of pins who have active interrupts
-        local irqSources = array(8);
-
-        local i = 0;
-        for(local z=1; z<=0xFF; z=z<<1){
-            irqSources[i] = ((regInterruptSource & z) == z);
-            i++;
+        if (!regInterruptSource) 
+        {
+            return;
         }
+        //printRegister(0x0C, "INTERRUPT");
 
         // Call the interrupt handlers for all active interrupts
         for(local pin=0; pin < 8; pin++){
-            if(irqSources[pin]){
-                server.log(format("-Calling irq callback for pin %d", pin));
+            if(regInterruptSource & 1<<pin){
+                //server.log(format("-Calling irq callback for pin %d", pin));
                 irqCallbacks[pin]();
-                // clearIrq(pin); by default interrupts auto-clear on RegRead
             }
         }
-
-        server.log("CLEARING ALL INTERRUPTS");
-        write(0x0C, 0xFF); // TODO remove; clear all interrupts
-
-        //Return array of the IO pins who have active interrupts
-        return irqSources;
     }
-
-    // Print all registers (well, the first 18)
-    function printExpanderRegs()
+    
+    // Print and label expander registers
+    function printI2cRegs(min=0, max=10)
     {
         local label = "";
-        for (local i=0; i<0x11; i++)
+        for (local i=min; i<max+1; i++)
         {
             switch (i) {
                 case 0x03:
@@ -447,37 +485,11 @@ class IoExpanderDevice
             printRegister(i, label);
         }
     }
-
-    // Print register contents in hex and binary
-    function printRegister(regIdx, label="")
-    {
-        local reg = read(regIdx);
-        local regStr = "";
-        for(local j=7; j>=0; j--)
-        {
-            if (reg & 1<<j) 
-            {
-                regStr += "1";
-            }
-            else
-            {
-                regStr += "0";
-            }
-
-            if (j==4) 
-            {
-                regStr += " ";
-            }
-        }
-
-        server.log(format("REG 0x%2X=%s (0x%2X) %s", regIdx, regStr, 
-                          reg, label));
-    }
 }
 
 
 //======================================================================
-// State Machine
+// Device state machine 
 
 //**********************************************************************
 function updateDeviceState(newState)
@@ -557,6 +569,44 @@ function updateDeviceState(newState)
 // Scanner
 
 //**********************************************************************
+// TODO: add all scanner functions into the class
+class Scanner extends IoExpanderDevice
+{
+    pin = null; // IO expander pin assignment
+
+    constructor(port, address, devicePin)
+    {
+        base.constructor(port, address);
+
+        // Save assignments
+        pin = devicePin;
+
+        // Configure trigger pin as output
+        setDir(pin, 0); // output
+        setPullUp(pin, 0); // pullup disabled
+        setPin(pin, 1); // pull high to disable trigger
+    }
+
+    function readState()
+    {
+        return getPin(pin);
+    }
+
+    function trigger(on)
+    {
+        if (on)
+        {
+            setPin(pin, 0);
+        }
+        else
+        {
+            setPin(pin, 1);
+        }
+    }
+}
+
+
+//**********************************************************************
 // Stop the scanner and sampler
 // Note: this function may be called multiple times in a row, so
 // it must support that. 
@@ -566,7 +616,7 @@ function stopScanRecord()
     hardware.sampler.stop();
 
     // Release scanner trigger
-    hwTrigger.write(1); 
+    hwScanner.trigger(false);
 
     // Reset for next scan
     gScannerOutput = "";
@@ -639,90 +689,182 @@ function scannerCallback()
 // Button
 
 //**********************************************************************
-// If we are gathering data and the button has been held down 
-// too long, we abort recording and scanning.
-function handleButtonTimeout()
+class PushButton extends IoExpanderDevice
 {
-    updateDeviceState(DeviceState.BUTTON_TIMEOUT);
-    stopScanRecord();
-    hwPiezo.playSound("timeout");
-    server.log("Timeout reached. Aborting scan and record.");
+    pin = null; // IO expander pin assignment
+
+    constructor(port, address, devicePin)
+    {
+        base.constructor(port, address);
+
+        // Save assignments
+        pin = devicePin;
+
+        // Set event handler for IRQ
+        setIrqCallback(devicePin, buttonCallback.bindenv(this));
+
+        // Configure pin as input, IRQ on both edges
+        setDir(pin, 1); // set as input
+        setPullUp(pin, 1); // enable pullup
+        setIrqMask(pin, 1); // enable IRQ
+        setIrqEdges(pin, 1, 1); // both rising and falling
+    }
+
+    function readState()
+    {
+        return getPin(pin);
+    }
+
+    //**********************************************************************
+    // If we are gathering data and the button has been held down 
+    // too long, we abort recording and scanning.
+    function handleButtonTimeout()
+    {
+        updateDeviceState(DeviceState.BUTTON_TIMEOUT);
+        stopScanRecord();
+        hwPiezo.playSound("timeout");
+        server.log("Timeout reached. Aborting scan and record.");
+    }
+
+    //**********************************************************************
+    // Button handler callback 
+    // Not a true interrupt handler, this cannot interrupt other Squirrel 
+    // code. The event is queued and the callback is called next time the 
+    // Imp is idle.
+    function buttonCallback()
+    {
+        // Sample the button multiple times to debounce. Total time 
+        // taken is (numSamples-1)*sleepSecs
+        const numSamples = 4;
+        const sleepSecs = 0.003; 
+        local buttonState = readState()
+        for (local i=1; i<numSamples; i++)
+        {
+            buttonState += readState()
+            imp.sleep(sleepSecs)
+        }
+
+        // Handle the button state transition
+        switch(buttonState) 
+        {
+            case 0:
+                // Button in held state
+                if (gButtonState == ButtonState.BUTTON_UP)
+                {
+                    updateDeviceState(DeviceState.SCAN_RECORD);
+                    gButtonState = ButtonState.BUTTON_DOWN;
+                    server.log("Button state change: DOWN");
+
+                    // Trigger the scanner
+                    hwScanner.trigger(true);
+
+                    // Trigger the mic recording
+                    gAudioBufferOverran = false;
+                    gAudioChunkCount = 0;
+                    agent.send("startAudioUpload", "");
+                    hardware.sampler.start();
+                }
+                break;
+            case numSamples:
+                // Button in released state
+                if (gButtonState == ButtonState.BUTTON_DOWN)
+                {
+                    gButtonState = ButtonState.BUTTON_UP;
+                    server.log("Button state change: UP");
+
+                    local oldState = gDeviceState;
+                    updateDeviceState(DeviceState.BUTTON_RELEASED);
+
+                    if (oldState == DeviceState.SCAN_RECORD)
+                    {
+                        // Audio captured. Validate and send it
+
+                        // Stop collecting data
+                        stopScanRecord();
+
+                        // Tell the server we are done uploading data. We
+                        // first wait in case one more chunk comes in. 
+                        // Right now we wait an arbitrary amount of
+                        // time (the time it takes one buffer to fill). 
+                        // That really doesn't make sense, but there is no 
+                        // deterministic method. Filed an issue with EI 
+                        // here: http://forums.electricimp.com/discussion/781
+                        imp.wakeup(gAudioBufferSize/gAudioSampleRate, 
+                                   notifyAudioUploadComplete);
+                    }
+                    // No more work to do, so go to idle
+                    updateDeviceState(DeviceState.IDLE);
+                }
+                break;
+            default:
+                // Button is in transition (not settled)
+                //server.log("Bouncing! " + buttonState);
+                break;
+        }
+    }
 }
 
 
-//**********************************************************************
-// Button handler callback 
-// Not a true interrupt handler, this cannot interrupt other Squirrel code. 
-// The event is queued and the callback is called next time the Imp is idle. 
-function buttonCallback()
+//======================================================================
+// Accelerometer
+class Accelerometer extends I2cDevice
 {
-    // Sample the button multiple times to debounce. Total time 
-    // taken is (numSamples-1)*sleepSecs
-    const numSamples = 4;
-    const sleepSecs = 0.003; 
-    local buttonState = hwButton.read()
-    for (local i=1; i<numSamples; i++)
+    i2cPort = null;
+    i2cAddress = null;
+
+    constructor(port, address)
     {
-        buttonState += hwButton.read()
-        imp.sleep(sleepSecs)
+        base.constructor(port, address);
     }
 
-    // Handle the button state transition
-    switch(buttonState) 
+    // Print and label expander registers
+    function printI2cRegs(min=0x07, max=0x3D)
     {
-        case numSamples:
-            // Button in held state
-            if (gButtonState == ButtonState.BUTTON_UP)
+        local label = "";
+        for (local i=min; i<max+1; i++)
+        {
+            // Skip reserved registers
+            if ((i>=0x10 && i<=0x1E) || (i>=0x34 && i<=0x37)) 
             {
-                updateDeviceState(DeviceState.SCAN_RECORD);
-                gButtonState = ButtonState.BUTTON_DOWN;
-                //server.log("Button state change: DOWN " + gButtonState);
-
-                // Trigger the scanner
-                hwTrigger.write(0);
-
-                // Trigger the mic recording
-                gAudioBufferOverran = false;
-                gAudioChunkCount = 0;
-                agent.send("startAudioUpload", "");
-                hardware.sampler.start();
+                continue;
             }
-            break;
-        case 0:
-            // Button in released state
-            if (gButtonState == ButtonState.BUTTON_DOWN)
+            // Stop early because the rest aren't that important
+            if (i>0x2D) 
             {
-                gButtonState = ButtonState.BUTTON_UP;
-                //server.log("Button state change: UP " + gButtonState);
-
-                local oldState = gDeviceState;
-                updateDeviceState(DeviceState.BUTTON_RELEASED);
-
-                if (oldState == DeviceState.SCAN_RECORD)
-                {
-                    // Audio captured. Validate and send it
-
-                    // Stop collecting data
-                    stopScanRecord();
-
-                    // Tell the server we are done uploading data. We
-                    // first wait in case one more chunk comes in. 
-                    // Right now we wait an arbitrary amount of
-                    // time (the time it takes one buffer to fill). 
-                    // That really doesn't make sense, but there is no 
-                    // deterministic method. Filed an issue with EI 
-                    // here: http://forums.electricimp.com/discussion/781
-                    imp.wakeup(gAudioBufferSize/gAudioSampleRate, 
-                               notifyAudioUploadComplete);
-                }
-                // No more work to do, so go to idle
-                updateDeviceState(DeviceState.IDLE);
+                continue;
             }
-            break;
-        default:
-            // Button is in transition (not settled)
-            //server.log("Bouncing! " + buttonState);
-            break;
+
+            switch (i) {
+                case 0x0E:
+                    label = "INT_COUNTER_REG";
+                    break;
+                case 0x0F:
+                    label = "WHO_AM_I (should be 0x33)";
+                    break;
+                case 0x20:
+                    label = "CTRL_REG1";
+                    break;
+                case 0x21:
+                    label = "CTRL_REG2";
+                    break;
+                case 0x22:
+                    label = "CTRL_REG3";
+                    break;
+                case 0x27:
+                    label = "STATUS_REG2";
+                    break;
+                case 0x28:
+                    label = "OUT_X_L";
+                    break;
+                case 0x29:
+                    label = "OUT_X_H";
+                    break;
+                default:
+                    label = "";
+                    break;
+            }
+            printRegister(i, label);
+        }
     }
 }
 
@@ -859,21 +1001,39 @@ function init()
     // case we need to be as responsive as possible. 
     imp.setpowersave(false);
 
-    // Pin assignment
-    hwButton <-hardware.pin1;         // Move to IO expander
-    hwMicrophone <- hardware.pin2;
-    hwPiezo <- Piezo(hardware.pin5);
-    hwScannerUart <- hardware.uart57;
-    hwTrigger <-hardware.pin8;        // Move to IO expander
+    // Hardware globals
+    // TODO: change these to constants
+    hwInterrupt <-hardware.pin1;
+    gi2cPort <- hardware.i2c89;
+    gAddrIoExpander <- 0x23;
+    gAddrAccelerometer <- 0x18;
+    gIoPinButton <- 2;
+    gIoPin3v3Switch <- 4;
+    gIoPinScannerTrigger <- 5;
 
-    // Pin configuration
-    hwButton.configure(DIGITAL_IN_WAKEUP, buttonCallback);
-    hwTrigger.configure(DIGITAL_OUT);
-    hwTrigger.write(1); // De-assert trigger by default
+    // 3v3 accessory switch config
+    // TODO: turn it off before sleeping
+    // TODO: make it a class
+    sw3v3 <- IoExpanderDevice(I2C_89, gAddrIoExpander);
+    sw3v3.setDir(gIoPin3v3Switch, 0); // output
+    sw3v3.setPullUp(gIoPin3v3Switch, 0); // pullup disabled
+    sw3v3.setPin(gIoPin3v3Switch, 0); // pull low to turn switch on
+ 
+    // Piezo config
+    hwPiezo <- Piezo(hardware.pin5);
     hwPiezo.pin.configure(DIGITAL_OUT);
     hwPiezo.pin.write(0); // Turn off piezo by default
 
+    // Button config
+    hwButton <- PushButton(I2C_89, gAddrIoExpander, gIoPinButton);
+    hwButton.printI2cRegs();
+
+    // Scanner config
+    hwScannerUart <- hardware.uart57;
+    hwScanner <-Scanner(I2C_89, gAddrIoExpander, gIoPinScannerTrigger);
+
     // Microphone sampler config
+    hwMicrophone <- hardware.pin2;
     hardware.sampler.configure(hwMicrophone, gAudioSampleRate, 
                                [buf1, buf2, buf3, buf4], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
@@ -883,8 +1043,16 @@ function init()
     hwScannerUart.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
                              scannerCallback);
 
+    // Accelerometer config
+    hwAccelerometer <- Accelerometer(I2C_89, gAddrAccelerometer);
+    //server.log("-------------------------");
+    //hwAccelerometer.printI2cRegs();
+
     // Create our timers
-    gButtonTimer = CancellableTimer(cButtonTimeout, handleButtonTimeout);
+    // TODO: move button timer to PushButton class? 
+    // TODO: can I pass a class member like this?
+    gButtonTimer = CancellableTimer(cButtonTimeout, 
+                                    hwButton.handleButtonTimeout);
     gDeepSleepTimer = CancellableTimer(cDelayBeforeDeepSleep,
             function() {
                 hwPiezo.playSound("sleep", false /*async*/);
@@ -895,7 +1063,7 @@ function init()
     updateDeviceState(DeviceState.IDLE);
 
     // Print debug info
-    //printStartupDebugInfo();
+    printStartupDebugInfo();
 
     // Initialization complete notification
     hwPiezo.playSound("startup"); 
@@ -908,7 +1076,6 @@ init();
 
 // If we booted with the button held down, we are most likely
 // woken up by the button, so go directly to button handling.  
-// TODO: change when we get the IO expander.  In that case we need
-// to check the interrupt source. 
-buttonCallback();
+// TODO HWDEBUG Does this work when button held down, w/ new HW?
+hwButton.handleInterrupt();
 

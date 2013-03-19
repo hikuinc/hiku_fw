@@ -257,10 +257,14 @@ class IoExpanderDevice
     // TODO: why does the get function also handle interrupts??
     // TODO: do we need to return an array of active interrupts? 
     function getIrqSources(){
-        server.log("INTERRUPT!");
-
-        // Get the active interrupt sources
+        // Get the active interrupt sources. Ignore if there are none, 
+        // which occurs on every pin 1 falling edge. 
         local regInterruptSource = read(0x0C);
+        if (!regInterruptSource) 
+        {
+            return;
+        }
+        //printRegister(0x0C, "INTERRUPT");
 
         // Convert this into an array of pins who have active interrupts
         local irqSources = array(8);
@@ -274,14 +278,14 @@ class IoExpanderDevice
         // Call the interrupt handlers for all active interrupts
         for(local pin=0; pin < 8; pin++){
             if(irqSources[pin]){
-                server.log(format("-Calling irq callback for pin %d", pin));
+                //server.log(format("-Calling irq callback for pin %d", pin));
                 irqCallbacks[pin]();
                 // clearIrq(pin); by default interrupts auto-clear on RegRead
             }
         }
 
-        server.log("CLEARING ALL INTERRUPTS");
-        write(0x0C, 0xFF); // TODO remove; clear all interrupts
+        //server.log("CLEARING ALL INTERRUPTS");
+        //write(0x0C, 0xFF); // TODO remove; clear all interrupts
 
         //Return array of the IO pins who have active interrupts
         return irqSources;
@@ -396,13 +400,57 @@ class PushButton extends IoExpanderDevice
 }
 
 //**********************************************************************
+function printStartupDebugInfo()
+{
+    // impee ID
+    server.log(format("Your impee ID: %s", hardware.getimpeeid()));
+
+    // free memory
+    server.log(format("Free memory: %d bytes", imp.getmemoryfree()));
+
+    // hardware voltage
+    server.log(format("Power supply voltage: %.2fv", hardware.voltage()));
+
+    // Wi-Fi signal strength
+    local bars = 0;
+    local rssi = imp.rssi();
+    if (rssi == 0)
+        bars = -1;
+    else if (rssi > -67)
+        bars = 5;
+    else if (rssi > -72)
+        bars = 4;
+    else if (rssi > -77)
+        bars = 3; 
+    else if (rssi > -82)
+        bars = 2;
+    else if (rssi > -87)
+        bars = 1; 
+
+    if (bars == -1)
+    {
+        server.log("Wi-Fi not connected");
+    }
+    else
+    {
+        server.log(format("Wi-Fi signal: %d bars (%d dBm)", bars, rssi));
+    }
+
+    // Wi-Fi base station ID
+    server.log(format("Wi-Fi SSID: %s", imp.getbssid()));
+
+    // Wi-Fi MAC address
+    server.log(format("Wi-Fi MAC: %s", imp.getmacaddress()));
+}
+
+//**********************************************************************
 function init()
 {
     // Globals
     hwInterrupt <-hardware.pin1;
     gi2cPort <- hardware.i2c89;
     gAddrIoExpander <- 0x23;
-    gAddrAccelerometer <- 0x38;
+    gAddrAccelerometer <- 0x30;
     gIoPinButton <- 2;
 
     // Configure and enable 3v3 accessory switch 
@@ -424,11 +472,20 @@ function init()
 
     // Accelerometer
     local out = gi2cPort.read(gAddrAccelerometer, format("%c", 0x0F), 1);
-    server.log("Accelerometer WHO_AM_I = " + out);
+    out = out[0];
+    server.log(format("Accelerometer WHO_AM_I = %s", 
+                    out == null ? "null" : format("0x%02X", out.tointeger())));
     out = gi2cPort.read(gAddrAccelerometer, format("%c", 0x20), 1);
-    server.log("Accelerometer CTRL_REG1 = " + out);
+    out = out[0];
+    server.log(format("Accelerometer CTRL_REG1 = %s", 
+                    out == null ? "null" : format("0x%02X", out.tointeger())));
     out = gi2cPort.read(gAddrAccelerometer, format("%c", 0x29), 1);
-    server.log("Accelerometer OUT_X = " + out);
+    out = out[0];
+    server.log(format("Accelerometer OUT_X = %s", 
+                    out == null ? "null" : format("0x%02X", out.tointeger())));
+
+    // Print debug info
+    printStartupDebugInfo();
 
     // Initialization complete notification
     //hwPiezo.playSound("startup"); 
