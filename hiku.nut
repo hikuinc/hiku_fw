@@ -7,6 +7,7 @@ const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 3000.0;  // in seconds  HWDEBUG
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
 
+// TODO: move into PushButton class
 enum ButtonState
 {
     BUTTON_UP,
@@ -34,16 +35,12 @@ enum DeviceState
 gDeviceState <- null; // Hiku device current state
 gButtonState <- ButtonState.BUTTON_UP; // Button current state
 
-gButtonTimer <- null; // Handles button-held-too-long
-gDeepSleepTimer <- null; // Handles deep sleep timeouts
-
-gScannerOutput <- ""; // String containing barcode data
-
 gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
 gAudioBufferSize <- 1000; // Size of each audio buffer 
 gAudioSampleRate <- 16000; // in Hz
 
+// TODO: get rid of this
 gPin1HandlerSet <- false;
 
 // Each 1k of buffer will hold 1/16 of a second of audio, or 63ms.
@@ -83,6 +80,10 @@ class Piezo
     constructor(hwPin)
     {
         pin = hwPin;
+
+        // Configure pin
+        pin.configure(DIGITAL_OUT);
+        pin.write(0); // Turn off piezo by default
 
         tonesParamsList = {
             // [[period, duty cycle, duration], ...]
@@ -522,7 +523,7 @@ function updateDeviceState(newState)
     {
         if (oldState != DeviceState.SCAN_RECORD)
         {
-            // Stop timing button press
+            // Start timing button press
             gButtonTimer.enable();
         }
     }
@@ -567,12 +568,10 @@ function updateDeviceState(newState)
 
 //======================================================================
 // Scanner
-
-//**********************************************************************
-// TODO: add all scanner functions into the class
 class Scanner extends IoExpanderDevice
 {
     pin = null; // IO expander pin assignment
+    scannerOutput = "";  // Stores the current barcode characters
 
     constructor(port, address, devicePin)
     {
@@ -585,9 +584,14 @@ class Scanner extends IoExpanderDevice
         setDir(pin, 0); // output
         setPullUp(pin, 0); // pullup disabled
         setPin(pin, 1); // pull high to disable trigger
+
+        // Configure scanner UART (for RX only)
+        hardware.configure(UART_57); 
+        hardware.uart57.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
+                                 scannerCallback.bindenv(this));
     }
 
-    function readState()
+    function readTriggerState()
     {
         return getPin(pin);
     }
@@ -603,92 +607,88 @@ class Scanner extends IoExpanderDevice
             setPin(pin, 1);
         }
     }
-}
 
-
-//**********************************************************************
-// Stop the scanner and sampler
-// Note: this function may be called multiple times in a row, so
-// it must support that. 
-function stopScanRecord()
-{
-    // Stop mic recording
-    hardware.sampler.stop();
-
-    // Release scanner trigger
-    hwScanner.trigger(false);
-
-    // Reset for next scan
-    gScannerOutput = "";
-}
-
-
-//**********************************************************************
-// Scanner data ready callback, called whenever there is data from scanner.
-// Reads the bytes, and detects and handles a full barcode string.
-function scannerCallback()
-{
-    // Read the first byte
-    local data = hwScannerUart.read();
-    while (data != -1)  
+    //**********************************************************************
+    // Stop the scanner and sampler
+    // Note: this function may be called multiple times in a row, so
+    // it must support that. 
+    function stopScanRecord()
     {
-        //server.log("char " + data + " \"" + data.tochar() + "\"");
+        // Stop mic recording
+        hardware.sampler.stop();
 
-        // Handle the data
-        switch (data) 
+        // Release scanner trigger
+        hwScanner.trigger(false);
+
+        // Reset for next scan
+        scannerOutput = "";
+    }
+
+    //**********************************************************************
+    // Scanner data ready callback, called whenever there is data from scanner.
+    // Reads the bytes, and detects and handles a full barcode string.
+    function scannerCallback()
+    {
+        // Read the first byte
+        local data = hardware.uart57.read();
+        while (data != -1)  
         {
-            case '\n':
-                // Scan complete. Discard the line ending,
-                // upload the beep, and reset state.
+            //server.log("char " + data + " \"" + data.tochar() + "\"");
 
-                // If the scan came in late (e.g. after button up), 
-                // discard it, to maintain the state machine. 
-                if (gDeviceState != DeviceState.SCAN_RECORD)
-                {
-                    //server.log(format(
-                               //"Got capture too late. Dropping scan %d",
-                               //gDeviceState));
-                    gScannerOutput = "";
-                    return;
-                }
-                updateDeviceState(DeviceState.SCAN_CAPTURED);
+            // Handle the data
+            switch (data) 
+            {
+                case '\n':
+                    // Scan complete. Discard the line ending,
+                    // upload the beep, and reset state.
 
-                //server.log("Code: \"" + gScannerOutput + "\" (" + 
-                           //gScannerOutput.len() + " chars)");
-                agent.send("uploadBeep", {scandata=gScannerOutput,
-                                          scansize=gScannerOutput.len(),
-                                          serial=hardware.getimpeeid(),
-                                          instance=0, // TODO: server seems 
-                                          // to need this when writing file
-                                          fw_version=cFirmwareVersion,
-                                          });
-                
-                // Stop collecting data
-                stopScanRecord();
-                break;
+                    // If the scan came in late (e.g. after button up), 
+                    // discard it, to maintain the state machine. 
+                    if (gDeviceState != DeviceState.SCAN_RECORD)
+                    {
+                        //server.log(format(
+                                   //"Got capture too late. Dropping scan %d",
+                                   //gDeviceState));
+                        scannerOutput = "";
+                        return;
+                    }
+                    updateDeviceState(DeviceState.SCAN_CAPTURED);
 
-            case '\r':
-                // Discard line endings
-                break;
+                    //server.log("Code: \"" + scannerOutput + "\" (" + 
+                               //scannerOutput.len() + " chars)");
+                    agent.send("uploadBeep", {scandata=scannerOutput,
+                                              scansize=scannerOutput.len(),
+                                              serial=hardware.getimpeeid(),
+                                              instance=0, // TODO: server seems 
+                                              // to need this when writing file
+                                              fw_version=cFirmwareVersion,
+                                              });
+                    
+                    // Stop collecting data
+                    stopScanRecord();
+                    break;
 
-            default:
-                // Store the character
-                gScannerOutput = gScannerOutput + data.tochar();
-                break;
-        }
+                case '\r':
+                    // Discard line endings
+                    break;
 
-        // Read the next byte
-        data = hwScannerUart.read();
-    } 
+                default:
+                    // Store the character
+                    scannerOutput = scannerOutput + data.tochar();
+                    break;
+            }
 
-    //server.log("EXITING CALLBACK");
+            // Read the next byte
+            data = hardware.uart57.read();
+        } 
+
+        //server.log("EXITING CALLBACK");
+    }
 }
 
 
 //======================================================================
 // Button
-
-//**********************************************************************
 class PushButton extends IoExpanderDevice
 {
     pin = null; // IO expander pin assignment
@@ -721,7 +721,7 @@ class PushButton extends IoExpanderDevice
     function handleButtonTimeout()
     {
         updateDeviceState(DeviceState.BUTTON_TIMEOUT);
-        stopScanRecord();
+        hwScanner.stopScanRecord();
         hwPiezo.playSound("timeout");
         server.log("Timeout reached. Aborting scan and record.");
     }
@@ -780,7 +780,7 @@ class PushButton extends IoExpanderDevice
                         // Audio captured. Validate and send it
 
                         // Stop collecting data
-                        stopScanRecord();
+                        hwScanner.stopScanRecord();
 
                         // Tell the server we are done uploading data. We
                         // first wait in case one more chunk comes in. 
@@ -886,7 +886,7 @@ agent.on(("uploadCompleted"), function(result) {
 // chunk to arrive. 
 function notifyAudioUploadComplete()
 {
-    // If there is less than x secs of audio, abandon it
+    // If there are less than x secs of audio, abandon it
     local secs = gAudioChunkCount*gAudioBufferSize/
                        gAudioSampleRate.tofloat();
     //server.log(format("Captured %0.2f secs of audio in %d chunks", 
@@ -1021,15 +1021,12 @@ function init()
  
     // Piezo config
     hwPiezo <- Piezo(hardware.pin5);
-    hwPiezo.pin.configure(DIGITAL_OUT);
-    hwPiezo.pin.write(0); // Turn off piezo by default
 
     // Button config
     hwButton <- PushButton(I2C_89, gAddrIoExpander, gIoPinButton);
-    hwButton.printI2cRegs();
+    //hwButton.printI2cRegs();
 
     // Scanner config
-    hwScannerUart <- hardware.uart57;
     hwScanner <-Scanner(I2C_89, gAddrIoExpander, gIoPinScannerTrigger);
 
     // Microphone sampler config
@@ -1037,11 +1034,6 @@ function init()
     hardware.sampler.configure(hwMicrophone, gAudioSampleRate, 
                                [buf1, buf2, buf3, buf4], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
-
-    // Scanner UART config 
-    hardware.configure(UART_57); 
-    hwScannerUart.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
-                             scannerCallback);
 
     // Accelerometer config
     hwAccelerometer <- Accelerometer(I2C_89, gAddrAccelerometer);
@@ -1051,9 +1043,9 @@ function init()
     // Create our timers
     // TODO: move button timer to PushButton class? 
     // TODO: can I pass a class member like this?
-    gButtonTimer = CancellableTimer(cButtonTimeout, 
+    gButtonTimer <- CancellableTimer(cButtonTimeout, 
                                     hwButton.handleButtonTimeout);
-    gDeepSleepTimer = CancellableTimer(cDelayBeforeDeepSleep,
+    gDeepSleepTimer <- CancellableTimer(cDelayBeforeDeepSleep,
             function() {
                 hwPiezo.playSound("sleep", false /*async*/);
                 server.sleepfor(cDeepSleepDuration); 
