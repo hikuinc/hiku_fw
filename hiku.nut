@@ -702,6 +702,9 @@ class PushButton extends IoExpanderDevice
     pin = null; // IO expander pin assignment
     buttonState = ButtonState.BUTTON_UP; // Button current state
 
+    static numSamples = 4; // For debouncing
+    static sleepSecs = 0.003;  // For debouncing
+
     constructor(port, address, btnPin)
     {
         base.constructor(port, address);
@@ -744,8 +747,6 @@ class PushButton extends IoExpanderDevice
     {
         // Sample the button multiple times to debounce. Total time 
         // taken is (numSamples-1)*sleepSecs
-        const numSamples = 4;
-        const sleepSecs = 0.003; 
         local state = readState()
         for (local i=1; i<numSamples; i++)
         {
@@ -1010,38 +1011,36 @@ function init()
     // case we need to be as responsive as possible. 
     imp.setpowersave(false);
 
-    // TODO: change these globals to constants
-
     // I2C bus addresses
-    gAddrIoExpander <- 0x23;
-    gAddrAccelerometer <- 0x18;
+    const cAddrIoExpander = 0x23;
+    const cAddrAccelerometer = 0x18;
 
     // IO expander pin assignments
-    gIoPinAccelerometerInt <-0; //TODO
-    gIoPinChargeStatus <-1; //TODO
-    gIoPinButton <- 2;
-    gIoPin3v3Switch <- 4;
-    gIoPinScannerTrigger <- 5;
-    gIoPinScannerReset <- 6;
+    const cIoPinAccelerometerInt = 0; //TODO
+    const cIoPinChargeStatus = 1;
+    const cIoPinButton =  2;
+    const cIoPin3v3Switch =  4;
+    const cIoPinScannerTrigger =  5;
+    const cIoPinScannerReset =  6;
 
     // 3v3 accessory switch config
     // TODO: turn it off before sleeping
     // TODO: make it a class
-    sw3v3 <- IoExpanderDevice(I2C_89, gAddrIoExpander);
-    sw3v3.setDir(gIoPin3v3Switch, 0); // output
-    sw3v3.setPullUp(gIoPin3v3Switch, 0); // pullup disabled
-    sw3v3.setPin(gIoPin3v3Switch, 0); // pull low to turn switch on
+    sw3v3 <- IoExpanderDevice(I2C_89, cAddrIoExpander);
+    sw3v3.setDir(cIoPin3v3Switch, 0); // output
+    sw3v3.setPullUp(cIoPin3v3Switch, 0); // pullup disabled
+    sw3v3.setPin(cIoPin3v3Switch, 0); // pull low to turn switch on
  
     // Piezo config
     hwPiezo <- Piezo(hardware.pin5);
 
     // Button config
-    hwButton <- PushButton(I2C_89, gAddrIoExpander, gIoPinButton);
+    hwButton <- PushButton(I2C_89, cAddrIoExpander, cIoPinButton);
     //hwButton.printI2cRegs();
 
     // Scanner config
-    hwScanner <-Scanner(I2C_89, gAddrIoExpander, gIoPinScannerTrigger,
-                        gIoPinScannerReset);
+    hwScanner <-Scanner(I2C_89, cAddrIoExpander, cIoPinScannerTrigger,
+                        cIoPinScannerReset);
 
     // Microphone sampler config
     hwMicrophone <- hardware.pin2;
@@ -1050,7 +1049,7 @@ function init()
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
 
     // Accelerometer config
-    hwAccelerometer <- Accelerometer(I2C_89, gAddrAccelerometer);
+    hwAccelerometer <- Accelerometer(I2C_89, cAddrAccelerometer);
     //server.log("-------------------------");
     //hwAccelerometer.printI2cRegs();
 
@@ -1084,4 +1083,3 @@ init();
 // woken up by the button, so go directly to button handling.  
 // TODO HWDEBUG Does this work when button held down, w/ new HW?
 hwButton.handleInterrupt();
-
