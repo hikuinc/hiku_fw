@@ -352,7 +352,8 @@ class IoExpanderDevice extends I2cDevice
         // of multiple IOExpanders.  Or design it in better?
         if (!gPin1HandlerSet) {
             server.log("--------Setting interrupt handler for pin1--------");
-            hwInterrupt.configure(DIGITAL_IN_WAKEUP, handleInterrupt.bindenv(this));
+            hardware.pin1.configure(DIGITAL_IN_WAKEUP, 
+                                    handleInterrupt.bindenv(this));
             gPin1HandlerSet = true;
         }
     }
@@ -570,15 +571,24 @@ function updateDeviceState(newState)
 // Scanner
 class Scanner extends IoExpanderDevice
 {
-    pin = null; // IO expander pin assignment
+    pin = null; // IO expander pin assignment (trigger)
+    reset = null; // IO expander pin assignment (reset)
     scannerOutput = "";  // Stores the current barcode characters
 
-    constructor(port, address, devicePin)
+    constructor(port, address, triggerPin, resetPin)
     {
         base.constructor(port, address);
 
         // Save assignments
-        pin = devicePin;
+        pin = triggerPin;
+        reset = resetPin;
+
+        // Reset the scanner at each boot, just to be safe
+        setDir(reset, 0); // output
+        setPullUp(reset, 0); // pullup disabled
+        setPin(reset, 0); // pull low to reset
+        imp.sleep(0.001); // wait for x seconds
+        setPin(reset, 1); // pull high to boot
 
         // Configure trigger pin as output
         setDir(pin, 0); // output
@@ -693,15 +703,15 @@ class PushButton extends IoExpanderDevice
 {
     pin = null; // IO expander pin assignment
 
-    constructor(port, address, devicePin)
+    constructor(port, address, btnPin)
     {
         base.constructor(port, address);
 
         // Save assignments
-        pin = devicePin;
+        pin = btnPin;
 
         // Set event handler for IRQ
-        setIrqCallback(devicePin, buttonCallback.bindenv(this));
+        setIrqCallback(btnPin, buttonCallback.bindenv(this));
 
         // Configure pin as input, IRQ on both edges
         setDir(pin, 1); // set as input
@@ -1001,15 +1011,19 @@ function init()
     // case we need to be as responsive as possible. 
     imp.setpowersave(false);
 
-    // Hardware globals
-    // TODO: change these to constants
-    hwInterrupt <-hardware.pin1;
-    gi2cPort <- hardware.i2c89;
+    // TODO: change these globals to constants
+
+    // I2C bus addresses
     gAddrIoExpander <- 0x23;
     gAddrAccelerometer <- 0x18;
+
+    // IO expander pin assignments
+    gIoPinAccelerometerInt <-0; //TODO
+    gIoPinChargeStatus <-1; //TODO
     gIoPinButton <- 2;
     gIoPin3v3Switch <- 4;
     gIoPinScannerTrigger <- 5;
+    gIoPinScannerReset <- 6; //TODO
 
     // 3v3 accessory switch config
     // TODO: turn it off before sleeping
@@ -1027,7 +1041,8 @@ function init()
     //hwButton.printI2cRegs();
 
     // Scanner config
-    hwScanner <-Scanner(I2C_89, gAddrIoExpander, gIoPinScannerTrigger);
+    hwScanner <-Scanner(I2C_89, gAddrIoExpander, gIoPinScannerTrigger,
+                        gIoPinScannerReset);
 
     // Microphone sampler config
     hwMicrophone <- hardware.pin2;
