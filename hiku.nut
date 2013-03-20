@@ -7,13 +7,6 @@ const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 3000.0;  // in seconds  HWDEBUG
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
 
-// TODO: move into PushButton class
-enum ButtonState
-{
-    BUTTON_UP,
-    BUTTON_DOWN,
-}
-
 enum DeviceState
 /*
                            ---> SCAN_CAPTURED ------>
@@ -33,7 +26,6 @@ enum DeviceState
 
 // Globals
 gDeviceState <- null; // Hiku device current state
-gButtonState <- ButtonState.BUTTON_UP; // Button current state
 
 gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
@@ -699,9 +691,16 @@ class Scanner extends IoExpanderDevice
 
 //======================================================================
 // Button
+enum ButtonState
+{
+    BUTTON_UP,
+    BUTTON_DOWN,
+}
+
 class PushButton extends IoExpanderDevice
 {
     pin = null; // IO expander pin assignment
+    buttonState = ButtonState.BUTTON_UP; // Button current state
 
     constructor(port, address, btnPin)
     {
@@ -747,22 +746,22 @@ class PushButton extends IoExpanderDevice
         // taken is (numSamples-1)*sleepSecs
         const numSamples = 4;
         const sleepSecs = 0.003; 
-        local buttonState = readState()
+        local state = readState()
         for (local i=1; i<numSamples; i++)
         {
-            buttonState += readState()
+            state += readState()
             imp.sleep(sleepSecs)
         }
 
         // Handle the button state transition
-        switch(buttonState) 
+        switch(state) 
         {
             case 0:
                 // Button in held state
-                if (gButtonState == ButtonState.BUTTON_UP)
+                if (buttonState == ButtonState.BUTTON_UP)
                 {
                     updateDeviceState(DeviceState.SCAN_RECORD);
-                    gButtonState = ButtonState.BUTTON_DOWN;
+                    buttonState = ButtonState.BUTTON_DOWN;
                     server.log("Button state change: DOWN");
 
                     // Trigger the scanner
@@ -777,9 +776,9 @@ class PushButton extends IoExpanderDevice
                 break;
             case numSamples:
                 // Button in released state
-                if (gButtonState == ButtonState.BUTTON_DOWN)
+                if (buttonState == ButtonState.BUTTON_DOWN)
                 {
-                    gButtonState = ButtonState.BUTTON_UP;
+                    buttonState = ButtonState.BUTTON_UP;
                     server.log("Button state change: UP");
 
                     local oldState = gDeviceState;
@@ -1023,7 +1022,7 @@ function init()
     gIoPinButton <- 2;
     gIoPin3v3Switch <- 4;
     gIoPinScannerTrigger <- 5;
-    gIoPinScannerReset <- 6; //TODO
+    gIoPinScannerReset <- 6;
 
     // 3v3 accessory switch config
     // TODO: turn it off before sleeping
