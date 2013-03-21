@@ -58,18 +58,30 @@ class RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         # Get the content
         postvars = self.parse_POST()
-        content_len = int(self.headers.getheader('content-length'))
-        post_body = self.rfile.read(content_len)
+        if (postvars):
+            print postvars
 
-        # Base64 decode and save to a file
-        file = open(unique_file_name("audiobeep.alaw"), "wb")
-        file.write(base64.b64decode(post_body))
-        file.close()
+            # Send a basic response
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write("POST vars received.")
+        else:
+            content_len = int(self.headers.getheader('content-length'))
+            post_body = self.rfile.read(content_len)
 
-        # Send a basic response
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write("Audio received.")
+            # Base64 decode and save to a file
+            dataPath = "data"
+            if not os.path.exists(dataPath):
+                os.makedirs(dataPath)
+            file = open(unique_file_name(os.path.join(dataPath,
+                        "audiobeep.alaw")), "wb")
+            file.write(base64.b64decode(post_body))
+            file.close()
+
+            # Send a basic response
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write("Audio received.")
 
 
 if __name__ == '__main__':
