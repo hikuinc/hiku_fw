@@ -48,16 +48,21 @@ function sendBeepToHikuServer(data) {
     server.log(http.urlencode(data));
     
     // Send the data to the server
+    //local host = "http://srv2.hiku.us/" // Official server
     local host = "http://bobert.net:4444/" // Bob's test server
-    //local host = "http://srv2.hiku.us/" // Harvey's test server
-    
-    local res = http.post(host+"imp_beep", 
+    //local host = "http://www.unalignedaccess.net:9900/" // Harvey's test server
+    local res = http.post(host+"scanner_1/imp_beep", 
               {"Content-Type": "application/x-www-form-urlencoded" }, 
               http.urlencode(data)
              ).sendsync();
     
     // Tell the device the result
-    device.send("uploadCompleted", res.statuscode);
+    local result = {
+        httpCode=res.statuscode,
+        data=res.body
+    }
+    local serStr = http.jsonencode(result);
+    device.send("uploadCompleted", serStr);
 }
 
 //**********************************************************************

@@ -3,7 +3,7 @@ const cFirmwareVersion = "0.5.0";
 //**********************************************************************
 // Agent callback: upload complete
 agent.on(("uploadCompleted"), function(result) {
-    server.log(format("DEVICE: upload result=%d", result));
+    server.log(format("DEVICE: upload result=%s", result));
 });
 
 //**********************************************************************
@@ -42,5 +42,4 @@ sendBeepToAgent(barcode, "");
 // Send binary (fake) audio data 
 local audioData = "\x00\x01\x02\x03\x04";
 sendBeepToAgent("", audioData);
-
 
