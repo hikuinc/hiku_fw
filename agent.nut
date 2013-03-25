@@ -58,8 +58,10 @@ device.on(("uploadBeep"), function(data) {
     else
     {
         agentLog(format("Barcode received: %s", data.scandata));
+        local enableHikuServer = true;
+
         // TODO: disabled for bring-up
-        local enableHikuServer = false;
+        //enableHikuServer = false;
         if (enableHikuServer)
         {
             sendToBeepIt(data);  

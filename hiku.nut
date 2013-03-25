@@ -576,15 +576,15 @@ class Scanner extends IoExpanderDevice
         reset = resetPin;
 
         // Reset the scanner at each boot, just to be safe
-        setDir(reset, 0); // output
-        setPullUp(reset, 0); // pullup disabled
+        setDir(reset, 0); // set as output
+        setPullUp(reset, 0); // disable pullup
         setPin(reset, 0); // pull low to reset
         imp.sleep(0.001); // wait for x seconds
         setPin(reset, 1); // pull high to boot
 
         // Configure trigger pin as output
-        setDir(pin, 0); // output
-        setPullUp(pin, 0); // pullup disabled
+        setDir(pin, 0); // set as output
+        setPullUp(pin, 0); // disable pullup
         setPin(pin, 1); // pull high to disable trigger
 
         // Configure scanner UART (for RX only)
@@ -661,7 +661,7 @@ class Scanner extends IoExpanderDevice
                     agent.send("uploadBeep", {scandata=scannerOutput,
                                               scansize=scannerOutput.len(),
                                               serial=hardware.getimpeeid(),
-                                              instance=0, // TODO: server seems 
+                                              instance=0, // TODO: server seems
                                               // to need this when writing file
                                               fw_version=cFirmwareVersion,
                                               });
@@ -719,7 +719,7 @@ class PushButton extends IoExpanderDevice
         setDir(pin, 1); // set as input
         setPullUp(pin, 1); // enable pullup
         setIrqMask(pin, 1); // enable IRQ
-        setIrqEdges(pin, 1, 1); // both rising and falling
+        setIrqEdges(pin, 1, 1); // rising and falling
     }
 
     function readState()
@@ -810,6 +810,71 @@ class PushButton extends IoExpanderDevice
                 // Button is in transition (not settled)
                 //server.log("Bouncing! " + buttonState);
                 break;
+        }
+    }
+}
+
+
+//======================================================================
+// Charge status pin
+/* TODO MEMORY: 
+  Before adding charger IoExpander class: 24400 bytes 
+  After adding class: 24200 to 24224 bytes (200 delta)
+  After making ChargeStatus subclass: 20904 to 20928 bytes (3,496 delta)
+
+  If wait 1 second:
+    Before: 27708 bytes
+    After ChargeStatus: 24940 bytes (delta of 2,768 bytes)
+
+  Basically, we can recover up to 2.8kB for each IoExpander subclass 
+  by eliminating them. 
+*/
+class ChargeStatus extends IoExpanderDevice
+{
+    pin = null; // IO expander pin assignment
+
+    constructor(port, address, chargePin)
+    {
+        base.constructor(port, address);
+
+        // Save assignments
+        pin = chargePin;
+
+        // Set event handler for IRQ
+        setIrqCallback(pin, chargerCallback.bindenv(this));
+
+        // Configure pin as input, IRQ on both edges
+        setDir(pin, 1); // set as input
+        setPullUp(pin, 1); // enable pullup
+        setIrqMask(pin, 1); // enable IRQ
+        setIrqEdges(pin, 1, 1); // rising and falling
+    }
+
+    function readState()
+    {
+        return getPin(pin);
+    }
+
+    function isCharging()
+    {
+        if(getPin(pin))
+        {
+            return false;
+        }
+        return true;
+    }
+
+    //**********************************************************************
+    // Charge status interrupt handler callback 
+    function chargerCallback()
+    {
+        if (isCharging()) 
+        {
+            server.log("Charger plugged in");
+        }
+        else
+        {
+            server.log("Charger unplugged");
         }
     }
 }
@@ -999,6 +1064,10 @@ function printStartupDebugInfo()
 
     // Wi-Fi MAC address
     server.log(format("Wi-Fi MAC: %s", imp.getmacaddress()));
+
+    // Charge status
+    server.log(format("Device is %scharging", 
+                      chargeStatus.isCharging()?"":"not \x00"));
 }
 
 
@@ -1027,10 +1096,13 @@ function init()
     // TODO: turn it off before sleeping
     // TODO: make it a class
     sw3v3 <- IoExpanderDevice(I2C_89, cAddrIoExpander);
-    sw3v3.setDir(cIoPin3v3Switch, 0); // output
-    sw3v3.setPullUp(cIoPin3v3Switch, 0); // pullup disabled
+    sw3v3.setDir(cIoPin3v3Switch, 0); // set as output
+    sw3v3.setPullUp(cIoPin3v3Switch, 0); // disable pullup
     sw3v3.setPin(cIoPin3v3Switch, 0); // pull low to turn switch on
  
+    // Charge status detect config
+    chargeStatus <- ChargeStatus(I2C_89, cAddrIoExpander, cIoPinChargeStatus);
+
     // Piezo config
     hwPiezo <- Piezo(hardware.pin5);
 
@@ -1083,3 +1155,10 @@ init();
 // woken up by the button, so go directly to button handling.  
 // TODO HWDEBUG Does this work when button held down, w/ new HW?
 hwButton.handleInterrupt();
+
+//DEBUG TODO remove
+function checkMem()
+{
+    server.log(format("Free memory: %d bytes", imp.getmemoryfree()));
+};
+imp.wakeup(1, checkMem);
