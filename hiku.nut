@@ -1122,14 +1122,12 @@ function init()
 
     // Accelerometer config
     hwAccelerometer <- Accelerometer(I2C_89, cAddrAccelerometer);
-    //server.log("-------------------------");
-    //hwAccelerometer.printI2cRegs();
 
     // Create our timers
-    // TODO: move button timer to PushButton class? 
-    // TODO: can I pass a class member like this?
     gButtonTimer <- CancellableTimer(cButtonTimeout, 
-                                    hwButton.handleButtonTimeout);
+                                     hwButton.handleButtonTimeout.bindenv(
+                                         hwButton)
+                                    );
     gDeepSleepTimer <- CancellableTimer(cDelayBeforeDeepSleep,
             function() {
                 hwPiezo.playSound("sleep", false /*async*/);
