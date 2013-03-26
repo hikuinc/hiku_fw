@@ -4,7 +4,7 @@
 // Consts and enums
 const cFirmwareVersion = "0.5.0"
 const cButtonTimeout = 6;  // in seconds
-const cDelayBeforeDeepSleep = 3000.0;  // in seconds  HWDEBUG
+const cDelayBeforeDeepSleep = 3000.0;  // in seconds TODO finalize
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
 
 enum DeviceState
@@ -881,6 +881,42 @@ class ChargeStatus extends IoExpanderDevice
 
 
 //======================================================================
+// 3.3 volt switch pin for powering most peripherals
+class Switch3v3Accessory extends IoExpanderDevice
+{
+    pin = null; // IO expander pin assignment
+
+    constructor(port, address, switchPin)
+    {
+        base.constructor(port, address);
+
+        // Save assignments
+        pin = switchPin;
+
+        // Configure pin 
+        setDir(pin, 0); // set as output
+        setPullUp(pin, 0); // disable pullup
+        setPin(pin, 0); // pull low to turn switch on
+    }
+
+    function readState()
+    {
+        return getPin(pin);
+    }
+
+    function enable()
+    {
+        setPin(pin, 0);
+    }
+
+    function disable()
+    {
+        setPin(pin, 1);
+    }
+}
+
+
+//======================================================================
 // Accelerometer
 class Accelerometer extends I2cDevice
 {
@@ -1093,12 +1129,8 @@ function init()
     const cIoPinScannerReset =  6;
 
     // 3v3 accessory switch config
-    // TODO: turn it off before sleeping
-    // TODO: make it a class
-    sw3v3 <- IoExpanderDevice(I2C_89, cAddrIoExpander);
-    sw3v3.setDir(cIoPin3v3Switch, 0); // set as output
-    sw3v3.setPullUp(cIoPin3v3Switch, 0); // disable pullup
-    sw3v3.setPin(cIoPin3v3Switch, 0); // pull low to turn switch on
+    sw3v3 <- Switch3v3Accessory(I2C_89, cAddrIoExpander, cIoPin3v3Switch);
+    sw3v3.enable();
  
     // Charge status detect config
     chargeStatus <- ChargeStatus(I2C_89, cAddrIoExpander, cIoPinChargeStatus);
@@ -1108,7 +1140,6 @@ function init()
 
     // Button config
     hwButton <- PushButton(I2C_89, cAddrIoExpander, cIoPinButton);
-    //hwButton.printI2cRegs();
 
     // Scanner config
     hwScanner <-Scanner(I2C_89, cAddrIoExpander, cIoPinScannerTrigger,
@@ -1131,6 +1162,8 @@ function init()
     gDeepSleepTimer <- CancellableTimer(cDelayBeforeDeepSleep,
             function() {
                 hwPiezo.playSound("sleep", false /*async*/);
+                // TODO: finalize sleep power savings code
+                sw3v3.disable();
                 server.sleepfor(cDeepSleepDuration); 
             });
 
