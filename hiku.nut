@@ -4,7 +4,7 @@
 // Consts and enums
 const cFirmwareVersion = "0.5.0"
 const cButtonTimeout = 6;  // in seconds
-const cDelayBeforeDeepSleep = 30.0;  // in seconds
+const cDelayBeforeDeepSleep = 10.0;  // in seconds
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
 
 enum DeviceState
@@ -333,7 +333,7 @@ class IoExpanderDevice extends I2cDevice
 {
     i2cPort = null;
     i2cAddress = null;
-    irqCallbacks = array(8); //BP ADDED.  TODO move out? 
+    irqCallbacks = array(8); // TODO move out? Shared by all instances?
 
     constructor(port, address)
     {
@@ -343,9 +343,11 @@ class IoExpanderDevice extends I2cDevice
         // could cause us to lose accelerometer interrupts
         // if someone reads or writes any pin between when 
         // an interrupt occurs and we handle it. 
-        write(0x10, 0x01); 
+        write(0x10, 0x01); // RegMisc
 
-        // BP ADDED
+        // Lower the output buffer drive, to reduce current consumption
+        write(0x02, 0xFF); // RegLowDrive
+
         // TODO Move this, as it would get called for each 
         // of multiple IOExpanders.  Or design it in better?
         if (!gPin1HandlerSet) {
@@ -468,7 +470,7 @@ class IoExpanderDevice extends I2cDevice
     }
     
     // Print and label expander registers
-    function printI2cRegs(min=0, max=10)
+    function printI2cRegs(min=0, max=0x10)
     {
         local label = "";
         for (local i=min; i<max+1; i++)
@@ -623,6 +625,14 @@ class Scanner extends IoExpanderDevice
         hardware.configure(UART_57); 
         hardware.uart57.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
                                  scannerCallback.bindenv(this));
+    }
+
+    // Disable for low power sleep mode
+    function disable()
+    {
+        setPin(reset, 0); // pull reset low 
+        setPin(pin, 0); // pull trigger low 
+        hardware.uart57.disable();
     }
 
     function readTriggerState()
@@ -1002,11 +1012,12 @@ class Accelerometer extends I2cDevice
 
         // Configure and enable accelerometer and interrupt
         //write(0x20, 0x3F); // CTRL_REG1: 25 Hz, low power mode, 
+        write(0x20, 0x2F); // CTRL_REG1: 10 Hz, low power mode, 
                              // all 3 axes enabled
-        write(0x20, 0xA7); // CTRL_REG1: 100 Hz, normal mode, // all 3 axes enabled
         write(0x21, 0x00); // CTRL_REG2: Disable high pass filtering
 
         write(0x22, 0x40); // CTRL_REG3: Enable AOI interrupts
+        //write(0x22, 0x00); // CTRL_REG3: Disable AOI interrupts
 
         write(0x23, 0x00); // CTRL_REG4: Default related control settings
 
@@ -1035,6 +1046,7 @@ class Accelerometer extends I2cDevice
     }
 
     // TODO do we want to reset the sleep timer here? 
+    // TODO or do we want to disable accel ints after wake, until sleep?
     function handleAccelInt() 
     {
         server.log("Accelerometer interrupt triggered");
@@ -1346,8 +1358,10 @@ function init()
                 hwPiezo.playSound("sleep", false /*async*/);
                 // TODO: finalize sleep power savings code
                 sw3v3.disable();
+                hwScanner.disable();
                 // TODO: do I need to check for or clear any interrupts? 
-                server.sleepfor(cDeepSleepDuration); 
+                hwButton.handlePin1Int(); // TODO: does this help? 
+                imp.onidle(function() {server.sleepfor(cDeepSleepDuration);});
             });
 
     // Transition to the idle state
