@@ -4,7 +4,7 @@
 // Consts and enums
 const cFirmwareVersion = "0.5.0"
 const cButtonTimeout = 6;  // in seconds
-const cDelayBeforeDeepSleep = 3000.0;  // in seconds TODO finalize
+const cDelayBeforeDeepSleep = 30.0;  // in seconds
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
 
 enum DeviceState
@@ -144,7 +144,7 @@ class Piezo
         // to play. 
         if (currentTone == null)
         {
-            server.log("ERROR: tried to play null tone");
+            server.log("Error: tried to play null tone");
             return;
         }
 
@@ -263,7 +263,7 @@ class I2cDevice
         }
         else
         {
-            server.log(format("Invalid I2C port specified: %c", port));
+            server.log(format("Error: invalid I2C port specified: %c", port));
         }
 
         // Takes a 7-bit I2C address
@@ -276,7 +276,7 @@ class I2cDevice
         local data = i2cPort.read(i2cAddress, format("%c", register), 1);
         if(data == null)
         {
-            server.log("I2C read failure");
+            server.log("Error: I2C read failure");
             // TODO: this should return null, right??? Do better handling.
             return -1;
         }
@@ -339,13 +339,19 @@ class IoExpanderDevice extends I2cDevice
     {
         base.constructor(port, address);
 
+        // Disable "Autoclear NINT on RegData read". This 
+        // could cause us to lose accelerometer interrupts
+        // if someone reads or writes any pin between when 
+        // an interrupt occurs and we handle it. 
+        write(0x10, 0x01); 
+
         // BP ADDED
         // TODO Move this, as it would get called for each 
         // of multiple IOExpanders.  Or design it in better?
         if (!gPin1HandlerSet) {
-            server.log("--------Setting interrupt handler for pin1--------");
+            //server.log("--------Setting interrupt handler for pin1--------");
             hardware.pin1.configure(DIGITAL_IN_WAKEUP, 
-                                    handleInterrupt.bindenv(this));
+                                    handlePin1Int.bindenv(this));
             gPin1HandlerSet = true;
         }
     }
@@ -390,6 +396,12 @@ class IoExpanderDevice extends I2cDevice
         writeBit(0x03, gpio&7, enable);
     }
 
+    // Set a GPIO internal pull down
+    function setPullDown(gpio, enable)
+    {
+        writeBit(0x04, gpio&7, enable);
+    }
+
     // Set GPIO interrupt mask
     // "0" means disable interrupt, "1" means enable (opposite of datasheet)
     function setIrqMask(gpio, enable)
@@ -406,27 +418,44 @@ class IoExpanderDevice extends I2cDevice
         writeMasked(addr, data, mask);
     }
 
-    // Clear an interrupt
-    function clearIrq(gpio)
+    // Clear all interrupts.  Must do this immediately after
+    // reading the interrupt register in the handler, otherwise
+    // we may get other interrupts in between and miss them. 
+    function clearAllIrqs()
     {
-        writeBit(0x0C, gpio&7, 1);
+        write(0x0C, 0xFF); // RegInterruptSource
     }
 
     // Set an interrupt handler callback for a particular pin
-    function setIrqCallback(pin, func){
+    function setIrqCallback(pin, func)
+    {
         irqCallbacks[pin] = func;
     }
 
     // Handle all expander callbacks
     // TODO: if you have multiple IoExpanderDevice's, which instance is called?
-    function handleInterrupt(){
-        // Get the active interrupt sources. Ignore if there are none, 
-        // which occurs on every pin 1 falling edge. 
-        local regInterruptSource = read(0x0C);
+    function handlePin1Int()
+    {
+        local regInterruptSource = 0;
+        local reg = 0;
+
+        // Get the active interrupt sources
+        // Keep reading the interrupt source register and clearing 
+        // interrupts until it reads clean.  This catches any interrupts
+        // that occur between reading and clearing. 
+        while (reg = read(0x0C)) // RegInterruptSource
+        {
+            clearAllIrqs();
+            regInterruptSource = regInterruptSource | reg;
+        }
+
+        // If no interrupts, just return. This occurs on every 
+        // pin 1 falling edge. 
         if (!regInterruptSource) 
         {
             return;
         }
+
         //printRegister(0x0C, "INTERRUPT");
 
         // Call the interrupt handlers for all active interrupts
@@ -447,6 +476,9 @@ class IoExpanderDevice extends I2cDevice
             switch (i) {
                 case 0x03:
                     label = "RegPullUp";
+                    break;
+                case 0x04:
+                    label = "RegPullDown";
                     break;
                 case 0x07:
                     label = "RegDir";
@@ -661,8 +693,7 @@ class Scanner extends IoExpanderDevice
                     agent.send("uploadBeep", {scandata=scannerOutput,
                                               scansize=scannerOutput.len(),
                                               serial=hardware.getimpeeid(),
-                                              instance=0, // TODO: server seems
-                                              // to need this when writing file
+                                              instance=0, 
                                               fw_version=cFirmwareVersion,
                                               });
                     
@@ -918,14 +949,128 @@ class Switch3v3Accessory extends IoExpanderDevice
 
 //======================================================================
 // Accelerometer
+
+// Interrupt pin for accelerometer I2C device
+class AccelerometerInt extends IoExpanderDevice
+{
+    pin = null; // IO expander pin assignment
+    accelIntHandler = null; // Our interrupt handler, from parent
+
+    constructor(port, address, accelPin, handler)
+    {
+        base.constructor(port, address);
+
+        // Save assignments
+        pin = accelPin;
+        accelIntHandler = handler;
+
+        // Configure pin as input, IRQ on both edges
+        setDir(pin, 1); // set as input
+        setPullDown(pin, 1); // enable pulldown
+        setIrqMask(pin, 1); // enable IRQ
+        setIrqEdges(pin, 1, 0); // rising only
+
+        // Set event handler for IRQ
+        setIrqCallback(pin, accelIntHandler);
+    }
+
+    function readState()
+    {
+        return getPin(pin);
+    }
+}
+
+
+// Accelerometer I2C device
 class Accelerometer extends I2cDevice
 {
     i2cPort = null;
     i2cAddress = null;
+    interruptDevice = null; 
 
-    constructor(port, address)
+    constructor(port, address, pin, expanderAddress)
     {
         base.constructor(port, address);
+
+        // Verify communication by reading WHO_AM_I register
+        local whoami = read(0x0F);
+        if (whoami != 0x33)
+        {
+            server.log(format("Error reading accelerometer; whoami=0x%02X", 
+                              whoami));
+        }
+
+        // Configure and enable accelerometer and interrupt
+        //write(0x20, 0x3F); // CTRL_REG1: 25 Hz, low power mode, 
+                             // all 3 axes enabled
+        write(0x20, 0xA7); // CTRL_REG1: 100 Hz, normal mode, // all 3 axes enabled
+        write(0x21, 0x00); // CTRL_REG2: Disable high pass filtering
+
+        write(0x22, 0x40); // CTRL_REG3: Enable AOI interrupts
+
+        write(0x23, 0x00); // CTRL_REG4: Default related control settings
+
+        write(0x24, 0x08); // CTRL_REG5: Interrupt latched
+
+        // TODO: Tune the threshold.  Higher numbers seem more sensitive?
+        write(0x32, 0xFF); // INT1_THS: Threshold
+
+        write(0x33, 0x00); // INT1_DURATION: any duration
+
+        write(0x30, 0x2A); // INT1_CFG: Enable OR interrupt for 
+                           // "high" values of X, Y, Z
+
+        // Clear interrupts before setting handler.  This is needed 
+        // otherwise we get a spurious interrupt at boot. 
+        clearAccelInterrupt();
+
+        // Set the interrupt handler 
+        interruptDevice = AccelerometerInt(port, expanderAddress, 
+                pin, handleAccelInt.bindenv(this));
+    }
+
+    function clearAccelInterrupt()
+    {
+        read(0x31); // Clear the accel interrupt by reading INT1_SRC
+    }
+
+    // TODO do we want to reset the sleep timer here? 
+    function handleAccelInt() 
+    {
+        server.log("Accelerometer interrupt triggered");
+        write(0x22, 0x00); // CTRL_REG3: Disable AOI interrupts
+        clearAccelInterrupt();
+        write(0x22, 0x40); // CTRL_REG3: Enable AOI interrupts
+    }
+
+    // Debug printout of the orientation registers on one line
+    function printOrientation() 
+    {
+        local values = [];
+        local reg;
+
+        // Read the X, Y, and Z acceleration values
+        for(local i = 0x28; i < 0x2E; i++)
+        {
+            reg = read(i);
+            
+            // Convert from 2's complement)
+            if (reg & 0x80)
+            {
+                reg = -((~(reg-1))& 0x7F);
+            }
+
+            values.append(reg);
+        }
+
+        // Log the results
+        //printRegister(0x31, "INT1_SRC");
+        printRegister(0x32, "INT1_THS");
+        server.log(format(
+                    "XH=%03d, YH=%03d, ZH=%03d, XL=%03d, YL=%03d, ZL=%03d", 
+                          values[1], values[3], values[5],
+                          values[0], values[2], values[4]
+                         ));
     }
 
     // Print and label expander registers
@@ -940,7 +1085,7 @@ class Accelerometer extends I2cDevice
                 continue;
             }
             // Stop early because the rest aren't that important
-            if (i>0x2D) 
+            if (i>0x33) 
             {
                 continue;
             }
@@ -961,6 +1106,18 @@ class Accelerometer extends I2cDevice
                 case 0x22:
                     label = "CTRL_REG3";
                     break;
+                case 0x23:
+                    label = "CTRL_REG4";
+                    break;
+                case 0x24:
+                    label = "CTRL_REG5";
+                    break;
+                case 0x25:
+                    label = "CTRL_REG6";
+                    break;
+                case 0x26:
+                    label = "REFERENCE";
+                    break;
                 case 0x27:
                     label = "STATUS_REG2";
                     break;
@@ -969,6 +1126,30 @@ class Accelerometer extends I2cDevice
                     break;
                 case 0x29:
                     label = "OUT_X_H";
+                    break;
+                case 0x2A:
+                    label = "OUT_Y_L";
+                    break;
+                case 0x2B:
+                    label = "OUT_Y_H";
+                    break;
+                case 0x2C:
+                    label = "OUT_Z_L";
+                    break;
+                case 0x2D:
+                    label = "OUT_Z_H";
+                    break;
+                case 0x30:
+                    label = "INT1_CFG";
+                    break;
+                case 0x31:
+                    label = "INT1_SOURCE";
+                    break;
+                case 0x32:
+                    label = "INT1_THS";
+                    break;
+                case 0x33:
+                    label = "INT1_DURATION";
                     break;
                 default:
                     label = "";
@@ -1121,7 +1302,7 @@ function init()
     const cAddrAccelerometer = 0x18;
 
     // IO expander pin assignments
-    const cIoPinAccelerometerInt = 0; //TODO
+    const cIoPinAccelerometerInt = 0;
     const cIoPinChargeStatus = 1;
     const cIoPinButton =  2;
     const cIoPin3v3Switch =  4;
@@ -1152,7 +1333,8 @@ function init()
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
 
     // Accelerometer config
-    hwAccelerometer <- Accelerometer(I2C_89, cAddrAccelerometer);
+    hwAccelerometer <- Accelerometer(I2C_89, cAddrAccelerometer, 
+                                     cIoPinAccelerometerInt, cAddrIoExpander);
 
     // Create our timers
     gButtonTimer <- CancellableTimer(cButtonTimeout, 
@@ -1164,6 +1346,7 @@ function init()
                 hwPiezo.playSound("sleep", false /*async*/);
                 // TODO: finalize sleep power savings code
                 sw3v3.disable();
+                // TODO: do I need to check for or clear any interrupts? 
                 server.sleepfor(cDeepSleepDuration); 
             });
 
@@ -1182,14 +1365,7 @@ function init()
 // main
 init();
 
-// If we booted with the button held down, we are most likely
-// woken up by the button, so go directly to button handling.  
-// TODO HWDEBUG Does this work when button held down, w/ new HW?
-hwButton.handleInterrupt();
+// We only wake due to an interrupt or after power loss.  If the 
+// former, we need to handle any pending interrupts. 
+hwButton.handlePin1Int();
 
-//DEBUG TODO remove
-function checkMem()
-{
-    server.log(format("Free memory: %d bytes", imp.getmemoryfree()));
-};
-imp.wakeup(1, checkMem);
