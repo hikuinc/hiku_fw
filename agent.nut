@@ -1,38 +1,85 @@
 // Copyright 2013 Katmandu Technology, Inc. All rights reserved. Confidential.
 
 
-// Global containing the audio data for the current session.  Resized as 
-// new buffers come in.  
-gAudioBuffer <- blob(0);
-gChunkCount <- 0;
+server.log(format("Agent started, external URL=%s", http.agenturl()));
 
+
+gAudioBuffer <- blob(0); // Contains the audio data for the current 
+                         // session.  Resized as new buffers come in.  
+gChunkCount <- 0;        // Used to verify that we got the # we expected
+gImpeeIdResponses <- []; // Table of responses to the getImpeeId request
+
+
+//======================================================================
+// Beep handling 
 
 //**********************************************************************
 // Send the barcode to hiku's server
-function sendToBeepIt(data)
+function sendBeepToHikuServer(data)
 {
-    // Error checking (TODO: improve)
-    if (!"scandata" in data)
+    local disableSendToServer = false;
+    //disableSendToServer = true;
+    if (disableSendToServer)
     {
-        agentLog("Error: no barcode data to send");
+        agentLog("(sending to hiku server not enabled)");
+        return;
+    }
+    
+    local useOldFormat = false;
+    //useOldFormat = true;
+    // If using the original Hiku server, enable this
+    if (useOldFormat)
+    {
+        // Build the packet to the original Hiku server specs
+        local rawData = "BeepIt=00.01\n";
+        foreach (k, v in data)
+            rawData += k.tostring() + "=" + v.tostring() + "\n";
+        rawData = http.urlencode({rawData=rawData});
+
+        // Send the packet to our server
+        local res = http.post(
+                "http://www.beepit.us/prod/cgi-bin/readRawDeviceData.py",
+                {"Content-Type": "application/x-www-form-urlencoded", 
+                "Accept": "text/plain"}, 
+                rawData).sendsync();
+
+        // Check response status code
+        if (res.statuscode != 200)
+        {
+            agentLog(format("Error: got status code %d, expected 200", 
+                        res.statuscode));
+        }
+        else
+        {
+            agentLog("Barcode accepted by hiku server");
+        }
+
+        device.send("uploadCompleted", "success");
         return;
     }
 
-    // Build the packet to the current specs
-    local rawData = "BeepIt=00.01\n";
-    foreach (k, v in data)
-        rawData += k.tostring() + "=" + v.tostring() + "\n";
-    rawData = http.urlencode({rawData=rawData});
+    // Encode the audio data as base64, then URL-encode everything
+    data.audiodata = http.base64encode(data.audiodata);
+    data = http.urlencode(data);
 
-    // Send the packet to our server
-    // TODO: verify the headers, consider using sendasync()
-    local res = http.post(
-            "http://www.beepit.us/prod/cgi-bin/readRawDeviceData.py",
-            {"Content-type": "application/x-www-form-urlencoded", 
-            "Accept": "text/plain"}, 
-            rawData).sendsync();
+    // DEBUG REMOVE
+    agentLog(data);
 
-    // Check response status code
+    // Create and send the request
+    local req = http.post(
+            //"http://bobert.net:4444", 
+            "http://srv2.hiku.us/scanner_1/imp_beep",
+            {"Content-Type": "application/x-www-form-urlencoded", 
+            "Accept": "application/json"}, 
+            data);
+    // TODO: if the server is down, this will block all other events
+    // until it times out.  Events seem to be queued on the server 
+    // with no ill effects.  They do not block the device.  Move 
+    // to async? 
+    local res = req.sendsync();
+
+    // Handle the response
+    agentLog(res.body);
     if (res.statuscode != 200)
     {
         agentLog(format("Error: got status code %d, expected 200", 
@@ -40,8 +87,12 @@ function sendToBeepIt(data)
     }
     else
     {
-        agentLog("Barcode accepted by hiku server");
+        agentLog("200 response from hiku server");
     }
+
+    // Tell the device we are finished
+    // TODO: send back proper errors
+    device.send("uploadCompleted", "success");
 }
 
 
@@ -49,29 +100,9 @@ function sendToBeepIt(data)
 // Receive and send out the beep packet
 device.on(("uploadBeep"), function(data) {
     //agentLog("in uploadBeep");
+    agentLog(format("Barcode received: %s", data.scandata));
 
-    if (!data.scandata)
-    {
-        agentLog("Failed to receive barcode");
-        device.send("uploadCompleted", "failure");
-    }
-    else
-    {
-        agentLog(format("Barcode received: %s", data.scandata));
-        local enableHikuServer = true;
-
-        // TODO: disabled for bring-up
-        //enableHikuServer = false;
-        if (enableHikuServer)
-        {
-            sendToBeepIt(data);  
-        }
-        else
-        {
-            agentLog("(sending to hiku server not enabled)");
-        }
-        device.send("uploadCompleted", "success");
-    }
+    sendBeepToHikuServer(data);  
 });
 
 
@@ -112,10 +143,6 @@ device.on(("endAudioUpload"), function(numChunksTotal) {
     local req = http.post("http://bobert.net:4444", 
                          {"Content-Type": "application/octet-stream"}, 
                          http.base64encode(gAudioBuffer));
-    // TODO: if the server is down, this will block all other events
-    // until it times out.  Events seem to be queued on the server 
-    // with no ill effects.  They do not block the device.  Move 
-    // to async? 
     local res = req.sendsync();
 
     if (res.statuscode != 200)
@@ -146,10 +173,39 @@ device.on(("uploadAudioChunk"), function(data) {
 });
 
 
-//**********************************************************************
-// Utility Functions
-//**********************************************************************
+//======================================================================
+// External HTTP request handling
 
+//**********************************************************************
+// Handle incoming requests to my external agent URL.  
+// Responses are queued and serviced when the device responds. 
+// TODO: support multiple response types in the queue. Also right now
+// it assumes the same response for all requests of the same type. 
+http.onrequest(function (request, res)
+{
+    // Handle supported requests
+    if (request.path == "/getImpeeId") {
+        gImpeeIdResponses.push(res);
+        device.send("request", "getImpeeId");
+    } else {
+      server.log(format("AGENT Error: unexpected path %s", request.path));
+      res.send(400, format("unexpected path %s", request.path));
+  }
+});
+
+
+//**********************************************************************
+// Receive impee ID from the device and send to the external requestor 
+device.on(("impeeId"), function(id) {
+    foreach(res in gImpeeIdResponses) {
+        res.send(200, id);
+    }
+    gImpeeIdResponses = [];
+});
+
+
+//======================================================================
+// Utility Functions
 
 //**********************************************************************
 // Print all ServerRequest fields 
@@ -175,19 +231,23 @@ function agentLog(str)
 
 //**********************************************************************
 // Print the contents of a table
-function dumpTable(data)
+function dumpTable(data, prefix="")
 {
     foreach (k, v in data)
     {
         if (typeof v == "table")
         {
-            agentLog(">>>");
-            dumpTable(v);
-            agentLog("<<<");
+            agentLog(prefix + k.tostring() + " {");
+            dumpTable(v, prefix+"-");
+            agentLog(prefix + "}");
         }
         else
         {
-            agentLog(k.tostring() + "=" + v.tostring());
+            if (v == null)
+            {
+                v = "(null)"
+            }
+            agentLog(prefix + k.tostring() + "=" + v.tostring());
         }
     }
 }

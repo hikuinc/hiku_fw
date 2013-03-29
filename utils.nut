@@ -91,21 +91,26 @@ function dumpBlob(data)
     }
 }
 
+
 //**********************************************************************
 // Print the contents of a table
-function dumpTable(data)
+function dumpTable(data, prefix="")
 {
     foreach (k, v in data)
     {
         if (typeof v == "table")
         {
-            agentLog(">>>");
-            dumpTable(v);
-            agentLog("<<<");
+            agentLog(prefix + k.tostring() + " {");
+            dumpTable(v, prefix+"-");
+            agentLog(prefix + "}");
         }
         else
         {
-            agentLog(k.tostring() + "=" + v.tostring());
+            if (v == null)
+            {
+                v = "(null)"
+            }
+            agentLog(prefix + k.tostring() + "=" + v.tostring());
         }
     }
 }

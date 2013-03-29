@@ -703,8 +703,9 @@ class Scanner extends IoExpanderDevice
                     agent.send("uploadBeep", {scandata=scannerOutput,
                                               scansize=scannerOutput.len(),
                                               serial=hardware.getimpeeid(),
-                                              instance=0, 
                                               fw_version=cFirmwareVersion,
+                                              linkedrecord="",
+                                              audiodata="",
                                               });
                     
                     // Stop collecting data
@@ -1243,6 +1244,17 @@ function samplerCallback(buffer, length)
 
 //======================================================================
 // Utilities
+
+//**********************************************************************
+// Agent callback: handle external requests
+agent.on(("request"), function(request) {
+    if (request == "getImpeeId") {
+        agent.send("impeeId", hardware.getimpeeid());
+    } else {
+        server.log(format("Unknown external request %s", request));
+    }
+});
+
 
 //**********************************************************************
 // Temporary function to catch dumb mistakes
