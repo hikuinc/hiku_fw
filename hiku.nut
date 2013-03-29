@@ -858,7 +858,7 @@ class PushButton extends IoExpanderDevice
 
 //======================================================================
 // Charge status pin
-/* TODO MEMORY: 
+/* TODO MEMORY USAGE NOTES: 
   Before adding charger IoExpander class: 24400 bytes 
   After adding class: 24200 to 24224 bytes (200 delta)
   After making ChargeStatus subclass: 20904 to 20928 bytes (3,496 delta)
@@ -1025,6 +1025,8 @@ class Accelerometer extends I2cDevice
 
         // TODO: Tune the threshold.  Higher numbers seem more sensitive?
         write(0x32, 0xFF); // INT1_THS: Threshold
+        //write(0x32, 0xAE); // INT1_THS: Threshold
+        //write(0x32, 0x10); // INT1_THS: Threshold
 
         write(0x33, 0x00); // INT1_DURATION: any duration
 
@@ -1045,8 +1047,7 @@ class Accelerometer extends I2cDevice
         read(0x31); // Clear the accel interrupt by reading INT1_SRC
     }
 
-    // TODO do we want to reset the sleep timer here? 
-    // TODO or do we want to disable accel ints after wake, until sleep?
+    // TODO do we want to disable accel ints after wake, until sleep?
     function handleAccelInt() 
     {
         server.log("Accelerometer interrupt triggered");
@@ -1356,10 +1357,8 @@ function init()
     gDeepSleepTimer <- CancellableTimer(cDelayBeforeDeepSleep,
             function() {
                 hwPiezo.playSound("sleep", false /*async*/);
-                // TODO: finalize sleep power savings code
                 sw3v3.disable();
                 hwScanner.disable();
-                // TODO: do I need to check for or clear any interrupts? 
                 hwButton.handlePin1Int(); // TODO: does this help? 
                 imp.onidle(function() {server.sleepfor(cDeepSleepDuration);});
             });
