@@ -700,13 +700,14 @@ class Scanner extends IoExpanderDevice
 
                     //server.log("Code: \"" + scannerOutput + "\" (" + 
                                //scannerOutput.len() + " chars)");
-                    agent.send("uploadBeep", {scandata=scannerOutput,
+                    agent.send("uploadBeep", {
+                                              scandata=scannerOutput,
                                               scansize=scannerOutput.len(),
                                               serial=hardware.getimpeeid(),
                                               fw_version=cFirmwareVersion,
                                               linkedrecord="",
                                               audiodata="",
-                                              });
+                                             });
                     
                     // Stop collecting data
                     stopScanRecord();
@@ -1210,7 +1211,14 @@ function notifyAudioUploadComplete()
     }
     else
     {
-        agent.send("endAudioUpload", gAudioChunkCount);
+        agent.send("endAudioUpload", {
+                                      scandata="",
+                                      serial=hardware.getimpeeid(),
+                                      fw_version=cFirmwareVersion,
+                                      linkedrecord="",
+                                      audiodata="", // added by agent
+                                      scansize=gAudioChunkCount, 
+                                     });
     }
 }
 

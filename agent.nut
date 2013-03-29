@@ -58,8 +58,15 @@ function sendBeepToHikuServer(data)
         return;
     }
 
-    // Encode the audio data as base64, then URL-encode everything
-    data.audiodata = http.base64encode(data.audiodata);
+    // If audio packet, encode the audio data as base64, and store the size. 
+    // The "scansize" parameter is applicable for both audio and barcodes. 
+    if (data.scandata == "")
+    {
+        data.audiodata = http.base64encode(gAudioBuffer);
+        data.scansize = data.audiodata.len();
+    }
+        
+    // URL-encode the whole thing
     data = http.urlencode(data);
 
     // DEBUG REMOVE
@@ -99,9 +106,6 @@ function sendBeepToHikuServer(data)
 //**********************************************************************
 // Receive and send out the beep packet
 device.on(("uploadBeep"), function(data) {
-    //agentLog("in uploadBeep");
-    agentLog(format("Barcode received: %s", data.scandata));
-
     sendBeepToHikuServer(data);  
 });
 
@@ -119,11 +123,8 @@ device.on(("startAudioUpload"), function(data) {
 
 //**********************************************************************
 // Send complete audio sample to the server
-device.on(("endAudioUpload"), function(numChunksTotal) {
+device.on(("endAudioUpload"), function(data) {
     //agentLog("in endAudioUpload");
-
-    // For now, we assume we have all the data, and responsibility 
-    // for ensuring this is on the device. 
 
     // If  no audio data, just exit
     if (gAudioBuffer.len() == 0)
@@ -132,30 +133,44 @@ device.on(("endAudioUpload"), function(numChunksTotal) {
         return;
     }
 
-    if (gChunkCount != numChunksTotal)
+    if (gChunkCount != data.scansize)
     {
-        server.log(format("ERROR: expected %d chunks, got %d"), 
-                   numChunksTotal, gChunkCount);
+        agentLog(format("ERROR: expected %d chunks, got %d", 
+                   data.scansize, gChunkCount));
     }
-    
-    // Send audio to server
-    agentLog(format("Audio ready to send. Size=%d", gAudioBuffer.len()));
-    local req = http.post("http://bobert.net:4444", 
-                         {"Content-Type": "application/octet-stream"}, 
-                         http.base64encode(gAudioBuffer));
-    local res = req.sendsync();
 
-    if (res.statuscode != 200)
+    if (data.scandata != "")
     {
-        agentLog("An error occurred:");
-        agentLog(format("statuscode=%d", res.statuscode));
-        device.send("uploadCompleted", "failure");
+        agentLog("Error: found barcode when expected only audio data");
     }
-    else
+
+    local useOldFormat = false;
+    //useOldFormat = true;
+    if (useOldFormat)
     {
-        agentLog("Audio sent to server.");
-        device.send("uploadCompleted", "success");
+        // Send audio to server
+        agentLog(format("Audio ready to send. Size=%d", gAudioBuffer.len()));
+        local req = http.post("http://bobert.net:4444", 
+                             {"Content-Type": "application/octet-stream"}, 
+                             http.base64encode(gAudioBuffer));
+        local res = req.sendsync();
+
+        if (res.statuscode != 200)
+        {
+            agentLog("An error occurred:");
+            agentLog(format("statuscode=%d", res.statuscode));
+            device.send("uploadCompleted", "failure");
+        }
+        else
+        {
+            agentLog("Audio sent to server.");
+            device.send("uploadCompleted", "success");
+        }
+
+        return;
     }
+
+    sendBeepToHikuServer(data);  
 });
 
 
@@ -188,7 +203,7 @@ http.onrequest(function (request, res)
         gImpeeIdResponses.push(res);
         device.send("request", "getImpeeId");
     } else {
-      server.log(format("AGENT Error: unexpected path %s", request.path));
+      agentLog(format("AGENT Error: unexpected path %s", request.path));
       res.send(400, format("unexpected path %s", request.path));
   }
 });
