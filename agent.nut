@@ -6,7 +6,13 @@ server.log(format("Agent started, external URL=%s", http.agenturl()));
 
 gAudioBuffer <- blob(0); // Contains the audio data for the current 
                          // session.  Resized as new buffers come in.  
-gChunkCount <- 0;        // Used to verify that we got the # we expected
+gChunkCount <- 0; // Used to verify that we got the # we expected
+gLinkedRecord <- ""; // Used to link unknown UPCs to audio records. 
+                     // We will set this when we get a request to do
+                     // so from the server, then clear it after we 
+                     // send the next audio beep, after next barcode, 
+                     // or after a timeout
+gLinkedRecordTimeout <- null; // Will clear gLinkedRecord after this time
 gImpeeIdResponses <- []; // Table of responses to the getImpeeId request
 
 
@@ -25,6 +31,7 @@ function sendBeepToHikuServer(data)
         return;
     }
     
+    /*
     local useOldFormat = false;
     //useOldFormat = true;
     // If using the original Hiku server, enable this
@@ -57,22 +64,32 @@ function sendBeepToHikuServer(data)
         device.send("uploadCompleted", "success");
         return;
     }
+    */
 
-    // If audio packet, encode the audio data as base64, and store the size. 
-    // The "scansize" parameter is applicable for both audio and barcodes. 
+    // Special handling for audio beeps 
     if (data.scandata == "")
     {
+        // Encode the audio data as base64, and store the size. The 
+        // "scansize" parameter is applicable for both audio and barcodes. 
         data.audiodata = http.base64encode(gAudioBuffer);
         data.scansize = data.audiodata.len();
+
+        // If not expired, attach the current linkedrecord (usually 
+        // blank). Then reset the global. 
+        if (gLinkedRecordTimeout && time() < gLinkedRecordTimeout)
+        {
+            data.linkedrecord = gLinkedRecord;
+        }
+        gLinkedRecord = ""; 
+        gLinkedRecordTimeout = null;
     }
         
     // URL-encode the whole thing
     data = http.urlencode(data);
-
-    // DEBUG REMOVE
-    agentLog(data);
+    //agentLog(data);
 
     // Create and send the request
+    agentLog("Sending beep to server...");
     local req = http.post(
             //"http://bobert.net:4444", 
             "http://srv2.hiku.us/scanner_1/imp_beep",
@@ -86,26 +103,68 @@ function sendBeepToHikuServer(data)
     local res = req.sendsync();
 
     // Handle the response
-    agentLog(res.body);
+    local returnString = "success";
+
     if (res.statuscode != 200)
     {
+        returnString = "failure"
         agentLog(format("Error: got status code %d, expected 200", 
                     res.statuscode));
     }
     else
     {
-        agentLog("200 response from hiku server");
+        // TODO DEBUG remove
+        agentLog(res.body);
+
+        // Parse the response (in JSON format)
+        local body = http.jsondecode(res.body);
+
+        try 
+        {
+            // Handle the various non-OK responses.  Nothing to do for "ok". 
+            if (body.status != "ok")
+            {
+                // Possible causes: speech2text failure, unknown.
+                if ("error" in body.cause)
+                {
+                    returnString = "failure";
+                    agentLog(format("Error: server responded with %s", 
+                                         body.cause.error));
+                }
+                // Possible causes: unknown UPC code
+                else if ("linkedrecord" in body.cause)
+                {
+                    gLinkedRecord = body.cause.linkedrecord;
+                    gLinkedRecordTimeout = time()+10; // in seconds
+                    returnString = "unknown-upc";
+                    agentLog("Error: unknown UPC code");
+                }
+                // Unknown response type
+                else
+                {
+                    returnString = "failure";
+                    agentLog("Error: unexpected cause in response");
+                }
+            }
+        }
+        catch(e)
+        {
+            server.log(format("Caught exception: %s", e));
+            returnString = "failure";
+            agentLog("Error: malformed response");
+        }
     }
 
-    // Tell the device we are finished
-    // TODO: send back proper errors
-    device.send("uploadCompleted", "success");
+    // Return status to device
+    device.send("uploadCompleted", returnString);
 }
 
 
 //**********************************************************************
 // Receive and send out the beep packet
 device.on(("uploadBeep"), function(data) {
+    gLinkedRecord = "";  // Clear on next (i.e. this) barcode scan
+    gLinkedRecordTimeout = null;
     sendBeepToHikuServer(data);  
 });
 
@@ -144,9 +203,9 @@ device.on(("endAudioUpload"), function(data) {
         agentLog("Error: found barcode when expected only audio data");
     }
 
-    local useOldFormat = false;
-    //useOldFormat = true;
-    if (useOldFormat)
+    local sendToDebugServer = false;
+    //sendToDebugServer = true;
+    if (sendToDebugServer)
     {
         // Send audio to server
         agentLog(format("Audio ready to send. Size=%d", gAudioBuffer.len()));

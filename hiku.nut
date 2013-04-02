@@ -80,6 +80,9 @@ class Piezo
         tonesParamsList = {
             // [[period, duty cycle, duration], ...]
             "success": [[noteE5, dc, longTone], [noteE6, dc, shortTone]],
+            "unknown-upc": [[noteB4, dc, shortTone], [noteB4, 0, shortTone], 
+            [noteB4, dc, shortTone], [noteB4, 0, shortTone], 
+            [noteB4, dc, shortTone], [noteB4, 0, shortTone]],
             "failure": [[noteB4, dc, shortTone], [noteB4, 0, shortTone], 
             [noteB4, dc, shortTone], [noteB4, 0, shortTone], 
             [noteB4, dc, shortTone], [noteB4, 0, shortTone]],
