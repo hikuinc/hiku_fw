@@ -100,7 +100,11 @@ function sendBeepToHikuServer(data)
     // until it times out.  Events seem to be queued on the server 
     // with no ill effects.  They do not block the device.  Move 
     // to async? 
-    local res = req.sendsync();
+    local res;
+    local transactionTime = time();
+    res = req.sendsync();
+    transactionTime = time() - transactionTime;
+    server.log(format("Server transaction time: %ds", transactionTime));
 
     // Handle the response
     local returnString = "success";
