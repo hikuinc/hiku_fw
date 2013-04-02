@@ -5,6 +5,7 @@
 const cFirmwareVersion = "0.5.0"
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 10.0;  // in seconds
+//const cDelayBeforeDeepSleep = 3600.0;  // in seconds
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
 
 enum DeviceState
@@ -80,10 +81,8 @@ class Piezo
         tonesParamsList = {
             // [[period, duty cycle, duration], ...]
             "success": [[noteE5, dc, longTone], [noteE6, dc, shortTone]],
+            "failure": [/*silence*/],
             "unknown-upc": [[noteB4, dc, shortTone], [noteB4, 0, shortTone], 
-            [noteB4, dc, shortTone], [noteB4, 0, shortTone], 
-            [noteB4, dc, shortTone], [noteB4, 0, shortTone]],
-            "failure": [[noteB4, dc, shortTone], [noteB4, 0, shortTone], 
             [noteB4, dc, shortTone], [noteB4, 0, shortTone], 
             [noteB4, dc, shortTone], [noteB4, 0, shortTone]],
             "timeout": [[noteB4, dc, shortTone], [noteB4, 0, shortTone], 
@@ -106,7 +105,14 @@ class Piezo
         // Handle invalid tone values
         if (!(tone in tonesParamsList))
         {
-            server.log("Error: unknown tone");
+            server.log(format("Error: unknown tone \"%s\"", tone));
+            return;
+        }
+
+        // Handle "silent" tones
+        if (tonesParamsList[tone].len() == 0)
+        {
+            server.log("(silent tone, skipping)");
             return;
         }
 
@@ -1393,7 +1399,7 @@ function init()
     printStartupDebugInfo();
 
     // Initialization complete notification
-    hwPiezo.playSound("startup\x00"); 
+    hwPiezo.playSound("startup"); 
 }
 
 
