@@ -275,6 +275,9 @@ class I2cDevice
             server.log(format("Error: invalid I2C port specified: %c", port));
         }
 
+        // Use the fastest supported clock speed
+        i2cPort.configure(CLOCK_SPEED_400_KHZ);
+
         // Takes a 7-bit I2C address
         i2cAddress = address << 1;
     }
