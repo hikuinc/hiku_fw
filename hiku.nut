@@ -1193,7 +1193,7 @@ class Accelerometer extends I2cDevice
 
 //**********************************************************************
 // Agent callback: upload complete
-agent.on(("uploadCompleted"), function(result) {
+agent.on("uploadCompleted", function(result) {
     //server.log(format("in agent.on uploadCompleted, result=%s", result));
     hwPiezo.playSound(result);
 });
@@ -1266,15 +1266,6 @@ function samplerCallback(buffer, length)
 // Utilities
 
 //**********************************************************************
-// Agent callback: handle external requests
-agent.on(("request"), function(request) {
-    if (request == "getImpeeId") {
-        agent.send("impeeId", hardware.getimpeeid());
-    } else {
-        server.log(format("Unknown external request %s", request));
-    }
-});
-
 
 //**********************************************************************
 // Temporary function to catch dumb mistakes
@@ -1394,6 +1385,9 @@ function init()
                 hwButton.handlePin1Int(); // TODO: does this help? 
                 imp.onidle(function() {server.sleepfor(cDeepSleepDuration);});
             });
+
+    // Send the agent our impee ID
+    agent.send("impeeId", hardware.getimpeeid());
 
     // Transition to the idle state
     updateDeviceState(DeviceState.IDLE);

@@ -13,7 +13,8 @@ gLinkedRecord <- ""; // Used to link unknown UPCs to audio records.
                      // send the next audio beep, after next barcode, 
                      // or after a timeout
 gLinkedRecordTimeout <- null; // Will clear gLinkedRecord after this time
-gImpeeIdResponses <- []; // Table of responses to the getImpeeId request
+gImpeeId <- ""; // Cache of the impee's ID, so it is accessible whether
+                 // or not the device is awake
 
 
 //======================================================================
@@ -160,13 +161,15 @@ function sendBeepToHikuServer(data)
     }
 
     // Return status to device
+    // TODO: device.send will be dropped if response took so long that 
+    // the device went back to sleep.  Handle that? 
     device.send("uploadCompleted", returnString);
 }
 
 
 //**********************************************************************
 // Receive and send out the beep packet
-device.on(("uploadBeep"), function(data) {
+device.on("uploadBeep", function(data) {
     gLinkedRecord = "";  // Clear on next (i.e. this) barcode scan
     gLinkedRecordTimeout = null;
     sendBeepToHikuServer(data);  
@@ -175,7 +178,7 @@ device.on(("uploadBeep"), function(data) {
 
 //**********************************************************************
 // Prepare to receive audio from the device
-device.on(("startAudioUpload"), function(data) {
+device.on("startAudioUpload", function(data) {
     //agentLog("in startAudioUpload");
 
     // Reset our audio buffer
@@ -186,7 +189,7 @@ device.on(("startAudioUpload"), function(data) {
 
 //**********************************************************************
 // Send complete audio sample to the server
-device.on(("endAudioUpload"), function(data) {
+device.on("endAudioUpload", function(data) {
     //agentLog("in endAudioUpload");
 
     // If  no audio data, just exit
@@ -239,7 +242,7 @@ device.on(("endAudioUpload"), function(data) {
 
 //**********************************************************************
 // Handle an audio buffer from the device
-device.on(("uploadAudioChunk"), function(data) {
+device.on("uploadAudioChunk", function(data) {
     //agentLog(format("in device.on uploadAudioChunk"));
     //agentLog(format("chunk length=%d", data.length));
     //dumpBlob(data.buffer);
@@ -263,22 +266,18 @@ http.onrequest(function (request, res)
 {
     // Handle supported requests
     if (request.path == "/getImpeeId") {
-        gImpeeIdResponses.push(res);
-        device.send("request", "getImpeeId");
+        res.send(200, gImpeeId);
     } else {
-      agentLog(format("AGENT Error: unexpected path %s", request.path));
-      res.send(400, format("unexpected path %s", request.path));
+        agentLog(format("AGENT Error: unexpected path %s", request.path));
+        res.send(400, format("unexpected path %s", request.path));
   }
 });
 
 
 //**********************************************************************
 // Receive impee ID from the device and send to the external requestor 
-device.on(("impeeId"), function(id) {
-    foreach(res in gImpeeIdResponses) {
-        res.send(200, id);
-    }
-    gImpeeIdResponses = [];
+device.on("impeeId", function(id) {
+    gImpeeId = id;
 });
 
 
