@@ -78,6 +78,7 @@ class Piezo
         pin.configure(DIGITAL_OUT);
         pin.write(0); // Turn off piezo by default
 
+        // TODO: remove tones for sleep and startup, unless debugging
         tonesParamsList = {
             // [[period, duty cycle, duration], ...]
             "success": [[noteE5, dc, longTone], [noteE6, dc, shortTone]],
@@ -85,9 +86,7 @@ class Piezo
             "unknown-upc": [[noteB4, dc, shortTone], [noteB4, 0, shortTone], 
             [noteB4, dc, shortTone], [noteB4, 0, shortTone], 
             [noteB4, dc, shortTone], [noteB4, 0, shortTone]],
-            "timeout": [[noteB4, dc, shortTone], [noteB4, 0, shortTone], 
-            [noteB4, dc, shortTone], [noteB4, 0, shortTone], 
-            [noteB4, dc, shortTone], [noteB4, 0, shortTone]],
+            "timeout": [/*silence*/],
             "sleep":   [[noteE5, dc, longTone], [noteB4, dc, shortTone]],
             "startup": [[noteB4, dc, longTone], [noteE5, dc, shortTone]],
         };
