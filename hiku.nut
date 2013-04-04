@@ -687,14 +687,9 @@ class Scanner extends IoExpanderDevice
     // Stop the scanner and sampler
     // Note: this function may be called multiple times in a row, so
     // it must support that. 
-    // Note that we have two uses of imp.onidle(), one during the IDLE 
-    // state and one when not idle.  They must be kept separate, as only
-    // one onidle callback is supported at a time. 
     function stopScanRecord()
     {
         // Stop mic recording
-        gSamplerStopping = true;
-        imp.onidle(sendLastBuffer); 
         hardware.sampler.stop();
 
         // Release scanner trigger
@@ -860,6 +855,16 @@ class PushButton extends IoExpanderDevice
                     if (oldState == DeviceState.SCAN_RECORD)
                     {
                         // Audio captured. Stop sampling and send it. 
+                        // Note that we only call sendLastBuffer in
+                        // the case that we want to capture the audio, 
+                        // so it cannot be inside stopScanRecord, which 
+                        // is called in multiple places. 
+                        // We have two uses of imp.onidle(), one during 
+                        // the IDLE state and one when not idle.  They 
+                        // must be kept separate, as only one onidle 
+                        // callback is supported at a time. 
+                        gSamplerStopping = true;
+                        imp.onidle(sendLastBuffer); 
                         hwScanner.stopScanRecord();
                     }
                     // No more work to do, so go to idle
