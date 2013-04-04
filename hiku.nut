@@ -33,6 +33,11 @@ gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
 gAudioBufferSize <- 1000; // Size of each audio buffer 
 gAudioSampleRate <- 16000; // in Hz
 
+// Workaround to capture last buffer after sampler is stopped
+gSamplerStopping <- false; 
+gLastSamplerBuffer <- null; 
+gLastSamplerBufLen <- 0; 
+
 // TODO: get rid of this
 gPin1HandlerSet <- false;
 
@@ -664,12 +669,33 @@ class Scanner extends IoExpanderDevice
     }
 
     //**********************************************************************
+    // Start the scanner and sampler
+    function startScanRecord() 
+    {
+        // Trigger the scanner
+        hwScanner.trigger(true);
+
+        // Trigger the mic recording
+        gAudioBufferOverran = false;
+        gAudioChunkCount = 0;
+        gLastSamplerBuffer = null; 
+        gLastSamplerBufLen = 0; 
+        agent.send("startAudioUpload", "");
+        hardware.sampler.start();
+    }
+
+    //**********************************************************************
     // Stop the scanner and sampler
     // Note: this function may be called multiple times in a row, so
     // it must support that. 
+    // Note that we have two uses of imp.onidle(), one during the IDLE 
+    // state and one when not idle.  They must be kept separate, as only
+    // one onidle callback is supported at a time. 
     function stopScanRecord()
     {
         // Stop mic recording
+        gSamplerStopping = true;
+        imp.onidle(sendLastBuffer); 
         hardware.sampler.stop();
 
         // Release scanner trigger
@@ -819,14 +845,7 @@ class PushButton extends IoExpanderDevice
                     buttonState = ButtonState.BUTTON_DOWN;
                     server.log("Button state change: DOWN");
 
-                    // Trigger the scanner
-                    hwScanner.trigger(true);
-
-                    // Trigger the mic recording
-                    gAudioBufferOverran = false;
-                    gAudioChunkCount = 0;
-                    agent.send("startAudioUpload", "");
-                    hardware.sampler.start();
+                    hwScanner.startScanRecord();
                 }
                 break;
             case numSamples:
@@ -841,20 +860,8 @@ class PushButton extends IoExpanderDevice
 
                     if (oldState == DeviceState.SCAN_RECORD)
                     {
-                        // Audio captured. Validate and send it
-
-                        // Stop collecting data
+                        // Audio captured. Stop sampling and send it. 
                         hwScanner.stopScanRecord();
-
-                        // Tell the server we are done uploading data. We
-                        // first wait in case one more chunk comes in. 
-                        // Right now we wait an arbitrary amount of
-                        // time (the time it takes one buffer to fill). 
-                        // That really doesn't make sense, but there is no 
-                        // deterministic method. Filed an issue with EI 
-                        // here: http://forums.electricimp.com/discussion/781
-                        imp.wakeup(gAudioBufferSize/gAudioSampleRate, 
-                                   notifyAudioUploadComplete);
                     }
                     // No more work to do, so go to idle
                     updateDeviceState(DeviceState.IDLE);
@@ -1193,44 +1200,42 @@ class Accelerometer extends I2cDevice
 //**********************************************************************
 // Agent callback: upload complete
 agent.on("uploadCompleted", function(result) {
-    //server.log(format("in agent.on uploadCompleted, result=%s", result));
     hwPiezo.playSound(result);
 });
 
 
 //**********************************************************************
-// Tell the server that we are done uploading audio.  This function
-// should be called a bit after sampler.stop(), to wait for the last
-// chunk to arrive. 
-function notifyAudioUploadComplete()
+// Process the last buffer, if any, and tell the agent we are done. 
+// This function is called after sampler.stop in a way that 
+// ensures we have captured all sampled buffers. 
+function sendLastBuffer()
 {
-    // If there are less than x secs of audio, abandon it
-    local secs = gAudioChunkCount*gAudioBufferSize/
-                       gAudioSampleRate.tofloat();
-    //server.log(format("Captured %0.2f secs of audio in %d chunks", 
-    //             secs, gAudioChunkCount));
-    if (secs < 0.4) 
+    // Send the last chunk to the server, if there is one
+    if (gLastSamplerBuffer != null && gLastSamplerBufLen > 0)
     {
-        return;
+        agent.send("uploadAudioChunk", {buffer=gLastSamplerBuffer, 
+                   length=gLastSamplerBufLen});
     }
 
-    // If we have bad data, abandon it and play error tone.  Else tell 
-    // the server we are done uploading chunks. 
-    if (gAudioBufferOverran)
-    {
-        hwPiezo.playSound("failure");
-    }
-    else
+    // If there are less than x secs of audio or we had a buffer
+    // overrun, abandon the recording. Else send the beep!
+    local secs = gAudioChunkCount*gAudioBufferSize/
+                       gAudioSampleRate.tofloat();
+
+    if (secs >= 0.4 && !gAudioBufferOverran)
     {
         agent.send("endAudioUpload", {
                                       scandata="",
                                       serial=hardware.getimpeeid(),
                                       fw_version=cFirmwareVersion,
                                       linkedrecord="",
-                                      audiodata="", // added by agent
+                                      audiodata="", // to be added by agent
                                       scansize=gAudioChunkCount, 
                                      });
     }
+
+    // We have completed the process of stopping the sampler
+    gSamplerStopping = false;
 }
 
 
@@ -1239,24 +1244,36 @@ function notifyAudioUploadComplete()
 // ((sample rate * bytes per sample)/buffer size) times per second.  
 // So for 16 kHz sampling of 8-bit A law and 2000 byte buffers, 
 // it is called 8x/sec. 
+// 
+// Since A-law seems to only send full buffers, we send the whole 
+// buffer and truncate if necessary on the server side, instead 
+// of making a (possibly truncated) copy each time here. This 
+// is filed as a bug that may be fixed in the future. 
 function samplerCallback(buffer, length)
 {
     //server.log("SAMPLER CALLBACK: size " + length");
     if (length <= 0)
     {
         gAudioBufferOverran = true;
-        server.log("Audio sampler buffer overrun!!!!!!");
+        server.log("Error: audio sampler buffer overrun!!!!!!");
     }
     else 
     {
-        // Output the buffer.  Since A-law seems to only send full
-        // buffers, we send the whole buffer and truncate if necessary 
-        // on the server side, instead of making a (possibly truncated) 
-        // copy each time here. 
-        //server.log("START uploading chunk");
         gAudioChunkCount++;
-        agent.send("uploadAudioChunk", {buffer=buffer, length=length});
-        //server.log("END uploading chunk");
+        if (gSamplerStopping) {
+            if (gLastSamplerBuffer) { 
+                // It wasn't quite the last one, send normally
+                agent.send("uploadAudioChunk", {buffer=buffer, 
+                           length=length});
+            }
+            // Process last buffer later, to do special handling
+            gLastSamplerBuffer = buffer;
+            gLastSamplerBufLen = length;
+        }
+        else
+        {
+            agent.send("uploadAudioChunk", {buffer=buffer, length=length});
+        }
     }
 }
 
