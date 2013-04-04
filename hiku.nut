@@ -116,7 +116,6 @@ class Piezo
         // Handle "silent" tones
         if (tonesParamsList[tone].len() == 0)
         {
-            server.log("(silent tone, skipping)");
             return;
         }
 
