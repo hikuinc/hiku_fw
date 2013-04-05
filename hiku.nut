@@ -1389,8 +1389,9 @@ function init()
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
 
     // Accelerometer config
-    hwAccelerometer <- Accelerometer(I2C_89, cAddrAccelerometer, 
-                                     cIoPinAccelerometerInt, cAddrIoExpander);
+    // TODO: re-enable accelerometer once tuned (and pin HW issues resolved)
+    //hwAccelerometer <- Accelerometer(I2C_89, cAddrAccelerometer, 
+                                     //cIoPinAccelerometerInt, cAddrIoExpander);
 
     // Create our timers
     gButtonTimer <- CancellableTimer(cButtonTimeout, 
