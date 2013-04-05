@@ -776,8 +776,8 @@ class PushButton extends IoExpanderDevice
     pin = null; // IO expander pin assignment
     buttonState = ButtonState.BUTTON_UP; // Button current state
 
-    static numSamples = 4; // For debouncing
-    static sleepSecs = 0.003;  // For debouncing
+    static numSamples = 5; // For debouncing
+    static sleepSecs = 0.010;  // For debouncing
 
     constructor(port, address, btnPin)
     {
