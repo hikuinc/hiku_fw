@@ -32,41 +32,6 @@ function sendBeepToHikuServer(data)
         return;
     }
     
-    /*
-    local useOldFormat = false;
-    //useOldFormat = true;
-    // If using the original Hiku server, enable this
-    if (useOldFormat)
-    {
-        // Build the packet to the original Hiku server specs
-        local rawData = "BeepIt=00.01\n";
-        foreach (k, v in data)
-            rawData += k.tostring() + "=" + v.tostring() + "\n";
-        rawData = http.urlencode({rawData=rawData});
-
-        // Send the packet to our server
-        local res = http.post(
-                "http://www.beepit.us/prod/cgi-bin/readRawDeviceData.py",
-                {"Content-Type": "application/x-www-form-urlencoded", 
-                "Accept": "text/plain"}, 
-                rawData).sendsync();
-
-        // Check response status code
-        if (res.statuscode != 200)
-        {
-            agentLog(format("Error: got status code %d, expected 200", 
-                        res.statuscode));
-        }
-        else
-        {
-            agentLog("Barcode accepted by hiku server");
-        }
-
-        device.send("uploadCompleted", "success");
-        return;
-    }
-    */
-
     // Special handling for audio beeps 
     if (data.scandata == "")
     {
