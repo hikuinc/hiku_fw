@@ -181,7 +181,7 @@ device.on("endAudioUpload", function(data) {
     {
         // Send audio to server
         agentLog(format("Audio ready to send. Size=%d", gAudioBuffer.len()));
-        local req = http.post("http://bobert.net:4444", 
+        local req = http.post("http://bobert.net:4444/"+gImpeeId, 
                              {"Content-Type": "application/octet-stream"}, 
                              http.base64encode(gAudioBuffer));
         local res = req.sendsync();
