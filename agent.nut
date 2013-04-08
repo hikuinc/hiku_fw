@@ -65,7 +65,7 @@ function sendBeepToHikuServer(data)
     // TODO: if the server is down, this will block all other events
     // until it times out.  Events seem to be queued on the server 
     // with no ill effects.  They do not block the device.  Move 
-    // to async? 
+    // to async?  The timeout period (tested) seems to be 60 seconds.  
     local res;
     local transactionTime = time();
     res = req.sendsync();
