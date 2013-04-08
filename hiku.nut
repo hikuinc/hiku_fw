@@ -30,13 +30,14 @@ gDeviceState <- null; // Hiku device current state
 
 gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
-gAudioBufferSize <- 1000; // Size of each audio buffer 
+gAudioBufferSize <- 2000; // Size of each audio buffer 
 gAudioSampleRate <- 16000; // in Hz
 
 // Workaround to capture last buffer after sampler is stopped
 gSamplerStopping <- false; 
 gLastSamplerBuffer <- null; 
 gLastSamplerBufLen <- 0; 
+gAudioTimer <- 0;
 
 // TODO: get rid of this
 gPin1HandlerSet <- false;
@@ -48,7 +49,6 @@ gPin1HandlerSet <- false;
 buf1 <- blob(gAudioBufferSize);
 buf2 <- blob(gAudioBufferSize);
 buf3 <- blob(gAudioBufferSize);
-buf4 <- blob(gAudioBufferSize);
 
 
 //======================================================================
@@ -776,8 +776,11 @@ class PushButton extends IoExpanderDevice
     pin = null; // IO expander pin assignment
     buttonState = ButtonState.BUTTON_UP; // Button current state
 
+    // WARNING: increasing these can cause buffer overruns during 
+    // audio recording, because this the button debouncing on "up"
+    // happens before the audio sampler buffer is serviced. 
     static numSamples = 5; // For debouncing
-    static sleepSecs = 0.010;  // For debouncing
+    static sleepSecs = 0.004;  // For debouncing
 
     constructor(port, address, btnPin)
     {
@@ -1221,12 +1224,16 @@ function sendLastBuffer()
                    length=gLastSamplerBufLen});
     }
 
-    // If there are less than x secs of audio or we had a buffer
-    // overrun, abandon the recording. Else send the beep!
+    // If there are less than x secs of audio, abandon the 
+    // recording. Else send the beep!
     local secs = gAudioChunkCount*gAudioBufferSize/
                        gAudioSampleRate.tofloat();
 
-    if (secs >= 0.4 && !gAudioBufferOverran)
+    //Because we cannot guarantee network robustness, we allow 
+    // uploads even if an overrun occurred. Worst case it still
+    // fails to reco, and you'll get an equivalent error. 
+    //if (secs >= 0.4 && !gAudioBufferOverran)
+    if (secs >= 0.4)
     {
         agent.send("endAudioUpload", {
                                       scandata="",
@@ -1253,17 +1260,26 @@ function sendLastBuffer()
 // buffer and truncate if necessary on the server side, instead 
 // of making a (possibly truncated) copy each time here. This 
 // is filed as a bug that may be fixed in the future. 
+// 
+// Buffer overruns can be caused (and typically are) by this routine
+// taking too long.  It typically takes too long if the network is slow
+// or flakey when we upload samples.  We are robust if this callback
+// takes up to about 100ms.  Typically it should take about 3ms.  
 function samplerCallback(buffer, length)
 {
     //server.log("SAMPLER CALLBACK: size " + length");
     if (length <= 0)
     {
         gAudioBufferOverran = true;
-        server.log("Error: audio sampler buffer overrun!!!!!!");
+        server.log("Error: audio sampler buffer overrun!!!!!!, last timer="+gAudioTimer+"ms");
     }
     else 
     {
+        // Time the sending
         gAudioChunkCount++;
+        gAudioTimer = hardware.millis();
+
+        // Send the data, managing the last buffer as a special case
         if (gSamplerStopping) {
             if (gLastSamplerBuffer) { 
                 // It wasn't quite the last one, send normally
@@ -1278,6 +1294,10 @@ function samplerCallback(buffer, length)
         {
             agent.send("uploadAudioChunk", {buffer=buffer, length=length});
         }
+
+        // Finish timing the send.  See function comments for more info. 
+        gAudioTimer = hardware.millis() - gAudioTimer;
+        //server.log(gAudioTimer + "ms");
     }
 }
 
@@ -1385,7 +1405,7 @@ function init()
     // Microphone sampler config
     hwMicrophone <- hardware.pin2;
     hardware.sampler.configure(hwMicrophone, gAudioSampleRate, 
-                               [buf1, buf2, buf3, buf4], 
+                               [buf1, buf2, buf3], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
 
     // Accelerometer config
