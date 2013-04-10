@@ -162,15 +162,14 @@ class I2cDevice
     // Print all registers in a range
     function printI2cRegs(min, max)
     {
-        local s = "";
         for (local i=min; i<max+1; i++)
         {
-            s += regToString(i, label) + "\n";
+            printRegister(i, label);
         }
     }
 
     // Print register contents in hex and binary
-    function regToString(regIdx, label="")
+    function printRegister(regIdx, label="")
     {
         local reg = read(regIdx);
         local regStr = "";
@@ -191,8 +190,8 @@ class I2cDevice
             }
         }
 
-        return format("REG 0x%02X=%s (0x%02X) %s", regIdx, regStr, 
-                          reg, label);
+        server.log(format("REG 0x%02X=%s (0x%02X) %s", regIdx, regStr, 
+                          reg, label));
     }
 }
 
@@ -328,7 +327,7 @@ class IoExpanderDevice extends I2cDevice
             return;
         }
 
-        //server.log(regToString(0x0C, "INTERRUPT"));
+        //printRegister(0x0C, "INTERRUPT");
 
         // Call the interrupt handlers for all active interrupts
         for(local pin=0; pin < 8; pin++){
@@ -343,7 +342,6 @@ class IoExpanderDevice extends I2cDevice
     function printI2cRegs(min=0, max=0x10)
     {
         local label = "";
-        local s = "";
         for (local i=min; i<max+1; i++)
         {
             switch (i) {
@@ -381,9 +379,8 @@ class IoExpanderDevice extends I2cDevice
                     label = "";
                     break;
             }
-            s += regToString(i, label) + "\n";
+            printRegister(i, label);
         }
-        server.log(s);
     }
 }
 
@@ -729,11 +726,9 @@ class Accelerometer extends I2cDevice
         }
 
         // Configure and enable accelerometer and interrupt
-        //write(0x20, 0x3F); // CTRL_REG1: 25 Hz, low power mode, 
         write(0x20, 0x2F); // CTRL_REG1: 10 Hz, low power mode, 
                              // all 3 axes enabled
 
-        //write(0x21, 0x00); // CTRL_REG2: Disable high pass filtering
         write(0x21, 0x09); // CTRL_REG2: Enable high pass filtering and data
 
         enableInterrupts();
@@ -745,18 +740,13 @@ class Accelerometer extends I2cDevice
 
         // TODO: Tune the threshold.  
         // Note: maximum value is 0111 11111 (0x7F). High bit must be 0.
-        //write(0x32, 0x7F); // INT1_THS: Threshold
-        //write(0x32, 0xAE); // INT1_THS: Threshold
-        //write(0x32, 0x80); // INT1_THS: Threshold
-        //write(0x32, 0x30); // INT1_THS: Threshold
-        //write(0x32, 0x20); // INT1_THS: Threshold
         write(0x32, 0x10); // INT1_THS: Threshold
 
         write(0x33, 0x00); // INT1_DURATION: any duration
 
         // Read HP_FILTER_RESET register to set filter. See app note 
         // section 6.3.3. It sounds like this might be the REFERENCE
-        // register, 0x26
+        // register, 0x26. Commented out as I found it is not needed. 
         //read(0x26);
 
         write(0x30, 0x2A); // INT1_CFG: Enable OR interrupt for 
@@ -808,7 +798,6 @@ class Accelerometer extends I2cDevice
         disableInterrupts();
         clearAccelInterrupt();
         server.log("accel int");
-        //printOrientation();
         if(reenableInterrupts)
         {
             enableInterrupts();
@@ -822,7 +811,6 @@ class Accelerometer extends I2cDevice
         local values = [];
         local reg;
 
-        //server.log(format("Before regs: %d bytes", imp.getmemoryfree()));
         // Read the X, Y, and Z acceleration values
         for(local i = 0x28; i < 0x2E; i++)
         {
@@ -836,25 +824,20 @@ class Accelerometer extends I2cDevice
 
             values.append(reg);
         }
-        //server.log(format("Before print: %d bytes", imp.getmemoryfree()));
 
         // Log the results
-        //server.log(regToString(0x31, "INT1_SRC"));
-        //server.log(regToString(0x32, "INT1_THS"));
-        
+        //printRegister(0x31, "INT1_SRC");
+        printRegister(0x32, "INT1_THS");
         server.log(format(
                     "XH=%03d, YH=%03d, ZH=%03d, XL=%03d, YL=%03d, ZL=%03d", 
                           values[1], values[3], values[5],
                           values[0], values[2], values[4]
                          ));
-        // MEM: dropped 3kB between this memory log and the previous
-        //server.log(format("End: %d bytes", imp.getmemoryfree()));
     }
 
     // Print and label expander registers
     function printI2cRegs(min=0x07, max=0x3D)
     {
-        local s = "";
         local label = "";
         for (local i=min; i<max+1; i++)
         {
@@ -934,9 +917,8 @@ class Accelerometer extends I2cDevice
                     label = "";
                     break;
             }
-            s += regToString(i, label) + "\n";
+            printRegister(i, label);
         }
-        server.log(s);
     }
 }
 
@@ -968,7 +950,7 @@ function init()
     // 3v3 accessory switch config
     sw3v3 <- Switch3v3Accessory(I2C_89, cAddrIoExpander, cIoPin3v3Switch);
     sw3v3.enable();
-
+ 
     // Charge status detect config
     chargeStatus <- ChargeStatus(I2C_89, cAddrIoExpander, cIoPinChargeStatus);
     
@@ -981,7 +963,6 @@ function init()
     // Accelerometer config
     hwAccelerometer <- Accelerometer(I2C_89, cAddrAccelerometer, 
                                      cIoPinAccelerometerInt, cAddrIoExpander);
-    //hwAccelerometer.printI2cRegs();
 
     // Create our timers
     gButtonTimer <- CancellableTimer(cButtonTimeout, 
