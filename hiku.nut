@@ -1024,6 +1024,8 @@ class Accelerometer extends I2cDevice
     i2cPort = null;
     i2cAddress = null;
     interruptDevice = null; 
+    reenableInterrupts = false;  // Allow interrupts to be re-enabled after 
+                                 // an interrupt
 
     constructor(port, address, pin, expanderAddress)
     {
@@ -1038,24 +1040,27 @@ class Accelerometer extends I2cDevice
         }
 
         // Configure and enable accelerometer and interrupt
-        //write(0x20, 0x3F); // CTRL_REG1: 25 Hz, low power mode, 
         write(0x20, 0x2F); // CTRL_REG1: 10 Hz, low power mode, 
                              // all 3 axes enabled
-        write(0x21, 0x00); // CTRL_REG2: Disable high pass filtering
 
-        write(0x22, 0x40); // CTRL_REG3: Enable AOI interrupts
-        //write(0x22, 0x00); // CTRL_REG3: Disable AOI interrupts
+        write(0x21, 0x09); // CTRL_REG2: Enable high pass filtering and data
+
+        enableInterrupts();
+        //disableInterrupts();
 
         write(0x23, 0x00); // CTRL_REG4: Default related control settings
 
         write(0x24, 0x08); // CTRL_REG5: Interrupt latched
 
-        // TODO: Tune the threshold.  Higher numbers seem more sensitive?
-        write(0x32, 0xFF); // INT1_THS: Threshold
-        //write(0x32, 0xAE); // INT1_THS: Threshold
-        //write(0x32, 0x10); // INT1_THS: Threshold
+        // Note: maximum value is 0111 11111 (0x7F). High bit must be 0.
+        write(0x32, 0x10); // INT1_THS: Threshold
 
         write(0x33, 0x00); // INT1_DURATION: any duration
+
+        // Read HP_FILTER_RESET register to set filter. See app note 
+        // section 6.3.3. It sounds like this might be the REFERENCE
+        // register, 0x26. Commented out as I found it is not needed. 
+        //read(0x26);
 
         write(0x30, 0x2A); // INT1_CFG: Enable OR interrupt for 
                            // "high" values of X, Y, Z
@@ -1069,18 +1074,42 @@ class Accelerometer extends I2cDevice
                 pin, handleAccelInt.bindenv(this));
     }
 
+    function enableInterrupts()
+    {
+        write(0x22, 0x40); // CTRL_REG3: Enable AOI interrupts
+    }
+
+    function disableInterrupts()
+    {
+        write(0x22, 0x00); // CTRL_REG3: Disable AOI interrupts
+    }
+
+    function clearAccelInterruptUntilCleared()
+    {
+        // Repeatedly clear the accel interrupt by reading INT1_SRC
+        // until there are no interrupts left
+        // WARNING: adding server.log statements in this function
+        // causes it to fail for some reason
+        local reg;
+        while ((reg = read(0x31)) != 0x15)
+        {
+            imp.sleep(0.001);
+        }
+    }
+
     function clearAccelInterrupt()
     {
         read(0x31); // Clear the accel interrupt by reading INT1_SRC
     }
 
-    // TODO do we want to disable accel ints after wake, until sleep?
     function handleAccelInt() 
     {
-        server.log("Accelerometer interrupt triggered");
-        write(0x22, 0x00); // CTRL_REG3: Disable AOI interrupts
+        disableInterrupts();
         clearAccelInterrupt();
-        write(0x22, 0x40); // CTRL_REG3: Enable AOI interrupts
+        if(reenableInterrupts)
+        {
+            enableInterrupts();
+        }
     }
 
     // Debug printout of the orientation registers on one line
@@ -1409,23 +1438,15 @@ function init()
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
 
     // Accelerometer config
-    // TODO: re-enable accelerometer once tuned (and pin HW issues resolved)
-    //hwAccelerometer <- Accelerometer(I2C_89, cAddrAccelerometer, 
-                                     //cIoPinAccelerometerInt, cAddrIoExpander);
+    hwAccelerometer <- Accelerometer(I2C_89, cAddrAccelerometer, 
+                                     cIoPinAccelerometerInt, cAddrIoExpander);
 
     // Create our timers
     gButtonTimer <- CancellableTimer(cButtonTimeout, 
                                      hwButton.handleButtonTimeout.bindenv(
                                          hwButton)
                                     );
-    gDeepSleepTimer <- CancellableTimer(cDelayBeforeDeepSleep,
-            function() {
-                hwPiezo.playSound("sleep", false /*async*/);
-                sw3v3.disable();
-                hwScanner.disable();
-                hwButton.handlePin1Int(); // TODO: does this help? 
-                imp.onidle(function() {server.sleepfor(cDeepSleepDuration);});
-            });
+    gDeepSleepTimer <- CancellableTimer(cDelayBeforeDeepSleep, sleepHandler);
 
     // Send the agent our impee ID
     agent.send("impeeId", hardware.getimpeeid());
@@ -1434,10 +1455,41 @@ function init()
     updateDeviceState(DeviceState.IDLE);
 
     // Print debug info
-    printStartupDebugInfo();
+    // WARNING: for some reason, if this is uncommented, the device
+    // will not wake up if there is motion while the device goes 
+    // to sleep!
+    //printStartupDebugInfo();
 
     // Initialization complete notification
     hwPiezo.playSound("startup"); 
+}
+
+
+//**********************************************************************
+// Do pre-sleep configuration and initiate deep sleep
+function sleepHandler() {
+    // Disable the scanner and its UART
+    hwScanner.disable();
+
+    // Disable the SW 3.3v switch, to save power during deep sleep
+    sw3v3.disable();
+
+    // Re-enable accelerometer interrupts
+    hwAccelerometer.reenableInterrupts = true;
+    hwAccelerometer.enableInterrupts();
+
+    // Handle any last interrupts before we clear them all and go to sleep
+    hwButton.handlePin1Int(); 
+
+    // Clear any accelerometer interrupts, then clear the IO expander. 
+    // We found this to be necessary to not hang on sleep, as we were
+    // getting spurious interrupts from the accelerometer when re-enabling,
+    // that were not caught by handlePin1Int. Race condition? 
+    hwAccelerometer.clearAccelInterruptUntilCleared();
+    hwButton.clearAllIrqs(); 
+
+    // Force the imp to sleep immediately, to avoid catching more interrupts
+    server.sleepfor(cDeepSleepDuration);
 }
 
 
