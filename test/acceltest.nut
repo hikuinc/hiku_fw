@@ -573,6 +573,71 @@ class PushButton extends IoExpanderDevice
 
 
 //======================================================================
+// Charge status pin
+/* TODO MEMORY USAGE NOTES: 
+  Before adding charger IoExpander class: 24400 bytes 
+  After adding class: 24200 to 24224 bytes (200 delta)
+  After making ChargeStatus subclass: 20904 to 20928 bytes (3,496 delta)
+
+  If wait 1 second:
+    Before: 27708 bytes
+    After ChargeStatus: 24940 bytes (delta of 2,768 bytes)
+
+  Basically, we can recover up to 2.8kB for each IoExpander subclass 
+  by eliminating them. 
+*/
+class ChargeStatus extends IoExpanderDevice
+{
+    pin = null; // IO expander pin assignment
+
+    constructor(port, address, chargePin)
+    {
+        base.constructor(port, address);
+
+        // Save assignments
+        pin = chargePin;
+
+        // Set event handler for IRQ
+        setIrqCallback(pin, chargerCallback.bindenv(this));
+
+        // Configure pin as input, IRQ on both edges
+        setDir(pin, 1); // set as input
+        setPullUp(pin, 1); // enable pullup
+        setIrqMask(pin, 1); // enable IRQ
+        setIrqEdges(pin, 1, 1); // rising and falling
+    }
+
+    function readState()
+    {
+        return getPin(pin);
+    }
+
+    function isCharging()
+    {
+        if(getPin(pin))
+        {
+            return false;
+        }
+        return true;
+    }
+
+    //**********************************************************************
+    // Charge status interrupt handler callback 
+    function chargerCallback()
+    {
+        if (isCharging()) 
+        {
+            server.log("Charger plugged in");
+        }
+        else
+        {
+            server.log("Charger unplugged");
+        }
+    }
+}
+
+
+//======================================================================
 // 3.3 volt switch pin for powering most peripherals
 class Switch3v3Accessory extends IoExpanderDevice
 {
@@ -716,6 +781,19 @@ class Accelerometer extends I2cDevice
     {
         server.log("Disabling interrupts!");
         write(0x22, 0x00); // CTRL_REG3: Disable AOI interrupts
+    }
+
+    function clearAccelInterruptUntilCleared()
+    {
+        // Repeatedly clear the accel interrupt by reading INT1_SRC
+        // until there are no interrupts left
+        // WARNING: adding server.log statements in this function
+        // causes it to fail for some reason
+        local reg;
+        while ((reg = read(0x31)) != 0x15)
+        {
+            imp.sleep(0.001);
+        }
     }
 
     function clearAccelInterrupt()
@@ -890,6 +968,9 @@ function init()
     // 3v3 accessory switch config
     sw3v3 <- Switch3v3Accessory(I2C_89, cAddrIoExpander, cIoPin3v3Switch);
     sw3v3.enable();
+
+    // Charge status detect config
+    chargeStatus <- ChargeStatus(I2C_89, cAddrIoExpander, cIoPinChargeStatus);
     
     hardware.pin5.configure(DIGITAL_OUT);
     hardware.pin5.write(0);
@@ -937,10 +1018,10 @@ function sleepHandler() {
     // We found this to be necessary to not hang on sleep, as we were
     // getting spurious interrupts from the accelerometer when re-enabling,
     // that were not caught by handlePin1Int. Race condition? 
-    hwAccelerometer.clearAccelInterrupt();
+    hwAccelerometer.clearAccelInterruptUntilCleared();
     hwButton.clearAllIrqs(); 
 
-    hardware.pin5.write(1); //TODO DEBUG
+    //hardware.pin5.write(1); //TODO DEBUG
 
     // Force the imp to sleep immediately, to avoid catching more interrupts
     server.sleepfor(cDeepSleepDuration);
