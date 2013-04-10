@@ -70,13 +70,17 @@ class RequestHandler(BaseHTTPRequestHandler):
             post_body = self.rfile.read(content_len)
 
             # Base64 decode and save to a file
-            dataPath = "data"
+            dataPath = os.path.join("data", self.path[1:])
             if not os.path.exists(dataPath):
                 os.makedirs(dataPath)
-            file = open(unique_file_name(os.path.join(dataPath,
-                        "audiobeep.alaw")), "wb")
+            aLawFilePath = unique_file_name(os.path.join(dataPath, 
+                                        "audiobeep.alaw"))
+            wavFilePath = aLawFilePath.replace("alaw", "wav")
+            file = open(aLawFilePath, "wb")
             file.write(base64.b64decode(post_body))
             file.close()
+            os.system("sox -r 16k -t raw -e a-law %s %s" % (aLawFilePath, 
+                      wavFilePath))
 
             # Send a basic response
             self.send_response(200)
