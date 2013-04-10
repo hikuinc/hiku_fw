@@ -73,7 +73,7 @@ function sendBeepToHikuServer(data)
     agentLog(format("Server transaction time: %ds", transactionTime));
 
     // Handle the response
-    local returnString = "success";
+    local returnString = "success-server";
 
     if (res.statuscode != 200)
     {
@@ -195,7 +195,7 @@ device.on("endAudioUpload", function(data) {
         else
         {
             agentLog("Audio sent to server.");
-            device.send("uploadCompleted", "success");
+            device.send("uploadCompleted", "success-server");
         }
 
         return;

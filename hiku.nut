@@ -85,6 +85,8 @@ class Piezo
         tonesParamsList = {
             // [[period, duty cycle, duration], ...]
             "success": [[noteE5, dc, longTone], [noteE6, dc, shortTone]],
+            "success-local": [[noteE5, dc, longTone]],
+            "success-server": [[noteE6, dc, shortTone]],
             "failure": [/*silence*/],
             "unknown-upc": [[noteB4, dc, shortTone], [noteB4, 0, shortTone], 
             [noteB4, dc, shortTone], [noteB4, 0, shortTone], 
@@ -726,6 +728,7 @@ class Scanner extends IoExpanderDevice
 
                     //server.log("Code: \"" + scannerOutput + "\" (" + 
                                //scannerOutput.len() + " chars)");
+                    hwPiezo.playSound("success-local");
                     agent.send("uploadBeep", {
                                               scandata=scannerOutput,
                                               scansize=scannerOutput.len(),
@@ -1245,6 +1248,7 @@ function sendLastBuffer()
     //if (secs >= 0.4 && !gAudioBufferOverran)
     if (secs >= 0.4)
     {
+        hwPiezo.playSound("success-local");
         agent.send("endAudioUpload", {
                                       scandata="",
                                       serial=hardware.getimpeeid(),
