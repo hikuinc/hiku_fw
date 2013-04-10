@@ -102,10 +102,6 @@ class Piezo
     // playback, but also supports synchronous via busy waits
     function playSound(tone = "success", async = true) 
     {
-        //TODO HWDEBUG: remove after piezo HW fixed
-        server.log(format("(skipping playing %s tone)", tone));
-        return;
-
         // Handle invalid tone values
         if (!(tone in tonesParamsList))
         {
