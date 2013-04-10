@@ -62,15 +62,15 @@ function sendBeepToHikuServer(data)
             {"Content-Type": "application/x-www-form-urlencoded", 
             "Accept": "application/json"}, 
             data);
-    // TODO: if the server is down, this will block all other events
+    // If the server is down, this will block all other events
     // until it times out.  Events seem to be queued on the server 
-    // with no ill effects.  They do not block the device.  Move 
-    // to async?  The timeout period (tested) seems to be 60 seconds.  
+    // with no ill effects.  They do not block the device.  Could consider 
+    // moving to async. The timeout period (tested) is 60 seconds.  
     local res;
     local transactionTime = time();
     res = req.sendsync();
     transactionTime = time() - transactionTime;
-    server.log(format("Server transaction time: %ds", transactionTime));
+    agentLog(format("Server transaction time: %ds", transactionTime));
 
     // Handle the response
     local returnString = "success";
@@ -107,7 +107,7 @@ function sendBeepToHikuServer(data)
                     gLinkedRecord = body.cause.linkedrecord;
                     gLinkedRecordTimeout = time()+10; // in seconds
                     returnString = "unknown-upc";
-                    agentLog("Error: unknown UPC code");
+                    agentLog("Response: unknown UPC code");
                 }
                 // Unknown response type
                 else
@@ -119,7 +119,7 @@ function sendBeepToHikuServer(data)
         }
         catch(e)
         {
-            server.log(format("Caught exception: %s", e));
+            agentLog(format("Caught exception: %s", e));
             returnString = "failure";
             agentLog("Error: malformed response");
         }
@@ -224,9 +224,6 @@ device.on("uploadAudioChunk", function(data) {
 
 //**********************************************************************
 // Handle incoming requests to my external agent URL.  
-// Responses are queued and serviced when the device responds. 
-// TODO: support multiple response types in the queue. Also right now
-// it assumes the same response for all requests of the same type. 
 http.onrequest(function (request, res)
 {
     // Handle supported requests

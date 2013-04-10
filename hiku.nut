@@ -39,11 +39,10 @@ gLastSamplerBuffer <- null;
 gLastSamplerBufLen <- 0; 
 gAudioTimer <- 0;
 
-// TODO: get rid of this
 gPin1HandlerSet <- false;
 
 // Each 1k of buffer will hold 1/16 of a second of audio, or 63ms.
-// TODO: A-law sampler does not return partial buffers. This means that up to 
+// A-law sampler does not return partial buffers. This means that up to 
 // the last buffer size of data is dropped. Filed issue with IE here: 
 // http://forums.electricimp.com/discussion/780/. So keep buffers small. 
 buf1 <- blob(gAudioBufferSize);
@@ -83,7 +82,6 @@ class Piezo
         pin.configure(DIGITAL_OUT);
         pin.write(0); // Turn off piezo by default
 
-        // TODO: remove tones for sleep and startup, unless debugging
         tonesParamsList = {
             // [[period, duty cycle, duration], ...]
             "success": [[noteE5, dc, longTone], [noteE6, dc, shortTone]],
@@ -289,6 +287,7 @@ class I2cDevice
         {
             server.log("Error: I2C read failure");
             // TODO: this should return null, right??? Do better handling.
+            // TODO: print the i2c address as part of the error
             return -1;
         }
 
@@ -753,8 +752,6 @@ class Scanner extends IoExpanderDevice
             // Read the next byte
             data = hardware.uart57.read();
         } 
-
-        //server.log("EXITING CALLBACK");
     }
 }
 
@@ -881,18 +878,6 @@ class PushButton extends IoExpanderDevice
 
 //======================================================================
 // Charge status pin
-/* TODO MEMORY USAGE NOTES: 
-  Before adding charger IoExpander class: 24400 bytes 
-  After adding class: 24200 to 24224 bytes (200 delta)
-  After making ChargeStatus subclass: 20904 to 20928 bytes (3,496 delta)
-
-  If wait 1 second:
-    Before: 27708 bytes
-    After ChargeStatus: 24940 bytes (delta of 2,768 bytes)
-
-  Basically, we can recover up to 2.8kB for each IoExpander subclass 
-  by eliminating them. 
-*/
 class ChargeStatus extends IoExpanderDevice
 {
     pin = null; // IO expander pin assignment
@@ -1457,6 +1442,7 @@ function init()
     //printStartupDebugInfo();
 
     // Initialization complete notification
+    // TODO remove startup tone for final product
     hwPiezo.playSound("startup"); 
 }
 
