@@ -15,6 +15,7 @@ gLinkedRecord <- ""; // Used to link unknown UPCs to audio records.
 gLinkedRecordTimeout <- null; // Will clear gLinkedRecord after this time
 gImpeeId <- ""; // Cache of the impee's ID, so it is accessible whether
                  // or not the device is awake
+gChargerState <- false; // Assume charger is not inserted
 
 
 //======================================================================
@@ -42,8 +43,10 @@ function sendBeepToHikuServer(data)
 
         // If not expired, attach the current linkedrecord (usually 
         // blank). Then reset the global. 
+        agentLog("checking if linked record");
         if (gLinkedRecordTimeout && time() < gLinkedRecordTimeout)
         {
+            agentLog("record linked");
             data.linkedrecord = gLinkedRecord;
         }
         gLinkedRecord = ""; 
@@ -52,16 +55,18 @@ function sendBeepToHikuServer(data)
         
     // URL-encode the whole thing
     data = http.urlencode(data);
-    //agentLog(data);
+    agentLog(data);
 
     // Create and send the request
     agentLog("Sending beep to server...");
     local req = http.post(
             //"http://bobert.net:4444", 
+            //"http://www.hiku.us/sand/cgi-bin/readRawDeviceData.py", 
             "http://srv2.hiku.us/scanner_1/imp_beep",
             {"Content-Type": "application/x-www-form-urlencoded", 
             "Accept": "application/json"}, 
             data);
+            
     // If the server is down, this will block all other events
     // until it times out.  Events seem to be queued on the server 
     // with no ill effects.  They do not block the device.  Could consider 
@@ -240,6 +245,14 @@ http.onrequest(function (request, res)
 // Receive impee ID from the device and send to the external requestor 
 device.on("impeeId", function(id) {
     gImpeeId = id;
+});
+
+// Receive the Charger state update from the device to be used to send to the
+// external server
+// @param: chargerState of True means Charger is attached, false otherwise
+device.on("chargerState", function( chargerState ){
+    gChargerState = chargerState;
+    agentLog(format("chargerState: %s", chargerState?"attached":"removed"));
 });
 
 
