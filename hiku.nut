@@ -73,11 +73,11 @@ class InterruptHandler
     irqCallbacks = array(2); // start with this for now
     i2cDevice = null;
   
-      // Want to keep the constructor private or protected so that it can only
-      // be initialized by the getInstance
-      constructor(numFuncs, i2cDevice)
-      {
-  		this.irqCallbacks.resize(numFuncs);
+	// Want to keep the constructor private or protected so that it can only
+    // be initialized by the getInstance
+    constructor(numFuncs, i2cDevice)
+    {
+        this.irqCallbacks.resize(numFuncs);
   		this.i2cDevice = i2cDevice;
         // Disable "Autoclear NINT on RegData read". This 
         // could cause us to lose accelerometer interrupts
@@ -612,10 +612,11 @@ function updateDeviceState(newState)
     }
 
     // Log the state change, for debugging
+    /*
     local os = (oldState==null) ? "null" : oldState.tostring();
     local ns = (newState==null) ? "null" : newState.tostring();
     server.log(format("State change: %s -> %s", os, ns));
-
+    */
     // Verify state machine is in order 
     switch (newState) 
     {
@@ -764,16 +765,17 @@ class Scanner extends IoExpanderDevice
                     // discard it, to maintain the state machine. 
                     if (gDeviceState != DeviceState.SCAN_RECORD)
                     {
-                        //server.log(format(
-                                   //"Got capture too late. Dropping scan %d",
-                                   //gDeviceState));
+                    	/*
+                        server.log(format(
+                                   "Got capture too late. Dropping scan %d",
+                                   gDeviceState)); */
                         scannerOutput = "";
                         return;
                     }
                     updateDeviceState(DeviceState.SCAN_CAPTURED);
 
-                    //server.log("Code: \"" + scannerOutput + "\" (" + 
-                               //scannerOutput.len() + " chars)");
+                    /*server.log("Code: \"" + scannerOutput + "\" (" + 
+                               scannerOutput.len() + " chars)");*/
                     hwPiezo.playSound("success-local");
                     agent.send("uploadBeep", {
                                               scandata=scannerOutput,
@@ -932,6 +934,7 @@ class ChargeStatus extends IoExpanderDevice
     pin = null; // IO expander pin assignment
     previous_state = false; // the previous state of the charger
     
+    
     static numSamples = 5; // For debouncing
     static sleepSecs = 0.004;  // For debouncing    
 
@@ -951,16 +954,17 @@ class ChargeStatus extends IoExpanderDevice
         setIrqMask(pin, 1); // enable IRQ
         setIrqEdges(pin, 1, 1); // rising and falling
         previous_state = isCharging();
-        /*
-        if(previous_state)
-        {
-            setIrqEdges(pin, 1, 0); // rising and falling
-        }
-        else
-        {
-            setIrqEdges(pin, 0, 1); // rising and falling
-        }*/
+
+
+		// Congiure Pin C which is supposed to be the pin indicating whether a charger is
+		// attached or not
+		hardware.pinC.configure(DIGITAL_IN_PULLUP);
         agent.send("chargerState", previous_state); // update the charger state
+    }
+    
+    function handleChargerStatusInt()
+    {
+      server.log(format("handleChargerStatusInt: %d", hardware.pinC.read()));
     }
 
     function readState()
@@ -991,7 +995,9 @@ class ChargeStatus extends IoExpanderDevice
             charging += isCharging()?1:0;
             imp.sleep(sleepSecs)
         }
-        server.log(format("Charging: %d",charging));
+        server.log(format("Charger: %s",charging?"charging":"not charging"));
+        
+        // TODO: remove the following to beep whenever it charges
        /* if ( (!previous_state) && (charging))
         {
           // Play the tone here
@@ -999,16 +1005,7 @@ class ChargeStatus extends IoExpanderDevice
         }*/
         previous_state = (charging==0)? false:true; // update the previous state with the current state
         agent.send("chargerState", previous_state); // update the charger state
-        if (charging) 
-        {
-            //setIrqEdges(pin, 1, 0); // rising and falling            
-            server.log("Charger plugged in");
-        }
-        else
-        {
-            //setIrqEdges(pin, 0, 1); // rising and falling
-            server.log("Charger unplugged");
-        }
+        handleChargerStatusInt();
     }
 }
 
@@ -1546,16 +1543,16 @@ function preSleepHandler() {
     hwAccelerometer.enableInterrupts();
 
     // Handle any last interrupts before we clear them all and go to sleep
-    server.log("preSleepHandler: handle any pending interrupts");
+    //server.log("preSleepHandler: handle any pending interrupts");
     intHandler.handlePin1Int(); 
 
     // Clear any accelerometer interrupts, then clear the IO expander. 
     // We found this to be necessary to not hang on sleep, as we were
     // getting spurious interrupts from the accelerometer when re-enabling,
     // that were not caught by handlePin1Int. Race condition? 
-    server.log("preSleepHandler: clear out all the pending accel interrupts");
+    //server.log("preSleepHandler: clear out all the pending accel interrupts");
     hwAccelerometer.clearAccelInterruptUntilCleared();
-    server.log("preSleepHandler: clear out all the IOExpander Interrupts");
+    //server.log("preSleepHandler: clear out all the IOExpander Interrupts");
     intHandler.clearAllIrqs(); 
     
     // When the timer below expires we will hit the sleepHandler function below
@@ -1578,19 +1575,18 @@ function sleepHandler()
     }
     
     // Disable the scanner and its UART
-    server.log("sleepHandler: about to disable the HW Scanner");
+    //server.log("sleepHandler: about to disable the HW Scanner");
     hwScanner.disable();
 
     // Disable the SW 3.3v switch, to save power during deep sleep
-    server.log("sleepHandler: about to disable the 3v3");
+    //server.log("sleepHandler: about to disable the 3v3");
     sw3v3.disable();
     
     intHandler.clearAllIrqs(); 
 
     // Force the imp to sleep immediately, to avoid catching more interrupts
     server.log("sleepHandler: entering deep sleep");
-    server.sleepfor(cDeepSleepDuration);
-    server.log("sleepHandler: exiting deep sleep");    
+    server.sleepfor(cDeepSleepDuration);    
 }
 
 
