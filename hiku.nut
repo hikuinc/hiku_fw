@@ -5,6 +5,7 @@
 const cFirmwareVersion = "0.5.0"
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 10.0;  // in seconds and just change this one
+//const cDelayBeforeDeepSleep = 3600.0;  // in seconds
 // The two variables below here are to use a hysteresis for the Accelerometer to stop
 // moving, and if the accelerometer doesn’t stop moving within the cDelayBeforeAccelClear
 // then we don’t go to sleep. Here is how it would work:
@@ -17,7 +18,6 @@ const cDelayBeforeDeepSleep = 10.0;  // in seconds and just change this one
 //    We enter sleep
 local cDelayBeforeAccelClear = 2;
 local cActualDelayBeforeDeepSleep = cDelayBeforeDeepSleep - cDelayBeforeAccelClear;
-//const cDelayBeforeDeepSleep = 3600.0;  // in seconds
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
 
 enum DeviceState
@@ -73,12 +73,12 @@ class InterruptHandler
     irqCallbacks = array(2); // start with this for now
     i2cDevice = null;
   
-	// Want to keep the constructor private or protected so that it can only
+    // Want to keep the constructor private or protected so that it can only
     // be initialized by the getInstance
     constructor(numFuncs, i2cDevice)
     {
         this.irqCallbacks.resize(numFuncs);
-  		this.i2cDevice = i2cDevice;
+      	this.i2cDevice = i2cDevice;
         // Disable "Autoclear NINT on RegData read". This 
         // could cause us to lose accelerometer interrupts
         // if someone reads or writes any pin between when 
@@ -160,7 +160,10 @@ class Piezo
 {
     // The hardware pin controlling the piezo 
     pin = null;
-
+    
+    page_device = false;
+	pageToneIdx=0;
+		
     // In Squirrel, if you initialize a member array or table, all
     // instances will point to the same one.  So init in the constructor.
     tonesParamsList = {};
@@ -199,7 +202,86 @@ class Piezo
             "sleep":   [[noteE5, dc, longTone], [noteB4, dc, shortTone]],
             "startup": [[noteB4, dc, longTone], [noteE5, dc, shortTone]],
             "charger-attached": [[noteB4, dc, shortTone], [noteB4, dc, shortTone]],
+            "device-page": [[noteB4, dc, shortTone],[noteB4, 0, longTone]],
         };
+    }
+    
+    // utility function to validate that the tone is present
+    // and it is not a silent tone
+    function validate_tone( tone )
+    {
+        // Handle invalid tone values
+        if (!(tone in tonesParamsList))
+        {
+            server.log(format("Error: unknown tone \"%s\"", tone));
+            return false;
+        }
+
+        // Handle "silent" tones
+        if (tonesParamsList[tone].len() == 0)
+        {
+            return false;
+        } 
+        return true;   
+    }    
+    
+    function isPaging()
+    {
+    	return page_device;
+    }
+    
+    function stopPageTone()
+    {
+    	page_device = false;
+    }
+    
+    function playPageTone()
+    {
+		if( !validate_tone("device-page"))
+		{
+			return;
+		}
+    	
+    	page_device = true;
+    	
+    	// Play the first note
+        local params = tonesParamsList["device-page"][0];
+        pin.configure(PWM_OUT, params[0], params[1]);
+            
+    	// Play the next note after the specified delay
+        pageToneIdx = 1;
+        imp.wakeup(params[2], continuePageTone.bindenv(this));   	
+    	
+    }
+    
+    // Continue playing the device page tone until a button is pressed
+    function continuePageTone()
+    {
+        // Turn off the previous note
+        pin.write(0);
+        
+        if( !page_device )
+        {
+        	return;
+        }
+
+        // Play the next note, if any
+        if (tonesParamsList["device-page"].len() > pageToneIdx)
+        {
+            local params = tonesParamsList["device-page"][pageToneIdx];
+            pin.configure(PWM_OUT, params[0], params[1]);
+
+            pageToneIdx++;
+            imp.wakeup(params[2], continuePageTone.bindenv(this));
+        }
+        else 
+        {
+            pageToneIdx = 0;
+            if( page_device )
+            {
+            	playPageTone();
+            }
+        }
     }
 
     //**********************************************************
@@ -207,18 +289,11 @@ class Piezo
     // playback, but also supports synchronous via busy waits
     function playSound(tone = "success", async = true) 
     {
-        // Handle invalid tone values
-        if (!(tone in tonesParamsList))
-        {
-            server.log(format("Error: unknown tone \"%s\"", tone));
-            return;
-        }
 
-        // Handle "silent" tones
-        if (tonesParamsList[tone].len() == 0)
-        {
-            return;
-        }
+		if( !validate_tone( tone ) )
+		{
+			return;
+		}
 
         if (async)
         {
@@ -591,6 +666,7 @@ function updateDeviceState(newState)
     {
         // Disable deep sleep timer
         gDeepSleepTimer.disable();
+        gAccelHysteresis.disable();
     }
 
     // If we are transitioning to SCAN_RECORD, start the button timer. 
@@ -880,6 +956,10 @@ class PushButton extends IoExpanderDevice
         {
             case 0:
                 // Button in held state
+                if( hwPiezo.isPaging() )
+                {
+                	hwPiezo.stopPageTone();
+                }
                 if (buttonState == ButtonState.BUTTON_UP)
                 {
                     updateDeviceState(DeviceState.SCAN_RECORD);
@@ -958,13 +1038,13 @@ class ChargeStatus extends IoExpanderDevice
 
 		// Congiure Pin C which is supposed to be the pin indicating whether a charger is
 		// attached or not
-		hardware.pinC.configure(DIGITAL_IN_PULLUP);
+		//hardware.pinC.configure(DIGITAL_IN_PULLUP);
         agent.send("chargerState", previous_state); // update the charger state
     }
     
     function handleChargerStatusInt()
     {
-      server.log(format("handleChargerStatusInt: %d", hardware.pinC.read()));
+      //server.log(format("handleChargerStatusInt: %d", hardware.pinC.read()));
     }
 
     function readState()
@@ -998,11 +1078,11 @@ class ChargeStatus extends IoExpanderDevice
         server.log(format("Charger: %s",charging?"charging":"not charging"));
         
         // TODO: remove the following to beep whenever it charges
-       /* if ( (!previous_state) && (charging))
+        if ( (!previous_state) && (charging))
         {
           // Play the tone here
           hwPiezo.playSound("charger-attached");
-        }*/
+        }
         previous_state = (charging==0)? false:true; // update the previous state with the current state
         agent.send("chargerState", previous_state); // update the charger state
         handleChargerStatusInt();
@@ -1095,6 +1175,10 @@ class Accelerometer extends I2cDevice
             server.log(format("Error reading accelerometer; whoami=0x%02X", 
                               whoami));
         }
+        
+        // TODO: Once the ADC to read the battery level is stable
+        // Start monitoring the vBATT level
+		//initBatteryMonitor();
 
         // Configure and enable accelerometer and interrupt
         write(0x20, 0x2F); // CTRL_REG1: 10 Hz, low power mode, 
@@ -1121,6 +1205,8 @@ class Accelerometer extends I2cDevice
 
         write(0x30, 0x2A); // INT1_CFG: Enable OR interrupt for 
                            // "high" values of X, Y, Z
+                           
+        
 
         // Clear interrupts before setting handler.  This is needed 
         // otherwise we get a spurious interrupt at boot. 
@@ -1130,6 +1216,28 @@ class Accelerometer extends I2cDevice
         interruptDevice = AccelerometerInt(intHandler, pin); 
         // Set event handler for IRQ
         intHandler.setIrqCallback(pin, handleAccelInt.bindenv(this));
+    }
+    
+    function initBatteryMonitor()
+    {
+        local result;
+        result = read(0x1F);
+        result = result | 0x80;
+        write(0x1F, result); // enable the AUX_ADC by setting the ADC_PD bit to 1
+        
+        result = read(0x07);
+        server.log(format("STATUS_AUX: 0x%02X", result));
+        
+        server.log(format("OUT3_ADC_L: 0x%02X, OUT3_ADC_H: 0x%02X", read(0x0C), read(0x0D)));
+        imp.wakeup(3, monitorBattery.bindenv(this));    
+    }
+    
+    
+    function monitorBattery()
+    {
+        server.log(format("STATUS_AUX: 0x%02X", read(0x7)));
+        server.log(format("OUT3_ADC_L: 0x%02X, OUT3_ADC_H: 0x%02X", read(0x0C), read(0x0D)));
+        //imp.wakeup(3, monitorBattery.bindenv(this));   
     }
 
     function enableInterrupts()
@@ -1296,6 +1404,10 @@ class Accelerometer extends I2cDevice
 // Agent callback: upload complete
 agent.on("uploadCompleted", function(result) {
     hwPiezo.playSound(result);
+});
+
+agent.on("devicePage", function(result){
+	hwPiezo.playPageTone();
 });
 
 
@@ -1530,6 +1642,8 @@ function init()
     // Initialization complete notification
     // TODO remove startup tone for final product
     hwPiezo.playSound("startup"); 
+    //hwPiezo.playPageTone();
+    
 }
 
 
@@ -1556,8 +1670,14 @@ function preSleepHandler() {
     intHandler.clearAllIrqs(); 
     
     // When the timer below expires we will hit the sleepHandler function below
-    gAccelInterrupted = false;
-    gAccelHysteresis.enable();
+    // only enter into the delay wait if the current state is either IDLE or PRE_SLEEP
+    // otherwise just get out of this because it would just go into sleep even though
+    // someone pushed the button
+    if( (gDeviceState == DeviceState.IDLE) || (gDeviceState == DeviceState.PRE_SLEEP) )
+    {
+    	gAccelInterrupted = false;
+    	gAccelHysteresis.enable();
+    }
 }
 
 //**********************************************************************
@@ -1565,7 +1685,7 @@ function preSleepHandler() {
 // further accelerometer interrupts
 function sleepHandler()
 {
-    
+ 	server.log("sleepHandler: enter");   
     if( gAccelInterrupted )
     {
 		server.log("sleepHandler: aborting sleep due to Accelerometer Interrupt");
@@ -1577,15 +1697,16 @@ function sleepHandler()
     // Disable the scanner and its UART
     //server.log("sleepHandler: about to disable the HW Scanner");
     hwScanner.disable();
-
     // Disable the SW 3.3v switch, to save power during deep sleep
     //server.log("sleepHandler: about to disable the 3v3");
-    sw3v3.disable();
-    
-    intHandler.clearAllIrqs(); 
-
+    sw3v3.disable();   
+     
     // Force the imp to sleep immediately, to avoid catching more interrupts
+    intHandler.handlePin1Int();
+    intHandler.clearAllIrqs();
+    assert(gDeviceState == DeviceState.PRE_SLEEP);
     server.log("sleepHandler: entering deep sleep");
+    server.log(format("sleepHandler: hardware.pin1=%d", hardware.pin1.read()));
     server.sleepfor(cDeepSleepDuration);    
 }
 

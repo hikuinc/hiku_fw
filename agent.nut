@@ -232,9 +232,17 @@ device.on("uploadAudioChunk", function(data) {
 http.onrequest(function (request, res)
 {
     // Handle supported requests
-    if (request.path == "/getImpeeId") {
+    if (request.path == "/getImpeeId") 
+    {
         res.send(200, gImpeeId);
-    } else {
+    }
+    else if (request.path == "/devicePage") 
+    {
+        device.send("devicePage",1);
+    	res.send(200, "OK");
+    } 
+    else
+    {
         agentLog(format("AGENT Error: unexpected path %s", request.path));
         res.send(400, format("unexpected path %s", request.path));
   }
