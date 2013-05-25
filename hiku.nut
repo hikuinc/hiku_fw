@@ -1218,6 +1218,7 @@ class Accelerometer extends I2cDevice
         intHandler.setIrqCallback(pin, handleAccelInt.bindenv(this));
     }
     
+    /*
     function initBatteryMonitor()
     {
         local result;
@@ -1231,14 +1232,16 @@ class Accelerometer extends I2cDevice
         server.log(format("OUT3_ADC_L: 0x%02X, OUT3_ADC_H: 0x%02X", read(0x0C), read(0x0D)));
         imp.wakeup(3, monitorBattery.bindenv(this));    
     }
+    */
     
     
+    /*
     function monitorBattery()
     {
         server.log(format("STATUS_AUX: 0x%02X", read(0x7)));
         server.log(format("OUT3_ADC_L: 0x%02X, OUT3_ADC_H: 0x%02X", read(0x0C), read(0x0D)));
         //imp.wakeup(3, monitorBattery.bindenv(this));   
-    }
+    }*/
 
     function enableInterrupts()
     {
@@ -1588,7 +1591,7 @@ function init()
 
 	// Create an I2cDevice to pass around
     i2cDev <- I2cDevice(I2C_89, cAddrIoExpander);
-    i2cDevAccel <- I2cDevice(I2C_12, cAddrAccelerometer);
+    i2cDevAccel <- I2cDevice(I2C_89, cAddrAccelerometer);
     intHandler <- InterruptHandler(8, i2cDev);
     
     // 3v3 accessory switch config
@@ -1637,7 +1640,7 @@ function init()
     // WARNING: for some reason, if this is uncommented, the device
     // will not wake up if there is motion while the device goes 
     // to sleep!
-    //printStartupDebugInfo();
+    printStartupDebugInfo();
 
     // Initialization complete notification
     // TODO remove startup tone for final product
@@ -1694,6 +1697,10 @@ function sleepHandler()
 		return;
     }
     
+	// free memory
+    server.log(format("Free memory: %d bytes", imp.getmemoryfree()));
+    
+    
     // Disable the scanner and its UART
     //server.log("sleepHandler: about to disable the HW Scanner");
     hwScanner.disable();
@@ -1704,9 +1711,9 @@ function sleepHandler()
     // Force the imp to sleep immediately, to avoid catching more interrupts
     intHandler.handlePin1Int();
     intHandler.clearAllIrqs();
+    
     assert(gDeviceState == DeviceState.PRE_SLEEP);
-    server.log("sleepHandler: entering deep sleep");
-    server.log(format("sleepHandler: hardware.pin1=%d", hardware.pin1.read()));
+    server.log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", hardware.pin1.read()));
     server.sleepfor(cDeepSleepDuration);    
 }
 

@@ -15,11 +15,96 @@ gLinkedRecord <- ""; // Used to link unknown UPCs to audio records.
 gLinkedRecordTimeout <- null; // Will clear gLinkedRecord after this time
 gImpeeId <- ""; // Cache of the impee's ID, so it is accessible whether
                  // or not the device is awake
-gChargerState <- false; // Assume charger is not inserted
+gChargerState <- "removed"; // Assume charger is not inserted
+
+
+gBatteryLevel <- 100;
+gWakeUpReason <- "";
+gBootTime <- 0.0;
+gSleepDuration <- 0.0;
 
 
 //======================================================================
 // Beep handling 
+
+// Send Device Status to Hiku Server
+function sendStatusToHikuServer(data)
+{
+    local disableSendToServer = false;
+    //disableSendToServer = true;
+    if (disableSendToServer)
+    {
+        agentLog("(sending to hiku server not enabled)");
+        return;
+    }
+        
+    // URL-encode the whole thing
+    data = http.urlencode(data);
+    agentLog(data);
+
+    // Create and send the request
+    agentLog("Sending device Status to server...");
+    local req = http.post(
+            "http://srv2.hiku.us/scanner_1/imp_status",
+            {"Content-Type": "application/x-www-form-urlencoded", 
+            "Accept": "application/json"}, 
+            data);
+            
+    // If the server is down, this will block all other events
+    // until it times out.  Events seem to be queued on the server 
+    // with no ill effects.  They do not block the device.  Could consider 
+    // moving to async. The timeout period (tested) is 60 seconds.  
+    local res;
+    local transactionTime = time();
+    res = req.sendsync();
+    transactionTime = time() - transactionTime;
+    agentLog(format("device Status: Server transaction time: %ds", transactionTime));
+
+    // Handle the response
+    local returnString = "success-server";
+
+    if (res.statuscode != 200)
+    {
+        returnString = "failure"
+        agentLog(format("Device Status: Error: got status code %d, expected 200", 
+                    res.statuscode));
+    }
+    else
+    {
+        // TODO DEBUG remove
+        agentLog(res.body);
+
+        // Parse the response (in JSON format)
+        local body = http.jsondecode(res.body);
+
+        try 
+        {
+            // Handle the various non-OK responses.  Nothing to do for "ok". 
+            if (body.status != "ok")
+            {
+                // Possible causes: speech2text failure, unknown.
+                if ("error" in body.cause)
+                {
+                    returnString = "failure";
+                    agentLog(format("Device Status: Error: server responded with %s", 
+                                         body.cause.error));
+                }
+                // Unknown response type
+                else
+                {
+                    returnString = "failure";
+                    agentLog("Error: unexpected cause in response");
+                }
+            }
+        }
+        catch(e)
+        {
+            agentLog(format("Caught exception: %s", e));
+            returnString = "failure";
+            agentLog("Error: malformed response");
+        }
+    }
+}
 
 //**********************************************************************
 // Send the barcode to hiku's server
@@ -259,8 +344,17 @@ device.on("impeeId", function(id) {
 // external server
 // @param: chargerState of True means Charger is attached, false otherwise
 device.on("chargerState", function( chargerState ){
-    gChargerState = chargerState;
-    agentLog(format("chargerState: %s", chargerState?"attached":"removed"));
+    gChargerState = chargerState? "attached":"removed";
+    agentLog(format("chargerState: %s", gChargerState));
+    sendStatusToHikuServer({ impeeId=gImpeeId,
+    						  fw_version="2.0.9",
+    						  charger_state = gChargerState,
+    						  battery_level = gBatteryLevel,
+    						  wakeup_reason = "button",
+    						  boot_time = gBootTime,
+    						  sleep_duration = gSleepDuration
+    						  });
+    						 
 });
 
 
