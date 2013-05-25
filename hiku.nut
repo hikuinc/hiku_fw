@@ -34,12 +34,13 @@ enum DeviceState
     SCAN_CAPTURED,    // 2: Processing scan data
     BUTTON_TIMEOUT,   // 3: Timeout limit reached while holding button
     BUTTON_RELEASED,  // 4: Button released, may have audio to send
-    PRE_SLEEP,          // 5: A state before it enters Sleep just after being IDLE
+    PRE_SLEEP,        // 5: A state before it enters Sleep just after being IDLE
 }
 
 
 // Globals
 gDeviceState <- null; // Hiku device current state
+gDeviceBlinkUpActive <-false;
 
 gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
@@ -78,7 +79,7 @@ class InterruptHandler
     constructor(numFuncs, i2cDevice)
     {
         this.irqCallbacks.resize(numFuncs);
-      	this.i2cDevice = i2cDevice;
+          this.i2cDevice = i2cDevice;
         // Disable "Autoclear NINT on RegData read". This 
         // could cause us to lose accelerometer interrupts
         // if someone reads or writes any pin between when 
@@ -895,6 +896,10 @@ class PushButton extends IoExpanderDevice
 {
     pin = null; // IO expander pin assignment
     buttonState = ButtonState.BUTTON_UP; // Button current state
+    
+    buttonPressCount = 0;
+    previousTime = 0;
+    buttonTimer = null;
 
     // WARNING: increasing these can cause buffer overruns during 
     // audio recording, because this the button debouncing on "up"
@@ -917,6 +922,7 @@ class PushButton extends IoExpanderDevice
         setPullUp(pin, 1); // enable pullup
         setIrqMask(pin, 1); // enable IRQ
         setIrqEdges(pin, 1, 1); // rising and falling
+        buttonTimer = CancellableTimer(60, cancelBlinkUpDevice.bindenv(this));
     }
 
     function readState()
@@ -945,6 +951,7 @@ class PushButton extends IoExpanderDevice
         // Sample the button multiple times to debounce. Total time 
         // taken is (numSamples-1)*sleepSecs
         local state = readState()
+        local curr_time;
         for (local i=1; i<numSamples; i++)
         {
             state += readState()
@@ -968,6 +975,25 @@ class PushButton extends IoExpanderDevice
 
                     hwScanner.startScanRecord();
                 }
+                
+                curr_time = hardware.millis();
+                if( curr_time - previousTime <= 1000 )
+                {
+                	buttonPressCount++;
+                	if (buttonPressCount == 5)
+                	{
+                		blinkUpDevice(true);
+                	}
+                } 
+                else
+                {
+                	buttonPressCount = 0;
+                	buttonTimer.disable();
+                	blinkUpDevice(false);
+                }
+                previousTime = curr_time;
+                server.log(format("buttonPressCount=%d",buttonPressCount));
+                
                 break;
             case numSamples:
                 // Button in released state
@@ -1003,6 +1029,22 @@ class PushButton extends IoExpanderDevice
                 //server.log("Bouncing! " + buttonState);
                 break;
         }
+    }
+    
+    function blinkUpDevice(blink=false)
+    {
+    	server.log(format("Blink-up: %s.",blink?"enabled":"disabled"));
+    	imp.enableblinkup(blink);
+    	if( blink )
+    	{
+    	  buttonTimer.enable();
+    	}
+    	gDeviceBlinkUpActive = blink;
+    }
+    
+    function cancelBlinkUpDevice()
+    {
+    	blinkUpDevice(false);
     }
 }
 
@@ -1645,7 +1687,7 @@ function init()
     // TODO remove startup tone for final product
     hwPiezo.playSound("startup"); 
     //hwPiezo.playPageTone();
-    
+    hwButton.blinkUpDevice(false);
 }
 
 
@@ -1653,6 +1695,13 @@ function init()
 // Do pre-sleep configuration and initiate deep sleep
 function preSleepHandler() {
 	updateDeviceState( DeviceState.PRE_SLEEP);
+	
+	if( gDeviceBlinkUpActive )
+	{
+		server.log("preSleepHandler: Blink-up enabled, exiting!");
+		updateDeviceState( DeviceState.IDLE );
+		return;
+	}
     // Re-enable accelerometer interrupts
     server.log("preSleepHandler: about to re-enable accel Intterupts");
     hwAccelerometer.reenableInterrupts = true;
