@@ -1077,7 +1077,6 @@ class ChargeStatus extends IoExpanderDevice
         }
         server.log(format("Charger: %s",charging?"charging":"not charging"));
         
-        // TODO: remove the following to beep whenever it charges
         if ( (!previous_state) && (charging))
         {
           // Play the tone here
