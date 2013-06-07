@@ -1,5 +1,21 @@
 // Copyright 2013 Katmandu Technology, Inc. All rights reserved. Confidential.
+// Setup the server to behave when we have the no-wifi condition
+server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 10);
 
+// This NV persistence is only good for warm boot
+// if we get a cold boot, all of this goes away
+// If a cold persistence is required then we need to
+// user the server.setpermanent() api
+if (!("nv" in getroottable()))
+{
+    nv <- { 
+        	sleep_count = 0, 
+    	    setup_required=false, 
+    	    setup_count = 0,
+    	    disconnect_reason=0, 
+    	    sleep_not_allowed=false
+    	  };
+}
 
 // Consts and enums
 const cFirmwareVersion = "0.5.0"
@@ -19,6 +35,10 @@ const cDelayBeforeDeepSleep = 10.0;  // in seconds and just change this one
 local cDelayBeforeAccelClear = 2;
 local cActualDelayBeforeDeepSleep = cDelayBeforeDeepSleep - cDelayBeforeAccelClear;
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
+const BLINK_UP_TIME = 300.0; // in seconds (5M)
+
+// This is the number of button presses required to enter blink up mode
+const BLINK_UP_BUTTON_COUNT = 3;
 
 enum DeviceState
 /*
@@ -40,12 +60,12 @@ enum DeviceState
 
 // Globals
 gDeviceState <- null; // Hiku device current state
-gDeviceBlinkUpActive <-false;
+gDeviceBlinkUpActive <- nv.setup_required;
 
 gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
-gAudioBufferSize <- 2000; // Size of each audio buffer 
-gAudioSampleRate <- 16000; // in Hz
+const gAudioBufferSize = 2000; // Size of each audio buffer 
+const gAudioSampleRate = 16000; // in Hz
 
 // Workaround to capture last buffer after sampler is stopped
 gSamplerStopping <- false; 
@@ -87,12 +107,12 @@ class InterruptHandler
         i2cDevice.write(0x10, 0x01); // RegMisc
 
         // Lower the output buffer drive, to reduce current consumption
-        i2cDevice.write(0x02, 0xFF); // RegLowDrive  		
+        i2cDevice.write(0x02, 0xFF); // RegLowDrive          
         //server.log("--------Setting interrupt handler for pin1--------");
         hardware.pin1.configure(DIGITAL_IN_WAKEUP, handlePin1Int.bindenv(this));
-  	}
+      }
   
-  	// Set an interrupt handler callback for a particular pin
+      // Set an interrupt handler callback for a particular pin
   	function setIrqCallback(pin, func)
   	{
         if( pin > irqCallbacks.len() )
@@ -105,26 +125,39 @@ class InterruptHandler
     }
 
     // Handle all expander callbacks
-    // TODO: if you have multiple IoExpanderDevice's, which instance is called?
     function handlePin1Int()
     {
         local regInterruptSource = 0;
         local reg = 0;
+        
+        local pinState = hardware.pin1.read();
 
         // Get the active interrupt sources
         // Keep reading the interrupt source register and clearing 
         // interrupts until it reads clean.  This catches any interrupts
         // that occur between reading and clearing. 
+        
+        
+        //server.log(format("handlePin1Int: entry time=%d ms, hardware.pin1=%d", hardware.millis(),pinState));
+        if(0 == pinState)
+        {
+        	//server.log(format("handlePin1Int: fallEdge time=%d ms, hardware.pin1=%d", hardware.millis(),pinState));
+        	return;
+        }
+        
         while (reg = i2cDevice.read(0x0C)) // RegInterruptSource
         {
             clearAllIrqs();
             regInterruptSource = regInterruptSource | reg;
         }
+        //server.log("handlePin1Int after int sources time: " + hardware.millis() + "ms");
+
 
         // If no interrupts, just return. This occurs on every 
         // pin 1 falling edge. 
         if (!regInterruptSource) 
         {
+        	//server.log(format("handlePin1Int: fallEdge time=%d ms, hardware.pin1=%d", hardware.millis(),hardware.pin1.read()));
             return;
         }
 
@@ -137,6 +170,8 @@ class InterruptHandler
                 irqCallbacks[pin]();
             }
         }
+       // server.log("handlePin1Int exit time: " + hardware.millis() + "ms");
+
     } 
     
     // Clear all interrupts.  Must do this immediately after
@@ -199,15 +234,18 @@ class Piezo
             "unknown-upc": [[noteB4, dc, shortTone], [noteB4, 0, shortTone], 
             [noteB4, dc, shortTone], [noteB4, 0, shortTone], 
             [noteB4, dc, shortTone], [noteB4, 0, shortTone]],
-            "timeout": [/*silence*/],
-            "sleep":   [[noteE5, dc, longTone], [noteB4, dc, shortTone]],
+            "": [/*silence*/],
+            "timeout":  [/*silence*/],
             "startup": [[noteB4, dc, longTone], [noteE5, dc, shortTone]],
             "charger-attached": [[noteB4, dc, shortTone], [noteB4, dc, shortTone]],
             "device-page": [[noteB4, dc, shortTone],[noteB4, 0, longTone]],
+            "no-connection": [[noteB4, dc, shortTone], [noteB4, 0, shortTone]],
+            "blink-up-enabled": [[noteE5, 0, shortTone], [noteB4, dc, longTone]],
+            "blink-up-disabled": [[noteE5, 0, shortTone], [noteB4, dc, shortTone]],
         };
     }
     
-    // utility function to validate that the tone is present
+    // utility futimeoutnction to validate that the tone is present
     // and it is not a silent tone
     function validate_tone( tone )
     {
@@ -403,6 +441,15 @@ class CancellableTimer
             startTime = null;
         }
     }
+    
+    //**********************************************************
+    // Set new time for the timer
+    function setDuration(secs) 
+    {
+		//assert(this.enable==false);
+		duration = secs*1000;
+    }
+        
 
     //**********************************************************
     // Internal function to manage cancelation and expiration
@@ -482,7 +529,7 @@ class I2cDevice
     {
         i2cPort.write(i2cAddress, format("%c%c", register, data));
     }
-
+/*
     // Print all registers in a range
     function printI2cRegs(min, max)
     {
@@ -517,6 +564,7 @@ class I2cDevice
         server.log(format("REG 0x%02X=%s (0x%02X) %s", regIdx, regStr, 
                           reg, label));
     }
+    */
 }
 
 
@@ -595,7 +643,7 @@ class IoExpanderDevice
         local data = (2*falling + rising) << ((gpio&3)<<1);
         writeMasked(addr, data, mask);
     }
- 
+ /*
     // Print and label expander registers
     function printI2cRegs(min=0, max=0x10)
     {
@@ -640,6 +688,7 @@ class IoExpanderDevice
             printRegister(i, label);
         }
     }
+    */
 }
 
 
@@ -659,7 +708,6 @@ function updateDeviceState(newState)
     {
         if (oldState != DeviceState.IDLE)
         {
-            // Start deep sleep timer
             gDeepSleepTimer.enable();
         }
     }
@@ -751,6 +799,7 @@ class Scanner extends IoExpanderDevice
         setPin(reset, 0); // pull low to reset
         imp.sleep(0.001); // wait for x seconds
         setPin(reset, 1); // pull high to boot
+        imp.sleep(0.001);
 
         // Configure trigger pin as output
         setDir(pin, 0); // set as output
@@ -800,7 +849,10 @@ class Scanner extends IoExpanderDevice
         gAudioChunkCount = 0;
         gLastSamplerBuffer = null; 
         gLastSamplerBufLen = 0; 
-        agent.send("startAudioUpload", "");
+        if(0!=agent.send("startAudioUpload", ""))
+        {
+        	//hwPiezo.playSound("no-connection");
+        }
         hardware.sampler.start();
     }
 
@@ -853,15 +905,22 @@ class Scanner extends IoExpanderDevice
 
                     /*server.log("Code: \"" + scannerOutput + "\" (" + 
                                scannerOutput.len() + " chars)");*/
-                    hwPiezo.playSound("success-local");
-                    agent.send("uploadBeep", {
+                    
+                    if(0!= agent.send("uploadBeep", {
                                               scandata=scannerOutput,
                                               scansize=scannerOutput.len(),
                                               serial=hardware.getimpeeid(),
                                               fw_version=cFirmwareVersion,
                                               linkedrecord="",
                                               audiodata="",
-                                             });
+                                             }))
+                    {
+                    	hwPiezo.playSound("no-connection");
+                    }
+                    else
+                    {
+                    	hwPiezo.playSound("success-local");
+                    }
                     
                     // Stop collecting data
                     stopScanRecord();
@@ -899,7 +958,7 @@ class PushButton extends IoExpanderDevice
     
     buttonPressCount = 0;
     previousTime = 0;
-    buttonTimer = null;
+    blinkTimer = null;
 
     // WARNING: increasing these can cause buffer overruns during 
     // audio recording, because this the button debouncing on "up"
@@ -922,7 +981,8 @@ class PushButton extends IoExpanderDevice
         setPullUp(pin, 1); // enable pullup
         setIrqMask(pin, 1); // enable IRQ
         setIrqEdges(pin, 1, 1); // rising and falling
-        buttonTimer = CancellableTimer(60, cancelBlinkUpDevice.bindenv(this));
+        
+        blinkTimer = CancellableTimer(BLINK_UP_TIME, this.cancelBlinkUpTimer.bindenv(this));
     }
 
     function readState()
@@ -950,13 +1010,16 @@ class PushButton extends IoExpanderDevice
     {
         // Sample the button multiple times to debounce. Total time 
         // taken is (numSamples-1)*sleepSecs
-        local state = readState()
+        local state = readState();
         local curr_time;
+        
         for (local i=1; i<numSamples; i++)
         {
             state += readState()
             imp.sleep(sleepSecs)
         }
+
+		//server.log("buttonCallBack entry time: " + hardware.millis() + "ms");
 
         // Handle the button state transition
         switch(state) 
@@ -967,32 +1030,31 @@ class PushButton extends IoExpanderDevice
                 {
                 	hwPiezo.stopPageTone();
                 }
+                
+                // The logic below is to ensure
+                // that we are able to enter
+                // blink-up state with BLINK_UP_BUTTON_COUNT quick button presses
+                curr_time = hardware.millis();
+                local prv_time = previousTime;
+        		previousTime = curr_time;
+                buttonPressCount = ( curr_time - prv_time <= 1000 )?++buttonPressCount:0;
+                
+                if ((BLINK_UP_BUTTON_COUNT-1 == buttonPressCount))
+                {
+                	blinkUpDevice(true);
+                	buttonPressCount = 0;
+                	return;
+                }
+                //server.log(format("buttonPressCount=%d",buttonPressCount));                
+                
                 if (buttonState == ButtonState.BUTTON_UP)
                 {
                     updateDeviceState(DeviceState.SCAN_RECORD);
                     buttonState = ButtonState.BUTTON_DOWN;
-                    server.log("Button state change: DOWN");
+                    //server.log("Button state change: DOWN");
 
                     hwScanner.startScanRecord();
                 }
-                
-                curr_time = hardware.millis();
-                if( curr_time - previousTime <= 1000 )
-                {
-                	buttonPressCount++;
-                	if (buttonPressCount == 5)
-                	{
-                		blinkUpDevice(true);
-                	}
-                } 
-                else
-                {
-                	buttonPressCount = 0;
-                	buttonTimer.disable();
-                	blinkUpDevice(false);
-                }
-                previousTime = curr_time;
-                server.log(format("buttonPressCount=%d",buttonPressCount));
                 
                 break;
             case numSamples:
@@ -1000,7 +1062,7 @@ class PushButton extends IoExpanderDevice
                 if (buttonState == ButtonState.BUTTON_DOWN)
                 {
                     buttonState = ButtonState.BUTTON_UP;
-                    server.log("Button state change: UP");
+                    //server.log("Button state change: UP");
 
                     local oldState = gDeviceState;
                     updateDeviceState(DeviceState.BUTTON_RELEASED);
@@ -1029,22 +1091,34 @@ class PushButton extends IoExpanderDevice
                 //server.log("Bouncing! " + buttonState);
                 break;
         }
+        //server.log("buttonCallBack exit time: " + hardware.millis() + "ms");
     }
     
     function blinkUpDevice(blink=false)
     {
+    	//if( !gDeviceBlinkUpActive )
+    	//{
+     		imp.enableblinkup(blink);
+    		gDeviceBlinkUpActive = blink;
+    		if( blink )
+    		{
+    			hwPiezo.playSound("blink-up-enabled");
+    			//Enable the 5 minute Timer here
+    			// Ensure that we only enable it for the setup_required case
+    			if( !server.isconnected())
+    			{
+    				nv.setup_required = true;
+    				nv.sleep_not_allowed = true;
+    				blinkTimer.enable();
+    			}
+    		}
+    	//}
     	server.log(format("Blink-up: %s.",blink?"enabled":"disabled"));
-    	imp.enableblinkup(blink);
-    	if( blink )
-    	{
-    	  buttonTimer.enable();
-    	}
-    	gDeviceBlinkUpActive = blink;
     }
     
-    function cancelBlinkUpDevice()
+    function cancelBlinkUpTimer()
     {
-    	blinkUpDevice(false);
+    	nv.sleep_not_allowed = false;
     }
 }
 
@@ -1122,14 +1196,13 @@ class ChargeStatus extends IoExpanderDevice
         if ( (!previous_state) && (charging))
         {
           // Play the tone here
-          hwPiezo.playSound("charger-attached");
+          //hwPiezo.playSound("charger-attached");
         }
         previous_state = (charging==0)? false:true; // update the previous state with the current state
         agent.send("chargerState", previous_state); // update the charger state
         handleChargerStatusInt();
     }
 }
-
 
 //======================================================================
 // 3.3 volt switch pin for powering most peripherals
@@ -1166,6 +1239,128 @@ class Switch3v3Accessory extends IoExpanderDevice
     }
 }
 
+
+//======================================================================
+// Sampler/Audio In
+
+//**********************************************************************
+// Agent callback: upload complete
+agent.on("uploadCompleted", function(result) {
+	server.log("uploadCompleted response");
+    hwPiezo.playSound(result);
+});
+
+agent.on("devicePage", function(result){
+	hwPiezo.playPageTone();
+});
+
+
+//**********************************************************************
+// Process the last buffer, if any, and tell the agent we are done. 
+// This function is called after sampler.stop in a way that 
+// ensures we have captured all sampled buffers. 
+function sendLastBuffer()
+{
+    // Send the last chunk to the server, if there is one
+    if (gLastSamplerBuffer != null && gLastSamplerBufLen > 0)
+    {
+        if(0 != agent.send("uploadAudioChunk", {buffer=gLastSamplerBuffer, 
+                   length=gLastSamplerBufLen}))
+        {
+        	hwPiezo.playSound("no-connection");
+        }
+    }
+
+    // If there are less than x secs of audio, abandon the 
+    // recording. Else send the beep!
+    local secs = gAudioChunkCount*gAudioBufferSize/
+                       gAudioSampleRate.tofloat();
+
+    //Because we cannot guarantee network robustness, we allow 
+    // uploads even if an overrun occurred. Worst case it still
+    // fails to reco, and you'll get an equivalent error. 
+    //if (secs >= 0.4 && !gAudioBufferOverran)
+    if (secs >= 0.4)
+    {
+        if(agent.send("endAudioUpload", {
+                                      scandata="",
+                                      serial=hardware.getimpeeid(),
+                                      fw_version=cFirmwareVersion,
+                                      linkedrecord="",
+                                      audiodata="", // to be added by agent
+                                      scansize=gAudioChunkCount, 
+                                     }) != 0)
+        {
+        	hwPiezo.playSound("no-connection");
+        }
+        else
+        {
+        	hwPiezo.playSound("success-local");
+        }
+    }
+
+    // We have completed the process of stopping the sampler
+    gSamplerStopping = false;
+}
+
+
+//**********************************************************************
+// Called when an audio sampler buffer is ready.  It is called 
+// ((sample rate * bytes per sample)/buffer size) times per second.  
+// So for 16 kHz sampling of 8-bit A law and 2000 byte buffers, 
+// it is called 8x/sec. 
+// 
+// Since A-law seems to only send full buffers, we send the whole 
+// buffer and truncate if necessary on the server side, instead 
+// of making a (possibly truncated) copy each time here. This 
+// is filed as a bug that may be fixed in the future. 
+// 
+// Buffer overruns can be caused (and typically are) by this routine
+// taking too long.  It typically takes too long if the network is slow
+// or flakey when we upload samples.  We are robust if this callback
+// takes up to about 100ms.  Typically it should take about 3ms.  
+
+function samplerCallback(buffer, length)
+{
+    //server.log("SAMPLER CALLBACK: size " + length");
+    local err_code=0;
+    if (length <= 0)
+    {
+        gAudioBufferOverran = true;
+        server.log("Error: audio sampler buffer overrun!!!!!!, last timer="+gAudioTimer+"ms, free-mem:"+imp.getmemoryfree());
+        
+    }
+    else 
+    {
+        // Time the sending
+        gAudioChunkCount++;
+        gAudioTimer = hardware.millis();
+
+        // Send the data, managing the last buffer as a special case
+        if (gSamplerStopping) {
+            if (gLastSamplerBuffer) { 
+                // It wasn't quite the last one, send normally
+                err_code = agent.send("uploadAudioChunk", {buffer=buffer, 
+                           							length=length});
+            }
+            // Process last buffer later, to do special handling
+            gLastSamplerBuffer = buffer;
+            gLastSamplerBufLen = length;
+        }
+        else
+        {
+            err_code = agent.send("uploadAudioChunk", {buffer=buffer, length=length});
+        }
+
+        // Finish timing the send.  See function comments for more info. 
+        gAudioTimer = hardware.millis() - gAudioTimer;
+        //server.log(gAudioTimer + "ms");
+        if( err_code != 0)
+        {
+        	hwPiezo.playSound("no-connection");
+        }
+    }
+}
 
 //======================================================================
 // Accelerometer
@@ -1322,7 +1517,7 @@ class Accelerometer extends I2cDevice
             enableInterrupts();
         }
     }
-
+/*
     // Debug printout of the orientation registers on one line
     function printOrientation() 
     {
@@ -1438,112 +1633,7 @@ class Accelerometer extends I2cDevice
             printRegister(i, label);
         }
     }
-}
-
-
-//======================================================================
-// Sampler/Audio In
-
-//**********************************************************************
-// Agent callback: upload complete
-agent.on("uploadCompleted", function(result) {
-    hwPiezo.playSound(result);
-});
-
-agent.on("devicePage", function(result){
-	hwPiezo.playPageTone();
-});
-
-
-//**********************************************************************
-// Process the last buffer, if any, and tell the agent we are done. 
-// This function is called after sampler.stop in a way that 
-// ensures we have captured all sampled buffers. 
-function sendLastBuffer()
-{
-    // Send the last chunk to the server, if there is one
-    if (gLastSamplerBuffer != null && gLastSamplerBufLen > 0)
-    {
-        agent.send("uploadAudioChunk", {buffer=gLastSamplerBuffer, 
-                   length=gLastSamplerBufLen});
-    }
-
-    // If there are less than x secs of audio, abandon the 
-    // recording. Else send the beep!
-    local secs = gAudioChunkCount*gAudioBufferSize/
-                       gAudioSampleRate.tofloat();
-
-    //Because we cannot guarantee network robustness, we allow 
-    // uploads even if an overrun occurred. Worst case it still
-    // fails to reco, and you'll get an equivalent error. 
-    //if (secs >= 0.4 && !gAudioBufferOverran)
-    if (secs >= 0.4)
-    {
-        hwPiezo.playSound("success-local");
-        agent.send("endAudioUpload", {
-                                      scandata="",
-                                      serial=hardware.getimpeeid(),
-                                      fw_version=cFirmwareVersion,
-                                      linkedrecord="",
-                                      audiodata="", // to be added by agent
-                                      scansize=gAudioChunkCount, 
-                                     });
-    }
-
-    // We have completed the process of stopping the sampler
-    gSamplerStopping = false;
-}
-
-
-//**********************************************************************
-// Called when an audio sampler buffer is ready.  It is called 
-// ((sample rate * bytes per sample)/buffer size) times per second.  
-// So for 16 kHz sampling of 8-bit A law and 2000 byte buffers, 
-// it is called 8x/sec. 
-// 
-// Since A-law seems to only send full buffers, we send the whole 
-// buffer and truncate if necessary on the server side, instead 
-// of making a (possibly truncated) copy each time here. This 
-// is filed as a bug that may be fixed in the future. 
-// 
-// Buffer overruns can be caused (and typically are) by this routine
-// taking too long.  It typically takes too long if the network is slow
-// or flakey when we upload samples.  We are robust if this callback
-// takes up to about 100ms.  Typically it should take about 3ms.  
-function samplerCallback(buffer, length)
-{
-    //server.log("SAMPLER CALLBACK: size " + length");
-    if (length <= 0)
-    {
-        gAudioBufferOverran = true;
-        server.log("Error: audio sampler buffer overrun!!!!!!, last timer="+gAudioTimer+"ms");
-    }
-    else 
-    {
-        // Time the sending
-        gAudioChunkCount++;
-        gAudioTimer = hardware.millis();
-
-        // Send the data, managing the last buffer as a special case
-        if (gSamplerStopping) {
-            if (gLastSamplerBuffer) { 
-                // It wasn't quite the last one, send normally
-                agent.send("uploadAudioChunk", {buffer=buffer, 
-                           length=length});
-            }
-            // Process last buffer later, to do special handling
-            gLastSamplerBuffer = buffer;
-            gLastSamplerBufLen = length;
-        }
-        else
-        {
-            agent.send("uploadAudioChunk", {buffer=buffer, length=length});
-        }
-
-        // Finish timing the send.  See function comments for more info. 
-        gAudioTimer = hardware.millis() - gAudioTimer;
-        //server.log(gAudioTimer + "ms");
-    }
+    */
 }
 
 
@@ -1561,6 +1651,7 @@ function print(str)
 
 
 //**********************************************************************
+/*
 function printStartupDebugInfo()
 {
     // impee ID
@@ -1607,17 +1698,15 @@ function printStartupDebugInfo()
     server.log(format("Device is %scharging", 
                       chargeStatus.isCharging()?"":"not \x00"));
 }
-
-
-//**********************************************************************
-function init()
+*/
+function init_nv_items()
 {
-    imp.configure("hiku", [], []);
+	server.log(format("sleep_count=%d setup_required=%s", 
+					nv.sleep_count, (nv.setup_required?"yes":"no")));
+}
 
-    // We will always be in deep sleep unless button pressed, in which
-    // case we need to be as responsive as possible. 
-    imp.setpowersave(false);
-
+function init_stage1()
+{
     // I2C bus addresses
     const cAddrIoExpander = 0x23;
     const cAddrAccelerometer = 0x18;
@@ -1633,7 +1722,7 @@ function init()
 	// Create an I2cDevice to pass around
     i2cDev <- I2cDevice(I2C_89, cAddrIoExpander);
     i2cDevAccel <- I2cDevice(I2C_89, cAddrAccelerometer);
-    intHandler <- InterruptHandler(8, i2cDev);
+    intHandler <- InterruptHandler(8, i2cDev);	    
     
     // 3v3 accessory switch config
     sw3v3 <- Switch3v3Accessory(intHandler, cIoPin3v3Switch);
@@ -1642,11 +1731,11 @@ function init()
     // Charge status detect config
     chargeStatus <- ChargeStatus(intHandler, cIoPinChargeStatus);
 
-    // Piezo config
-    hwPiezo <- Piezo(hardware.pin5);
-
     // Button config
     hwButton <- PushButton(intHandler, cIoPinButton);
+
+    // Piezo config
+    hwPiezo <- Piezo(hardware.pin5);
 
     // Scanner config
     hwScanner <-Scanner(intHandler, cIoPinScannerTrigger,
@@ -1657,7 +1746,6 @@ function init()
     hardware.sampler.configure(hwMicrophone, gAudioSampleRate, 
                                [buf1, buf2, buf3], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
-
     // Accelerometer config
     hwAccelerometer <- Accelerometer(I2C_89, cAddrAccelerometer, 
                                      cIoPinAccelerometerInt, intHandler);
@@ -1670,64 +1758,83 @@ function init()
     gDeepSleepTimer <- CancellableTimer(cActualDelayBeforeDeepSleep, preSleepHandler);
     
     gAccelHysteresis <- CancellableTimer( cDelayBeforeAccelClear, sleepHandler); 
+}
 
-    // Send the agent our impee ID
-    agent.send("impeeId", hardware.getimpeeid());
-
+function init_stage2()
+{
     // Transition to the idle state
     updateDeviceState(DeviceState.IDLE);
-
     // Print debug info
     // WARNING: for some reason, if this is uncommented, the device
     // will not wake up if there is motion while the device goes 
     // to sleep!
-    printStartupDebugInfo();
-
+    //printStartupDebugInfo();
+	// free memory
+    //server.log(format("Free memory: %d bytes", imp.getmemoryfree()));
     // Initialization complete notification
     // TODO remove startup tone for final product
-    hwPiezo.playSound("startup"); 
-    //hwPiezo.playPageTone();
-    hwButton.blinkUpDevice(false);
-}
+    // initialize the nv items on a cold boot
+    init_nv_items();
 
+    // This means we had already went to sleep with the button presses
+    // to get the device back into blink up mode after the blink-up mode times out
+    // the user needs to manually enable it the next time it wakes up
+    imp.enableblinkup(nv.setup_required); 
+    // We only wake due to an interrupt or after power loss.  If the 
+	// former, we need to handle any pending interrupts. 
+	intHandler.handlePin1Int(); 
+}
 
 //**********************************************************************
 // Do pre-sleep configuration and initiate deep sleep
 function preSleepHandler() {
 	updateDeviceState( DeviceState.PRE_SLEEP);
 	
-	if( gDeviceBlinkUpActive )
+	if( nv.sleep_not_allowed)
 	{
-		server.log("preSleepHandler: Blink-up enabled, exiting!");
+		//Just for testing but we should remove it later
+		hwPiezo.playSound("device-page");
 		updateDeviceState( DeviceState.IDLE );
 		return;
 	}
-    // Re-enable accelerometer interrupts
-    server.log("preSleepHandler: about to re-enable accel Intterupts");
-    hwAccelerometer.reenableInterrupts = true;
-    hwAccelerometer.enableInterrupts();
+	
+	if( !nv.setup_required )
+	{
+    	// Re-enable accelerometer interrupts
+    	server.log("preSleepHandler: about to re-enable accel Intterupts");
+    	hwAccelerometer.reenableInterrupts = true;
+    	hwAccelerometer.enableInterrupts();
 
-    // Handle any last interrupts before we clear them all and go to sleep
-    //server.log("preSleepHandler: handle any pending interrupts");
-    intHandler.handlePin1Int(); 
+    	// Handle any last interrupts before we clear them all and go to sleep
+    	server.log("preSleepHandler: handle any pending interrupts");
+    	intHandler.handlePin1Int(); 
 
-    // Clear any accelerometer interrupts, then clear the IO expander. 
-    // We found this to be necessary to not hang on sleep, as we were
-    // getting spurious interrupts from the accelerometer when re-enabling,
-    // that were not caught by handlePin1Int. Race condition? 
-    //server.log("preSleepHandler: clear out all the pending accel interrupts");
-    hwAccelerometer.clearAccelInterruptUntilCleared();
-    //server.log("preSleepHandler: clear out all the IOExpander Interrupts");
-    intHandler.clearAllIrqs(); 
+    	// Clear any accelerometer interrupts, then clear the IO expander. 
+    	// We found this to be necessary to not hang on sleep, as we were
+    	// getting spurious interrupts from the accelerometer when re-enabling,
+    	// that were not caught by handlePin1Int. Race condition? 
+    	//server.log("preSleepHandler: clear out all the pending accel interrupts");
+    	hwAccelerometer.clearAccelInterruptUntilCleared();
+    	//server.log("preSleepHandler: clear out all the IOExpander Interrupts");
+    	intHandler.clearAllIrqs(); 
     
-    // When the timer below expires we will hit the sleepHandler function below
-    // only enter into the delay wait if the current state is either IDLE or PRE_SLEEP
-    // otherwise just get out of this because it would just go into sleep even though
-    // someone pushed the button
-    if( (gDeviceState == DeviceState.IDLE) || (gDeviceState == DeviceState.PRE_SLEEP) )
+    	// When the timer below expires we will hit the sleepHandler function below
+    	// only enter into the delay wait if the current state is either IDLE or PRE_SLEEP
+    	// otherwise just get out of this because it would just go into sleep even though
+    	// someone pushed the button
+    	if( (gDeviceState == DeviceState.IDLE) || (gDeviceState == DeviceState.PRE_SLEEP) )
+    	{
+    		gAccelInterrupted = false;
+    		gAccelHysteresis.enable();
+    	}
+    }
+    else
     {
+    	// If the setup is required and we timed out for
+    	// the 5 minute timer then we just enter sleep right away
+    	// only thing that would wake up the device is the button press
     	gAccelInterrupted = false;
-    	gAccelHysteresis.enable();
+    	sleepHandler();
     }
 }
 
@@ -1748,7 +1855,6 @@ function sleepHandler()
 	// free memory
     server.log(format("Free memory: %d bytes", imp.getmemoryfree()));
     
-    
     // Disable the scanner and its UART
     //server.log("sleepHandler: about to disable the HW Scanner");
     hwScanner.disable();
@@ -1762,14 +1868,135 @@ function sleepHandler()
     
     assert(gDeviceState == DeviceState.PRE_SLEEP);
     server.log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", hardware.pin1.read()));
-    server.sleepfor(cDeepSleepDuration);    
+    nv.sleep_count++;
+    if( nv.disconnect_reason != SERVER_CONNECTED )
+    {
+    	server.disconnect();
+    }
+    //server.flush(2);
+    imp.deepsleepfor(cDeepSleepDuration);    
 }
 
 
 //**********************************************************************
 // main
-init();
 
-// We only wake due to an interrupt or after power loss.  If the 
-// former, we need to handle any pending interrupts. 
-intHandler.handlePin1Int();
+//********************************************************************
+// Connection Status related handling
+function getDisconnectReason(reason)
+{
+    if (reason == NO_WIFI) {
+        return "Wifi went away";
+    }
+ 
+    if (reason == NO_IP_ADDRESS) {
+        return "Failed to get IP address";
+    }
+ 
+    if (reason == NO_SERVER) {
+        return "Failed to connect to server";
+    }
+ 
+    if (reason == NOT_RESOLVED) {
+        return "Failed to resolve server";
+    }
+ 
+    return ""
+}
+
+function onShutdown(status)
+{
+  	server.log("Hiku: restarting to download new code!!");
+	server.restart();
+}
+
+function heart_beat()
+{
+	server.log("heart_beat");
+	imp.wakeup(1, heart_beat);
+}
+
+function onConnected(status)
+{
+	init_stage1();
+    if (status == SERVER_CONNECTED) {
+        imp.configure("hiku", [], []); 
+        // We will always be in deep sleep unless button pressed, in which
+        // case we need to be as responsive as possible. 
+        imp.setpowersave(false); 
+        hwPiezo.playSound("startup");    
+		server.log(format("Reconnected after unexpected disconnect: %s ",
+									getDisconnectReason(nv.disconnect_reason))); 
+									             
+        // Send the agent our impee ID
+        agent.send("impeeId", hardware.getimpeeid());
+        heart_beat();
+        if( nv.setup_required )
+        {
+        	nv.setup_required = false;
+        	nv.setup_count++;
+        	server.log("Setup Completed!");
+        	hwPiezo.playSound("blink-up-disabled");
+        }
+    }
+    else
+    {
+   		nv.disconnect_reason = status;
+    	hwPiezo.playSound("no-connection");
+    	imp.wakeup(10, tryToConnect);
+    }
+    init_stage2();
+    imp.enableblinkup(true);
+}
+
+//********************************************************************
+// This is to make sure that we wake up and start trying to connect on the background
+// only time we would get into onConnected is when we have a connection established
+// otherwise its going to beep left and right which is nasty!
+function onConnectedResume(status)
+{
+	if( status != SERVER_CONNECTED )
+	{
+		imp.wakeup(10, tryToConnect );
+	}
+	else
+	{
+		onConnected(status);
+	}
+}
+
+function tryToConnect()
+{
+    if (!server.isconnected()) {
+        server.connect(onConnectedResume, 10);
+        imp.wakeup(10, tryToConnect);
+    }
+}
+
+function onUnexpectedDisconnect(status)
+{
+    nv.disconnect_reason = status;
+    hwPiezo.playSound("no-connection");
+    imp.wakeup(10, tryToConnect);
+}
+
+function setup_connection()
+{
+	if( server.isconnected() )
+	{
+        onConnected(SERVER_CONNECTED);
+	}
+	else
+	{
+    	server.connect(onConnected, 10);
+	}	
+}
+
+function init()
+{
+	server.onunexpecteddisconnect(onUnexpectedDisconnect);
+	server.onshutdown(onShutdown);
+	setup_connection();
+}
+// start off here and things should move
+init();

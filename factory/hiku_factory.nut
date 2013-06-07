@@ -27,7 +27,12 @@ const cDelayBeforeDeepSleep = 10.0;  // in seconds and just change this one
 local cDelayBeforeAccelClear = 2;
 local cActualDelayBeforeDeepSleep = cDelayBeforeDeepSleep - cDelayBeforeAccelClear;
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
-const SpecialBarCode = "12312412312412322";
+const SpecialBarCode = "W15290/1";
+
+// Change this to enable the factory blink-up
+// This is the WIFI SSID and password that will be used for factory blink-up
+const SSID = "SVGPartners";
+const PASSWORD = "accesssvg";
 
 enum DeviceState
 /*
@@ -781,8 +786,8 @@ class Scanner extends IoExpanderDevice
                     }
                     updateDeviceState(DeviceState.SCAN_CAPTURED);
 
-                    /*server.log("Code: \"" + scannerOutput + "\" (" + 
-                               scannerOutput.len() + " chars)");*/
+                    server.log("Code: \"" + scannerOutput + "\" (" + 
+                               scannerOutput.len() + " chars)");
                     hwPiezo.playSound("success-local");
                     agent.send("uploadBeep", {
                                               scandata=scannerOutput,
@@ -902,13 +907,13 @@ class PushButton extends IoExpanderDevice
                 if( curr_time - previousTime <= 1000 )
                 {
                 	buttonPressCount++;
-                	if (buttonPressCount == 5)
-                	{
-                		blinkUpDevice(true);
-                	}
-                	else if( buttonPressCount == 3 && nv.bless_device )
+                	if( buttonPressCount == 3 && nv.bless_device )
                 	{
                 		blessDevice();
+                	}
+                	else if (buttonPressCount == 5)
+                	{
+                		blinkUpDevice(true);
                 	}
                 	
                 } 
@@ -982,11 +987,12 @@ class PushButton extends IoExpanderDevice
     
     function blessServerCallback(result)
     {
-    	server.log(format("Bless Status: %s.",result?"success":"failure"));
+    	server.log(format("Bless Status for MAC=%s : %s",imp.getmacaddress(),result?"success":"failure"));
     }    
     
     function blessDevice()
     {
+    	server.log(format("Blessing MAC=%s.",imp.getmacaddress()));
     	server.bless(true,blessServerCallback);
     }
     
@@ -994,7 +1000,7 @@ class PushButton extends IoExpanderDevice
 
 class FactoryButton
 {
-    buttonState = ButtonState.BUTTON_UP; // Button current state
+    buttonState = ButtonState.BUTTON_DOWN; // Button current state
     
     buttonPressCount = 0;
     previousTime = 0;
@@ -1009,7 +1015,7 @@ class FactoryButton
     constructor()
     {
         // Set event handler for IRQ
-		hardware.pin1.configure(DIGITAL_IN_WAKEUP, buttonCallback.bindenv(this));
+		hardware.pin1.configure(DIGITAL_IN_WAKEUP, this.buttonCallback.bindenv(this));
         buttonTimer = CancellableTimer(60, cancelBlinkUpDevice.bindenv(this));
     }
 
@@ -1023,7 +1029,6 @@ class FactoryButton
     // too long, we abort recording and scanning.
     function handleButtonTimeout()
     {
-        facPiezo.playSound("timeout");
         server.log("Timeout reached. Button Held too long.");
     }
 
@@ -1043,7 +1048,7 @@ class FactoryButton
             state += readState()
             imp.sleep(sleepSecs)
         }
-
+		server.log("pin state= "+state);
         // Handle the button state transition
         switch(state) 
         {
@@ -1058,7 +1063,7 @@ class FactoryButton
                 if( curr_time - previousTime <= 1000 )
                 {
                 	buttonPressCount++;
-                	if (buttonPressCount == 5)
+                	if (buttonPressCount == 1)
                 	{
                 		blinkUpDevice(true);
                 	}
@@ -1090,14 +1095,16 @@ class FactoryButton
     
     function blinkUpDevice(blink=false)
     {
-    	server.log(format("Blink-up: %s.",blink?"enabled":"disabled"));
-    	imp.enableblinkup(blink);
     	if( blink )
     	{
+    		
     	  buttonTimer.enable();
-    	  server.factoryblinkup("hiku_ssid", "", hardware.pin7, BLINKUP_120HZ);
+    	  hardware.pin5.configure(DIGITAL_OUT);
+    	  hardware.pin5.write(1);
+    	  server.log("Factory Blink-up Started!!");
+    	  server.factoryblinkup(SSID,PASSWORD, hardware.pin5, 0);
+    	  server.log("Factory Blink-up Ended!!");
     	}
-    	gDeviceBlinkUpActive = blink;
     }
     
     function cancelBlinkUpDevice()
@@ -1393,6 +1400,12 @@ function printStartupDebugInfo()
                       chargeStatus.isCharging()?"":"not \x00"));
 }
 
+function timeoutFunction()
+{
+	hardware.pin1.configure(DIGITAL_IN_WAKEUP, facButton.buttonCallback.bindenv(facButton));
+	server.sleepfor(cDeepSleepDuration);
+}
+
 function init_card()
 {
 	imp.configure("hiku-factory-blinkup", [], []);
@@ -1404,8 +1417,6 @@ function init_card()
     // Button config
     facButton <- FactoryButton();
 
-    // Piezo config
-    facPiezo <- Piezo(hardware.pin5);
     
     facSleepTimer <- CancellableTimer(60*5, timeoutFunction.bindenv(this));
     facSleepTimer.enable();
@@ -1416,11 +1427,8 @@ function init_card()
     // WARNING: for some reason, if this is uncommented, the device
     // will not wake up if there is motion while the device goes 
     // to sleep!
-    printStartupDebugInfo();
+    //printStartupDebugInfo();
 
-    // Initialization complete notification
-    // TODO remove startup tone for final product
-    facPiezo.playSound("startup"); 
     //hwButton.blinkUpDevice(false);
     // We only wake due to an interrupt or after power loss.  If the 
 	// former, we need to handle any pending interrupts. 
@@ -1575,12 +1583,15 @@ function sleepHandler()
 // This function determines whether we are
 // running a card for factory or a soldered down module
 // for our devices
+
 function init()
 {
 	local board_type = imp.environment();
 	if (ENVIRONMENT_CARD == board_type )
 	{
 		init_card();
+		hardware.pin5.configure(DIGITAL_OUT);
+		hardware.pin5.write(1);
 	}
 	else if ( ENVIRONMENT_MODULE == board_type )
 	{

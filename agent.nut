@@ -290,7 +290,6 @@ device.on("endAudioUpload", function(data) {
 
         return;
     }
-
     sendBeepToHikuServer(data);  
 });
 
