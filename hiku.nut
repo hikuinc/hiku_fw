@@ -241,7 +241,6 @@ class Piezo
             "device-page": [[noteB4, dc, shortTone],[noteB4, 0, longTone]],
             "no-connection": [[noteB4, dc, shortTone], [noteB4, 0, shortTone]],
             "blink-up-enabled": [[noteE5, 0, shortTone], [noteB4, dc, longTone]],
-            "blink-up-disabled": [[noteE5, 0, shortTone], [noteB4, dc, shortTone]],
         };
     }
     
@@ -1793,7 +1792,7 @@ function preSleepHandler() {
 	if( nv.sleep_not_allowed)
 	{
 		//Just for testing but we should remove it later
-		hwPiezo.playSound("device-page");
+		//hwPiezo.playSound("device-page");
 		updateDeviceState( DeviceState.IDLE );
 		return;
 	}
@@ -1869,10 +1868,7 @@ function sleepHandler()
     assert(gDeviceState == DeviceState.PRE_SLEEP);
     server.log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", hardware.pin1.read()));
     nv.sleep_count++;
-    if( nv.disconnect_reason != SERVER_CONNECTED )
-    {
-    	server.disconnect();
-    }
+    server.disconnect();
     //server.flush(2);
     imp.deepsleepfor(cDeepSleepDuration);    
 }
@@ -1926,7 +1922,8 @@ function onConnected(status)
         imp.setpowersave(false); 
         hwPiezo.playSound("startup");    
 		server.log(format("Reconnected after unexpected disconnect: %s ",
-									getDisconnectReason(nv.disconnect_reason))); 
+									getDisconnectReason(nv.disconnect_reason)));
+		nv.disconnect_reason = 0; 
 									             
         // Send the agent our impee ID
         agent.send("impeeId", hardware.getimpeeid());
@@ -1936,7 +1933,6 @@ function onConnected(status)
         	nv.setup_required = false;
         	nv.setup_count++;
         	server.log("Setup Completed!");
-        	hwPiezo.playSound("blink-up-disabled");
         }
     }
     else
@@ -1946,7 +1942,11 @@ function onConnected(status)
     	imp.wakeup(10, tryToConnect);
     }
     init_stage2();
-    imp.enableblinkup(true);
+    
+    if( nv.setup_required )
+    {
+    	hwButton.blinkUpDevice(true);
+    }
 }
 
 //********************************************************************
