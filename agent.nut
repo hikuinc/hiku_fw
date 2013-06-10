@@ -307,6 +307,10 @@ device.on("uploadAudioChunk", function(data) {
     gChunkCount++;
 });
 
+device.on("shutdownRequestReason", function(status){
+	agentLog(format("Hiku shutting down. Reason=%d", status));
+});
+
 
 //======================================================================
 // External HTTP request handling

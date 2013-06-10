@@ -60,7 +60,6 @@ enum DeviceState
 
 // Globals
 gDeviceState <- null; // Hiku device current state
-gDeviceBlinkUpActive <- nv.setup_required;
 
 gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
@@ -73,7 +72,6 @@ gLastSamplerBuffer <- null;
 gLastSamplerBufLen <- 0; 
 gAudioTimer <- 0;
 
-gPin1HandlerSet <- false;
 gAccelInterrupted <- false;
 
 // Each 1k of buffer will hold 1/16 of a second of audio, or 63ms.
@@ -1095,23 +1093,19 @@ class PushButton extends IoExpanderDevice
     
     function blinkUpDevice(blink=false)
     {
-    	//if( !gDeviceBlinkUpActive )
-    	//{
-     		imp.enableblinkup(blink);
-    		gDeviceBlinkUpActive = blink;
-    		if( blink )
+     	imp.enableblinkup(blink);
+    	if( blink )
+    	{
+    		hwPiezo.playSound("blink-up-enabled");
+    		//Enable the 5 minute Timer here
+    		// Ensure that we only enable it for the setup_required case
+    		if( !server.isconnected())
     		{
-    			hwPiezo.playSound("blink-up-enabled");
-    			//Enable the 5 minute Timer here
-    			// Ensure that we only enable it for the setup_required case
-    			if( !server.isconnected())
-    			{
-    				nv.setup_required = true;
-    				nv.sleep_not_allowed = true;
-    				blinkTimer.enable();
-    			}
+    			nv.setup_required = true;
+    			nv.sleep_not_allowed = true;
+    			blinkTimer.enable();
     		}
-    	//}
+    	}
     	server.log(format("Blink-up: %s.",blink?"enabled":"disabled"));
     }
     
@@ -1245,7 +1239,7 @@ class Switch3v3Accessory extends IoExpanderDevice
 //**********************************************************************
 // Agent callback: upload complete
 agent.on("uploadCompleted", function(result) {
-	server.log("uploadCompleted response");
+	//server.log("uploadCompleted response");
     hwPiezo.playSound(result);
 });
 
@@ -1778,7 +1772,7 @@ function init_stage2()
     // This means we had already went to sleep with the button presses
     // to get the device back into blink up mode after the blink-up mode times out
     // the user needs to manually enable it the next time it wakes up
-    imp.enableblinkup(nv.setup_required); 
+    //imp.enableblinkup(nv.setup_required); 
     // We only wake due to an interrupt or after power loss.  If the 
 	// former, we need to handle any pending interrupts. 
 	intHandler.handlePin1Int(); 
@@ -1879,6 +1873,7 @@ function sleepHandler()
 
 //********************************************************************
 // Connection Status related handling
+/*
 function getDisconnectReason(reason)
 {
     if (reason == NO_WIFI) {
@@ -1899,17 +1894,15 @@ function getDisconnectReason(reason)
  
     return ""
 }
+*/
 
 function onShutdown(status)
 {
-  	server.log("Hiku: restarting to download new code!!");
-	server.restart();
-}
-
-function heart_beat()
-{
-	server.log("heart_beat");
-	imp.wakeup(1, heart_beat);
+	agent.send("shutdownRequestReason", status);
+  	imp.onidle(function(){
+  		server.disconnect();
+		server.restart();
+	});
 }
 
 function onConnected(status)
@@ -1921,13 +1914,10 @@ function onConnected(status)
         // case we need to be as responsive as possible. 
         imp.setpowersave(false); 
         hwPiezo.playSound("startup");    
-		server.log(format("Reconnected after unexpected disconnect: %s ",
-									getDisconnectReason(nv.disconnect_reason)));
-		nv.disconnect_reason = 0; 
-									             
+		server.log(format("Reconnected after unexpected disconnect: %d ",nv.disconnect_reason));
+		nv.disconnect_reason = 0; 							             
         // Send the agent our impee ID
         agent.send("impeeId", hardware.getimpeeid());
-        heart_beat();
         if( nv.setup_required )
         {
         	nv.setup_required = false;
