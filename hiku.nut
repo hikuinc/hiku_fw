@@ -13,14 +13,15 @@ if (!("nv" in getroottable()))
     	    setup_required=false, 
     	    setup_count = 0,
     	    disconnect_reason=0, 
-    	    sleep_not_allowed=false
+    	    sleep_not_allowed=false,
+    	    boot_up_reason = 0
     	  };
 }
 
 // Consts and enums
 const cFirmwareVersion = "0.5.0"
 const cButtonTimeout = 6;  // in seconds
-const cDelayBeforeDeepSleep = 10.0;  // in seconds and just change this one
+const cDelayBeforeDeepSleep = 20.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
 // The two variables below here are to use a hysteresis for the Accelerometer to stop
 // moving, and if the accelerometer doesn’t stop moving within the cDelayBeforeAccelClear
@@ -169,7 +170,6 @@ class InterruptHandler
             }
         }
        // server.log("handlePin1Int exit time: " + hardware.millis() + "ms");
-
     } 
     
     // Clear all interrupts.  Must do this immediately after
@@ -846,10 +846,7 @@ class Scanner extends IoExpanderDevice
         gAudioChunkCount = 0;
         gLastSamplerBuffer = null; 
         gLastSamplerBufLen = 0; 
-        if(0!=agent.send("startAudioUpload", ""))
-        {
-        	//hwPiezo.playSound("no-connection");
-        }
+        agent.send("startAudioUpload", "");
         hardware.sampler.start();
     }
 
@@ -1034,7 +1031,7 @@ class PushButton extends IoExpanderDevice
                 curr_time = hardware.millis();
                 local prv_time = previousTime;
         		previousTime = curr_time;
-                buttonPressCount = ( curr_time - prv_time <= 1000 )?++buttonPressCount:0;
+                buttonPressCount = ( curr_time - prv_time <= 500 )?++buttonPressCount:0;
                 
                 if ((BLINK_UP_BUTTON_COUNT-1 == buttonPressCount))
                 {
@@ -1257,11 +1254,8 @@ function sendLastBuffer()
     // Send the last chunk to the server, if there is one
     if (gLastSamplerBuffer != null && gLastSamplerBufLen > 0)
     {
-        if(0 != agent.send("uploadAudioChunk", {buffer=gLastSamplerBuffer, 
-                   length=gLastSamplerBufLen}))
-        {
-        	hwPiezo.playSound("no-connection");
-        }
+        agent.send("uploadAudioChunk", {buffer=gLastSamplerBuffer, 
+                   length=gLastSamplerBufLen});
     }
 
     // If there are less than x secs of audio, abandon the 
@@ -1316,7 +1310,6 @@ function sendLastBuffer()
 function samplerCallback(buffer, length)
 {
     //server.log("SAMPLER CALLBACK: size " + length");
-    local err_code=0;
     if (length <= 0)
     {
         gAudioBufferOverran = true;
@@ -1333,7 +1326,7 @@ function samplerCallback(buffer, length)
         if (gSamplerStopping) {
             if (gLastSamplerBuffer) { 
                 // It wasn't quite the last one, send normally
-                err_code = agent.send("uploadAudioChunk", {buffer=buffer, 
+                agent.send("uploadAudioChunk", {buffer=buffer, 
                            							length=length});
             }
             // Process last buffer later, to do special handling
@@ -1342,16 +1335,12 @@ function samplerCallback(buffer, length)
         }
         else
         {
-            err_code = agent.send("uploadAudioChunk", {buffer=buffer, length=length});
+            agent.send("uploadAudioChunk", {buffer=buffer, length=length});
         }
 
         // Finish timing the send.  See function comments for more info. 
         gAudioTimer = hardware.millis() - gAudioTimer;
         //server.log(gAudioTimer + "ms");
-        if( err_code != 0)
-        {
-        	hwPiezo.playSound("no-connection");
-        }
     }
 }
 
@@ -1415,8 +1404,8 @@ class Accelerometer extends I2cDevice
 
         write(0x21, 0x09); // CTRL_REG2: Enable high pass filtering and data
 
-        enableInterrupts();
-        //disableInterrupts();
+        //enableInterrupts();
+        disableInterrupts();
 
         write(0x23, 0x00); // CTRL_REG4: Default related control settings
 
@@ -1502,6 +1491,7 @@ class Accelerometer extends I2cDevice
 
     function handleAccelInt() 
     {
+        //server.log("accelerometer interrupted");
         gAccelInterrupted = true;
         disableInterrupts();
         clearAccelInterrupt();
@@ -1841,6 +1831,8 @@ function sleepHandler()
     {
 		server.log("sleepHandler: aborting sleep due to Accelerometer Interrupt");
 		// Transition to the idle state
+		hwAccelerometer.reenableInterrupts = false;
+		hwAccelerometer.disableInterrupts();
 		updateDeviceState(DeviceState.IDLE);
 		return;
     }
@@ -1899,10 +1891,7 @@ function getDisconnectReason(reason)
 function onShutdown(status)
 {
 	agent.send("shutdownRequestReason", status);
-  	imp.onidle(function(){
-  		server.disconnect();
-		server.restart();
-	});
+	server.restart();
 }
 
 function onConnected(status)
