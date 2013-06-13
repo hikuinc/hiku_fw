@@ -107,7 +107,7 @@ class InterruptHandler
 
         // Lower the output buffer drive, to reduce current consumption
         i2cDevice.write(0x02, 0xFF); // RegLowDrive          
-        //server.log("--------Setting interrupt handler for pin1--------");
+        //log("--------Setting interrupt handler for pin1--------");
         hardware.pin1.configure(DIGITAL_IN_WAKEUP, handlePin1Int.bindenv(this));
       }
   
@@ -137,10 +137,10 @@ class InterruptHandler
         // that occur between reading and clearing. 
         
         
-        //server.log(format("handlePin1Int: entry time=%d ms, hardware.pin1=%d", hardware.millis(),pinState));
+        //log(format("handlePin1Int: entry time=%d ms, hardware.pin1=%d", hardware.millis(),pinState));
         if(0 == pinState)
         {
-        	//server.log(format("handlePin1Int: fallEdge time=%d ms, hardware.pin1=%d", hardware.millis(),pinState));
+        	//log(format("handlePin1Int: fallEdge time=%d ms, hardware.pin1=%d", hardware.millis(),pinState));
         	return;
         }
         
@@ -149,14 +149,14 @@ class InterruptHandler
             clearAllIrqs();
             regInterruptSource = regInterruptSource | reg;
         }
-        //server.log("handlePin1Int after int sources time: " + hardware.millis() + "ms");
+        //log("handlePin1Int after int sources time: " + hardware.millis() + "ms");
 
 
         // If no interrupts, just return. This occurs on every 
         // pin 1 falling edge. 
         if (!regInterruptSource) 
         {
-        	//server.log(format("handlePin1Int: fallEdge time=%d ms, hardware.pin1=%d", hardware.millis(),hardware.pin1.read()));
+        	//log(format("handlePin1Int: fallEdge time=%d ms, hardware.pin1=%d", hardware.millis(),hardware.pin1.read()));
             return;
         }
 
@@ -165,11 +165,11 @@ class InterruptHandler
         // Call the interrupt handlers for all active interrupts
         for(local pin=0; pin < 8; pin++){
             if(regInterruptSource & 1<<pin){
-                //server.log(format("-Calling irq callback for pin %d", pin));
+                //log(format("-Calling irq callback for pin %d", pin));
                 irqCallbacks[pin]();
             }
         }
-       // server.log("handlePin1Int exit time: " + hardware.millis() + "ms");
+       // log("handlePin1Int exit time: " + hardware.millis() + "ms");
     } 
     
     // Clear all interrupts.  Must do this immediately after
@@ -249,7 +249,7 @@ class Piezo
         // Handle invalid tone values
         if (!(tone in tonesParamsList))
         {
-            server.log(format("Error: unknown tone \"%s\"", tone));
+            log(format("Error: unknown tone \"%s\"", tone));
             return false;
         }
 
@@ -368,7 +368,7 @@ class Piezo
         // to play. 
         if (currentTone == null)
         {
-            server.log("Error: tried to play null tone");
+            log("Error: tried to play null tone");
             return;
         }
 
@@ -456,7 +456,7 @@ class CancellableTimer
         if (enabled)
         {
             local elapsedTime = hardware.millis() - startTime;
-            //server.log(format("%d/%d to sleep", elapsedTime, duration));
+            //log(format("%d/%d to sleep", elapsedTime, duration));
             if (elapsedTime > duration)
             {
                 enabled = false;
@@ -496,7 +496,7 @@ class I2cDevice
         }
         else
         {
-            server.log(format("Error: invalid I2C port specified: %c", port));
+            log(format("Error: invalid I2C port specified: %c", port));
         }
 
         // Use the fastest supported clock speed
@@ -512,7 +512,7 @@ class I2cDevice
         local data = i2cPort.read(i2cAddress, format("%c", register), 1);
         if(data == null)
         {
-            server.log("Error: I2C read failure");
+            log("Error: I2C read failure");
             // TODO: this should return null, right??? Do better handling.
             // TODO: print the i2c address as part of the error
             return -1;
@@ -558,7 +558,7 @@ class I2cDevice
             }
         }
 
-        server.log(format("REG 0x%02X=%s (0x%02X) %s", regIdx, regStr, 
+        log(format("REG 0x%02X=%s (0x%02X) %s", regIdx, regStr, 
                           reg, label));
     }
     */
@@ -737,7 +737,7 @@ function updateDeviceState(newState)
     /*
     local os = (oldState==null) ? "null" : oldState.tostring();
     local ns = (newState==null) ? "null" : newState.tostring();
-    server.log(format("State change: %s -> %s", os, ns));
+    log(format("State change: %s -> %s", os, ns));
     */
     // Verify state machine is in order 
     switch (newState) 
@@ -875,7 +875,7 @@ class Scanner extends IoExpanderDevice
         local data = hardware.uart57.read();
         while (data != -1)  
         {
-            //server.log("char " + data + " \"" + data.tochar() + "\"");
+            //log("char " + data + " \"" + data.tochar() + "\"");
 
             // Handle the data
             switch (data) 
@@ -889,7 +889,7 @@ class Scanner extends IoExpanderDevice
                     if (gDeviceState != DeviceState.SCAN_RECORD)
                     {
                     	/*
-                        server.log(format(
+                        log(format(
                                    "Got capture too late. Dropping scan %d",
                                    gDeviceState)); */
                         scannerOutput = "";
@@ -897,7 +897,7 @@ class Scanner extends IoExpanderDevice
                     }
                     updateDeviceState(DeviceState.SCAN_CAPTURED);
 
-                    /*server.log("Code: \"" + scannerOutput + "\" (" + 
+                    /*log("Code: \"" + scannerOutput + "\" (" + 
                                scannerOutput.len() + " chars)");*/
                     
                     if(0!= agent.send("uploadBeep", {
@@ -992,7 +992,7 @@ class PushButton extends IoExpanderDevice
         updateDeviceState(DeviceState.BUTTON_TIMEOUT);
         hwScanner.stopScanRecord();
         hwPiezo.playSound("timeout");
-        server.log("Timeout reached. Aborting scan and record.");
+        log("Timeout reached. Aborting scan and record.");
     }
 
     //**********************************************************************
@@ -1013,7 +1013,7 @@ class PushButton extends IoExpanderDevice
             imp.sleep(sleepSecs)
         }
 
-		//server.log("buttonCallBack entry time: " + hardware.millis() + "ms");
+		//log("buttonCallBack entry time: " + hardware.millis() + "ms");
 
         // Handle the button state transition
         switch(state) 
@@ -1039,13 +1039,13 @@ class PushButton extends IoExpanderDevice
                 	buttonPressCount = 0;
                 	return;
                 }
-                //server.log(format("buttonPressCount=%d",buttonPressCount));                
+                //log(format("buttonPressCount=%d",buttonPressCount));                
                 
                 if (buttonState == ButtonState.BUTTON_UP)
                 {
                     updateDeviceState(DeviceState.SCAN_RECORD);
                     buttonState = ButtonState.BUTTON_DOWN;
-                    //server.log("Button state change: DOWN");
+                    //log("Button state change: DOWN");
 
                     hwScanner.startScanRecord();
                 }
@@ -1056,7 +1056,7 @@ class PushButton extends IoExpanderDevice
                 if (buttonState == ButtonState.BUTTON_DOWN)
                 {
                     buttonState = ButtonState.BUTTON_UP;
-                    //server.log("Button state change: UP");
+                    //log("Button state change: UP");
 
                     local oldState = gDeviceState;
                     updateDeviceState(DeviceState.BUTTON_RELEASED);
@@ -1082,10 +1082,10 @@ class PushButton extends IoExpanderDevice
                 break;
             default:
                 // Button is in transition (not settled)
-                //server.log("Bouncing! " + buttonState);
+                //log("Bouncing! " + buttonState);
                 break;
         }
-        //server.log("buttonCallBack exit time: " + hardware.millis() + "ms");
+        //log("buttonCallBack exit time: " + hardware.millis() + "ms");
     }
     
     function blinkUpDevice(blink=false)
@@ -1103,7 +1103,7 @@ class PushButton extends IoExpanderDevice
     			blinkTimer.enable();
     		}
     	}
-    	server.log(format("Blink-up: %s.",blink?"enabled":"disabled"));
+    	log(format("Blink-up: %s.",blink?"enabled":"disabled"));
     }
     
     function cancelBlinkUpTimer()
@@ -1150,7 +1150,7 @@ class ChargeStatus extends IoExpanderDevice
     
     function handleChargerStatusInt()
     {
-      //server.log(format("handleChargerStatusInt: %d", hardware.pinC.read()));
+      //log(format("handleChargerStatusInt: %d", hardware.pinC.read()));
     }
 
     function readState()
@@ -1181,7 +1181,7 @@ class ChargeStatus extends IoExpanderDevice
             charging += isCharging()?1:0;
             imp.sleep(sleepSecs)
         }
-        server.log(format("Charger: %s",charging?"charging":"not charging"));
+        log(format("Charger: %s",charging?"charging":"not charging"));
         
         if ( (!previous_state) && (charging))
         {
@@ -1236,7 +1236,7 @@ class Switch3v3Accessory extends IoExpanderDevice
 //**********************************************************************
 // Agent callback: upload complete
 agent.on("uploadCompleted", function(result) {
-	//server.log("uploadCompleted response");
+	//log("uploadCompleted response");
     hwPiezo.playSound(result);
 });
 
@@ -1309,11 +1309,11 @@ function sendLastBuffer()
 
 function samplerCallback(buffer, length)
 {
-    //server.log("SAMPLER CALLBACK: size " + length");
+    //log("SAMPLER CALLBACK: size " + length");
     if (length <= 0)
     {
         gAudioBufferOverran = true;
-        server.log("Error: audio sampler buffer overrun!!!!!!, last timer="+gAudioTimer+"ms, free-mem:"+imp.getmemoryfree());
+        log("Error: audio sampler buffer overrun!!!!!!, last timer="+gAudioTimer+"ms, free-mem:"+imp.getmemoryfree());
         
     }
     else 
@@ -1340,7 +1340,7 @@ function samplerCallback(buffer, length)
 
         // Finish timing the send.  See function comments for more info. 
         gAudioTimer = hardware.millis() - gAudioTimer;
-        //server.log(gAudioTimer + "ms");
+        //log(gAudioTimer + "ms");
     }
 }
 
@@ -1390,7 +1390,7 @@ class Accelerometer extends I2cDevice
         local whoami = read(0x0F);
         if (whoami != 0x33)
         {
-            server.log(format("Error reading accelerometer; whoami=0x%02X", 
+            log(format("Error reading accelerometer; whoami=0x%02X", 
                               whoami));
         }
         
@@ -1445,9 +1445,9 @@ class Accelerometer extends I2cDevice
         write(0x1F, result); // enable the AUX_ADC by setting the ADC_PD bit to 1
         
         result = read(0x07);
-        server.log(format("STATUS_AUX: 0x%02X", result));
+        log(format("STATUS_AUX: 0x%02X", result));
         
-        server.log(format("OUT3_ADC_L: 0x%02X, OUT3_ADC_H: 0x%02X", read(0x0C), read(0x0D)));
+        log(format("OUT3_ADC_L: 0x%02X, OUT3_ADC_H: 0x%02X", read(0x0C), read(0x0D)));
         imp.wakeup(3, monitorBattery.bindenv(this));    
     }
     */
@@ -1456,8 +1456,8 @@ class Accelerometer extends I2cDevice
     /*
     function monitorBattery()
     {
-        server.log(format("STATUS_AUX: 0x%02X", read(0x7)));
-        server.log(format("OUT3_ADC_L: 0x%02X, OUT3_ADC_H: 0x%02X", read(0x0C), read(0x0D)));
+        log(format("STATUS_AUX: 0x%02X", read(0x7)));
+        log(format("OUT3_ADC_L: 0x%02X, OUT3_ADC_H: 0x%02X", read(0x0C), read(0x0D)));
         //imp.wakeup(3, monitorBattery.bindenv(this));   
     }*/
 
@@ -1475,7 +1475,7 @@ class Accelerometer extends I2cDevice
     {
         // Repeatedly clear the accel interrupt by reading INT1_SRC
         // until there are no interrupts left
-        // WARNING: adding server.log statements in this function
+        // WARNING: adding log statements in this function
         // causes it to fail for some reason
         local reg;
         while ((reg = read(0x31)) != 0x15)
@@ -1491,7 +1491,7 @@ class Accelerometer extends I2cDevice
 
     function handleAccelInt() 
     {
-        //server.log("accelerometer interrupted");
+        //log("accelerometer interrupted");
         gAccelInterrupted = true;
         disableInterrupts();
         clearAccelInterrupt();
@@ -1524,7 +1524,7 @@ class Accelerometer extends I2cDevice
         // Log the results
         //printRegister(0x31, "INT1_SRC");
         printRegister(0x32, "INT1_THS");
-        server.log(format(
+        log(format(
                     "XH=%03d, YH=%03d, ZH=%03d, XL=%03d, YL=%03d, ZL=%03d", 
                           values[1], values[3], values[5],
                           values[0], values[2], values[4]
@@ -1629,7 +1629,7 @@ class Accelerometer extends I2cDevice
 // Temporary function to catch dumb mistakes
 function print(str)
 {
-    server.log("ERROR USED PRINT FUNCTION. USE SERVER.LOG INSTEAD.");
+    log("ERROR USED PRINT FUNCTION. USE SERVER.LOG INSTEAD.");
 }
 
 
@@ -1638,13 +1638,13 @@ function print(str)
 function printStartupDebugInfo()
 {
     // impee ID
-    server.log(format("Your impee ID: %s", hardware.getimpeeid()));
+    log(format("Your impee ID: %s", hardware.getimpeeid()));
 
     // free memory
-    server.log(format("Free memory: %d bytes", imp.getmemoryfree()));
+    log(format("Free memory: %d bytes", imp.getmemoryfree()));
 
     // hardware voltage
-    server.log(format("Power supply voltage: %.2fv", hardware.voltage()));
+    log(format("Power supply voltage: %.2fv", hardware.voltage()));
 
     // Wi-Fi signal strength
     local bars = 0;
@@ -1664,28 +1664,45 @@ function printStartupDebugInfo()
 
     if (bars == -1)
     {
-        server.log("Wi-Fi not connected");
+        log("Wi-Fi not connected");
     }
     else
     {
-        server.log(format("Wi-Fi signal: %d bars (%d dBm)", bars, rssi));
+        log(format("Wi-Fi signal: %d bars (%d dBm)", bars, rssi));
     }
 
     // Wi-Fi base station ID
-    server.log(format("Wi-Fi SSID: %s", imp.getbssid()));
+    log(format("Wi-Fi SSID: %s", imp.getbssid()));
 
     // Wi-Fi MAC address
-    server.log(format("Wi-Fi MAC: %s", imp.getmacaddress()));
+    log(format("Wi-Fi MAC: %s", imp.getmacaddress()));
 
     // Charge status
-    server.log(format("Device is %scharging", 
+    log(format("Device is %scharging", 
                       chargeStatus.isCharging()?"":"not \x00"));
 }
 */
 function init_nv_items()
 {
-	server.log(format("sleep_count=%d setup_required=%s", 
+	log(format("sleep_count=%d setup_required=%s", 
 					nv.sleep_count, (nv.setup_required?"yes":"no")));
+}
+
+function init_unused_pins(i2cDev)
+{
+	local value = 0;
+	
+	//1. Set Direction to Input for PIN 3 and 7
+	value = i2cDev.read(0x07);
+	i2cDev.write(0x07, (value | (1 << (3 & 7)) | (1 << ( 7 & 7))));
+	
+	//2. Set Pull up for PIN 3 and 7
+	value = i2cDev.read( 0x03 );
+	i2cDev.write(0x03, (value | (1 << (3 & 7)) | (1 << ( 7 & 7))));
+	
+	//3. setIRQ Mask to disable interrupts on 3 and 7
+	value = i2cDev.read( 0x09 );
+	i2cDev.write(0x09, (value | (1 << (3 & 7)) | (1 << ( 7 & 7))));
 }
 
 function init_stage1()
@@ -1706,6 +1723,9 @@ function init_stage1()
     i2cDev <- I2cDevice(I2C_89, cAddrIoExpander);
     i2cDevAccel <- I2cDevice(I2C_89, cAddrAccelerometer);
     intHandler <- InterruptHandler(8, i2cDev);	    
+    
+    // This is to default unused pins so that we consume less current
+    init_unused_pins(i2cDev);
     
     // 3v3 accessory switch config
     sw3v3 <- Switch3v3Accessory(intHandler, cIoPin3v3Switch);
@@ -1753,7 +1773,7 @@ function init_stage2()
     // to sleep!
     //printStartupDebugInfo();
 	// free memory
-    //server.log(format("Free memory: %d bytes", imp.getmemoryfree()));
+    //log(format("Free memory: %d bytes", imp.getmemoryfree()));
     // Initialization complete notification
     // TODO remove startup tone for final product
     // initialize the nv items on a cold boot
@@ -1762,7 +1782,7 @@ function init_stage2()
     // This means we had already went to sleep with the button presses
     // to get the device back into blink up mode after the blink-up mode times out
     // the user needs to manually enable it the next time it wakes up
-    //imp.enableblinkup(nv.setup_required); 
+    imp.enableblinkup(false); 
     // We only wake due to an interrupt or after power loss.  If the 
 	// former, we need to handle any pending interrupts. 
 	intHandler.handlePin1Int(); 
@@ -1784,21 +1804,21 @@ function preSleepHandler() {
 	if( !nv.setup_required )
 	{
     	// Re-enable accelerometer interrupts
-    	server.log("preSleepHandler: about to re-enable accel Intterupts");
+    	log("preSleepHandler: about to re-enable accel Intterupts");
     	hwAccelerometer.reenableInterrupts = true;
     	hwAccelerometer.enableInterrupts();
 
     	// Handle any last interrupts before we clear them all and go to sleep
-    	server.log("preSleepHandler: handle any pending interrupts");
+    	log("preSleepHandler: handle any pending interrupts");
     	intHandler.handlePin1Int(); 
 
     	// Clear any accelerometer interrupts, then clear the IO expander. 
     	// We found this to be necessary to not hang on sleep, as we were
     	// getting spurious interrupts from the accelerometer when re-enabling,
     	// that were not caught by handlePin1Int. Race condition? 
-    	//server.log("preSleepHandler: clear out all the pending accel interrupts");
+    	//log("preSleepHandler: clear out all the pending accel interrupts");
     	hwAccelerometer.clearAccelInterruptUntilCleared();
-    	//server.log("preSleepHandler: clear out all the IOExpander Interrupts");
+    	//log("preSleepHandler: clear out all the IOExpander Interrupts");
     	intHandler.clearAllIrqs(); 
     
     	// When the timer below expires we will hit the sleepHandler function below
@@ -1826,10 +1846,10 @@ function preSleepHandler() {
 // further accelerometer interrupts
 function sleepHandler()
 {
- 	server.log("sleepHandler: enter");   
+ 	log("sleepHandler: enter");   
     if( gAccelInterrupted )
     {
-		server.log("sleepHandler: aborting sleep due to Accelerometer Interrupt");
+		log("sleepHandler: aborting sleep due to Accelerometer Interrupt");
 		// Transition to the idle state
 		hwAccelerometer.reenableInterrupts = false;
 		hwAccelerometer.disableInterrupts();
@@ -1838,13 +1858,13 @@ function sleepHandler()
     }
     
 	// free memory
-    server.log(format("Free memory: %d bytes", imp.getmemoryfree()));
+    log(format("Free memory: %d bytes", imp.getmemoryfree()));
     
     // Disable the scanner and its UART
-    //server.log("sleepHandler: about to disable the HW Scanner");
+    //log("sleepHandler: about to disable the HW Scanner");
     hwScanner.disable();
     // Disable the SW 3.3v switch, to save power during deep sleep
-    //server.log("sleepHandler: about to disable the 3v3");
+    //log("sleepHandler: about to disable the 3v3");
     sw3v3.disable();   
      
     // Force the imp to sleep immediately, to avoid catching more interrupts
@@ -1852,7 +1872,7 @@ function sleepHandler()
     intHandler.clearAllIrqs();
     
     assert(gDeviceState == DeviceState.PRE_SLEEP);
-    server.log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", hardware.pin1.read()));
+    log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", hardware.pin1.read()));
     nv.sleep_count++;
     server.disconnect();
     //server.flush(2);
@@ -1903,7 +1923,7 @@ function onConnected(status)
         // case we need to be as responsive as possible. 
         imp.setpowersave(false); 
         hwPiezo.playSound("startup");    
-		server.log(format("Reconnected after unexpected disconnect: %d ",nv.disconnect_reason));
+		log(format("Reconnected after unexpected disconnect: %d ",nv.disconnect_reason));
 		nv.disconnect_reason = 0; 							             
         // Send the agent our impee ID
         agent.send("impeeId", hardware.getimpeeid());
@@ -1911,14 +1931,14 @@ function onConnected(status)
         {
         	nv.setup_required = false;
         	nv.setup_count++;
-        	server.log("Setup Completed!");
+        	log("Setup Completed!");
         }
     }
     else
     {
    		nv.disconnect_reason = status;
     	hwPiezo.playSound("no-connection");
-    	imp.wakeup(10, tryToConnect);
+    	//imp.wakeup(10, tryToConnect);
     }
     init_stage2();
     
@@ -1936,12 +1956,20 @@ function onConnectedResume(status)
 {
 	if( status != SERVER_CONNECTED )
 	{
-		imp.wakeup(10, tryToConnect );
+		//imp.wakeup(10, tryToConnect );
 	}
 	else
 	{
 		onConnected(status);
 	}
+}
+
+// This is the log function wrapper
+// so that we can 
+function log(str)
+{
+	//server.log(str);
+	agent.send("deviceLog", str);
 }
 
 function tryToConnect()
@@ -1956,7 +1984,7 @@ function onUnexpectedDisconnect(status)
 {
     nv.disconnect_reason = status;
     hwPiezo.playSound("no-connection");
-    imp.wakeup(10, tryToConnect);
+    //imp.wakeup(10, tryToConnect);
 }
 
 function setup_connection()

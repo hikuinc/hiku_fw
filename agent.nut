@@ -241,6 +241,10 @@ device.on("startAudioUpload", function(data) {
     gChunkCount = 0;
 });
 
+device.on("deviceLog", function(str){
+	// this needs to be changed post to an http url
+	server.log(format("DEVICE: %s",str));
+});
 
 //**********************************************************************
 // Send complete audio sample to the server
