@@ -12,7 +12,7 @@ if (!("nv" in getroottable()))
 // Consts and enums
 const cFirmwareVersion = "0.5.0"
 const cButtonTimeout = 6;  // in seconds
-const cDelayBeforeDeepSleep = 10.0;  // in seconds and just change this one
+const cDelayBeforeDeepSleep = 3600.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
 // The two variables below here are to use a hysteresis for the Accelerometer to stop
 // moving, and if the accelerometer doesn’t stop moving within the cDelayBeforeAccelClear
@@ -735,7 +735,7 @@ class Scanner extends IoExpanderDevice
         gAudioChunkCount = 0;
         gLastSamplerBuffer = null; 
         gLastSamplerBufLen = 0; 
-        agent.send("startAudioUpload", "");
+        //agent.send("startAudioUpload", "");
         hardware.sampler.start();
     }
 
@@ -789,6 +789,7 @@ class Scanner extends IoExpanderDevice
                     server.log("Code: \"" + scannerOutput + "\" (" + 
                                scannerOutput.len() + " chars)");
                     hwPiezo.playSound("success-local");
+                    /*
                     agent.send("uploadBeep", {
                                               scandata=scannerOutput,
                                               scansize=scannerOutput.len(),
@@ -797,6 +798,7 @@ class Scanner extends IoExpanderDevice
                                               linkedrecord="",
                                               audiodata="",
                                              });
+                                             */
                     if( scannerOutput == SpecialBarCode )
                     {
                     	nv.bless_device=true;
@@ -907,7 +909,7 @@ class PushButton extends IoExpanderDevice
                 if( curr_time - previousTime <= 1000 )
                 {
                 	buttonPressCount++;
-                	if( buttonPressCount == 3 && nv.bless_device )
+                	if( buttonPressCount == 2 && nv.bless_device )
                 	{
                 		blessDevice();
                 	}
@@ -988,6 +990,9 @@ class PushButton extends IoExpanderDevice
     function blessServerCallback(result)
     {
     	server.log(format("Bless Status for MAC=%s : %s",imp.getmacaddress(),result?"success":"failure"));
+    	imp.wakeup(2, function(){
+    		server.restart();
+    		});
     }    
     
     function blessDevice()
@@ -1100,9 +1105,8 @@ class FactoryButton
     		
     	  buttonTimer.enable();
     	  hardware.pin5.configure(DIGITAL_OUT);
-    	  hardware.pin5.write(1);
     	  server.log("Factory Blink-up Started!!");
-    	  server.factoryblinkup(SSID,PASSWORD, hardware.pin5, 0);
+    	  server.factoryblinkup(SSID,PASSWORD, hardware.pin5, BLINKUP_ACTIVEHIGH /*| BLINKUP_FAST */);
     	  server.log("Factory Blink-up Ended!!");
     	}
     }
@@ -1146,7 +1150,7 @@ class ChargeStatus extends IoExpanderDevice
 		// Congiure Pin C which is supposed to be the pin indicating whether a charger is
 		// attached or not
 		//hardware.pinC.configure(DIGITAL_IN_PULLUP);
-        agent.send("chargerState", previous_state); // update the charger state
+        //agent.send("chargerState", previous_state); // update the charger state
     }
     
     function handleChargerStatusInt()
@@ -1190,7 +1194,7 @@ class ChargeStatus extends IoExpanderDevice
           //hwPiezo.playSound("charger-attached");
         }
         previous_state = (charging==0)? false:true; // update the previous state with the current state
-        agent.send("chargerState", previous_state); // update the charger state
+        //agent.send("chargerState", previous_state); // update the charger state
         handleChargerStatusInt();
     }
 }
@@ -1256,8 +1260,8 @@ function sendLastBuffer()
     // Send the last chunk to the server, if there is one
     if (gLastSamplerBuffer != null && gLastSamplerBufLen > 0)
     {
-        agent.send("uploadAudioChunk", {buffer=gLastSamplerBuffer, 
-                   length=gLastSamplerBufLen});
+        //agent.send("uploadAudioChunk", {buffer=gLastSamplerBuffer, 
+                  // length=gLastSamplerBufLen});
     }
 
     // If there are less than x secs of audio, abandon the 
@@ -1272,6 +1276,7 @@ function sendLastBuffer()
     if (secs >= 0.4)
     {
         hwPiezo.playSound("success-local");
+        /*
         agent.send("endAudioUpload", {
                                       scandata="",
                                       serial=hardware.getimpeeid(),
@@ -1279,7 +1284,7 @@ function sendLastBuffer()
                                       linkedrecord="",
                                       audiodata="", // to be added by agent
                                       scansize=gAudioChunkCount, 
-                                     });
+                                     });*/
     }
 
     // We have completed the process of stopping the sampler
@@ -1320,8 +1325,8 @@ function samplerCallback(buffer, length)
         if (gSamplerStopping) {
             if (gLastSamplerBuffer) { 
                 // It wasn't quite the last one, send normally
-                agent.send("uploadAudioChunk", {buffer=buffer, 
-                           length=length});
+               // agent.send("uploadAudioChunk", {buffer=buffer, 
+                   //        length=length});
             }
             // Process last buffer later, to do special handling
             gLastSamplerBuffer = buffer;
@@ -1329,7 +1334,7 @@ function samplerCallback(buffer, length)
         }
         else
         {
-            agent.send("uploadAudioChunk", {buffer=buffer, length=length});
+           // agent.send("uploadAudioChunk", {buffer=buffer, length=length});
         }
 
         // Finish timing the send.  See function comments for more info. 
@@ -1421,7 +1426,7 @@ function init_card()
     facSleepTimer <- CancellableTimer(60*5, timeoutFunction.bindenv(this));
     facSleepTimer.enable();
     // Send the agent our impee ID
-    agent.send("impeeId", hardware.getimpeeid());
+   // agent.send("impeeId", hardware.getimpeeid());
 
     // Print debug info
     // WARNING: for some reason, if this is uncommented, the device
@@ -1494,7 +1499,7 @@ function init_board()
     gAccelHysteresis <- CancellableTimer( cDelayBeforeAccelClear, sleepHandler); 
 
     // Send the agent our impee ID
-    agent.send("impeeId", hardware.getimpeeid());
+   // agent.send("impeeId", hardware.getimpeeid());
 
     // Transition to the idle state
     updateDeviceState(DeviceState.IDLE);
