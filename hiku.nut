@@ -1141,11 +1141,10 @@ class ChargeStatus extends IoExpanderDevice
         setIrqEdges(pin, 1, 1); // rising and falling
         previous_state = isCharging();
 
-
 		// Congiure Pin C which is supposed to be the pin indicating whether a charger is
 		// attached or not
 		//hardware.pinC.configure(DIGITAL_IN_PULLUP);
-        agent.send("chargerState", previous_state); // update the charger state
+        //agent.send("chargerState", previous_state); // update the charger state
     }
     
     function handleChargerStatusInt()
@@ -1885,28 +1884,6 @@ function sleepHandler()
 
 //********************************************************************
 // Connection Status related handling
-/*
-function getDisconnectReason(reason)
-{
-    if (reason == NO_WIFI) {
-        return "Wifi went away";
-    }
- 
-    if (reason == NO_IP_ADDRESS) {
-        return "Failed to get IP address";
-    }
- 
-    if (reason == NO_SERVER) {
-        return "Failed to connect to server";
-    }
- 
-    if (reason == NOT_RESOLVED) {
-        return "Failed to resolve server";
-    }
- 
-    return ""
-}
-*/
 
 function onShutdown(status)
 {
@@ -1926,7 +1903,13 @@ function onConnected(status)
 		log(format("Reconnected after unexpected disconnect: %d ",nv.disconnect_reason));
 		nv.disconnect_reason = 0; 							             
         // Send the agent our impee ID
-        agent.send("impeeId", hardware.getimpeeid());
+        local data = { 
+        				impeeId = hardware.getimpeeid(), 
+        				charger_state=chargeStatus.isCharging(),
+        				fw_version = cFirmwareVersion 
+        			};
+        agent.send("init_status", data);
+        
         if( nv.setup_required )
         {
         	nv.setup_required = false;
@@ -1938,7 +1921,7 @@ function onConnected(status)
     {
    		nv.disconnect_reason = status;
     	hwPiezo.playSound("no-connection");
-    	//imp.wakeup(10, tryToConnect);
+    	imp.wakeup(10, tryToConnect);
     }
     init_stage2();
     
@@ -1956,7 +1939,7 @@ function onConnectedResume(status)
 {
 	if( status != SERVER_CONNECTED )
 	{
-		//imp.wakeup(10, tryToConnect );
+		imp.wakeup(10, tryToConnect );
 	}
 	else
 	{
@@ -1984,7 +1967,7 @@ function onUnexpectedDisconnect(status)
 {
     nv.disconnect_reason = status;
     hwPiezo.playSound("no-connection");
-    //imp.wakeup(10, tryToConnect);
+    imp.wakeup(10, tryToConnect);
 }
 
 function setup_connection()
