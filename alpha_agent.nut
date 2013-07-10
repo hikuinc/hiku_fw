@@ -4,19 +4,19 @@
 if (!("nv" in getroottable()))
 {
     nv <- { 
-        	gImpeeId = "", 
-    	    gChargerState = "removed" , 
+            gImpeeId = "", 
+            gChargerState = "removed" , 
     	    gLinkedRecordTimeout = null,
 			gBootTime = 0.0,
 			gSleepDuration = 0.0,
-			gWakeUpReason = 0x0000,
+			gWakeUpReason = "",
 			gBatteryLevel = 0.0,
 			gFwVersion = 0.0,
 			
     	  };
 }
 
-server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
+server.log(format("Agent started, external URL=%s", http.agenturl()));
 
 
 gAudioBuffer <- blob(0); // Contains the audio data for the current 
@@ -27,17 +27,6 @@ gLinkedRecord <- ""; // Used to link unknown UPCs to audio records.
                      // so from the server, then clear it after we 
                      // send the next audio beep, after next barcode, 
                      // or after a timeout
-                     
-local boot_reasons = [
-						"accelerometer", 
-						"charger_status", 
-						"button", 
-						"touch", 
-						"not-used", 
-						"not-used",
-						"not-used",
-						"charger-det", 
-					  ];
 
 //======================================================================
 // Beep handling 
@@ -64,12 +53,47 @@ function sendDeviceEvents(data)
     // Create and send the request
     server.log("AGENT: Sending Event to server...");
     local req = http.post(
-            "http://199.115.118.221/cgi-bin/addDeviceEvent.py",
+            "http://www.hiku.us/cgi-bin/addDeviceEvent.py",
             {"Content-Type": "application/x-www-form-urlencoded", 
             "Accept": "application/json"}, 
             data);
+    // If the server is down, this will block all other events
+    // until it times out.  Events seem to be queued on the server 
+    // with no ill effects.  They do not block the device.  Could consider 
+    // moving to async. The timeout period (tested) is 60 seconds.  
+    local res;
+    local transactionTime = time();
+    res = req.sendsync();
+    transactionTime = time() - transactionTime;
+    server.log(format("Eevent Status: Server transaction time: %ds", transactionTime));
 
-    req.sendasync(onComplete);
+    if (res.statuscode != 200)
+    {
+        server.log(format("AGENT: Event Status: Error: got status code %d, expected 200", 
+                    res.statuscode));
+    }
+    else
+    {
+        // TODO DEBUG remove
+        server.log(res.body);
+
+        // Parse the response (in JSON format)
+        local body = http.jsondecode(res.body);
+
+        try 
+        {
+            // Handle the various non-OK responses.  Nothing to do for "ok". 
+            if (body.returnVal != 1)
+            {
+				server.log(format("AGENT: Event: errors %d, errMsg= $s", body.errors, body.err));
+            }
+        }
+        catch(e)
+        {
+            server.log(format("AGENT: Caught exception: %s", e));
+            server.log("AGENT: Error: malformed response");
+        }
+    }
 }
 
 //**********************************************************************
@@ -113,7 +137,7 @@ function sendBeepToHikuServer(data)
     local req = http.post(
             //"http://bobert.net:4444", 
             //"http://www.hiku.us/sand/cgi-bin/readRawDeviceData.py", 
-            "http://199.115.118.221/scanner_1/imp_beep",
+            "http://srv2.hiku.us/scanner_1/imp_beep",
             {"Content-Type": "application/x-www-form-urlencoded", 
             "Accept": "application/json"}, 
             data);
@@ -187,67 +211,6 @@ function sendBeepToHikuServer(data)
     device.send("uploadCompleted", returnString);
 }
 
-/*
-function onBeepComplete(m)
-{
-
-    // Handle the response
-    local returnString = "success-server";
-
-    if (m.statuscode != 200)
-    {
-        returnString = "failure"
-        agentLog(format("Error: got status code %d, expected 200", 
-                    m.statuscode));
-    }
-    else
-    {
-
-        // Parse the response (in JSON format)
-        local body = http.jsondecode(m.body);
-
-        try 
-        {
-            // Handle the various non-OK responses.  Nothing to do for "ok". 
-            if (body.status != "ok")
-            {
-                // Possible causes: speech2text failure, unknown.
-                if ("error" in body.cause)
-                {
-                    returnString = "failure";
-                    agentLog(format("Error: server responded with %s", 
-                                         body.cause.error));
-                }
-                // Possible causes: unknown UPC code
-                else if ("linkedrecord" in body.cause)
-                {
-                    gLinkedRecord = body.cause.linkedrecord;
-                    nv.gLinkedRecordTimeout = time()+10; // in seconds
-                    returnString = "unknown-upc";
-                    agentLog("Response: unknown UPC code");
-                }
-                // Unknown response type
-                else
-                {
-                    returnString = "failure";
-                    agentLog("Error: unexpected cause in response");
-                }
-            }
-        }
-        catch(e)
-        {
-            agentLog(format("Caught exception: %s", e));
-            returnString = "failure";
-            agentLog("Error: malformed response");
-        }
-    }
-
-    // Return status to device
-    // TODO: device.send will be dropped if response took so long that 
-    // the device went back to sleep.  Handle that? 
-    device.send("uploadCompleted", returnString);
-}
-*/
 
 function sendLogToServer(data)
 {
@@ -266,7 +229,7 @@ function sendLogToServer(data)
     // Create and send the request
     server.log("AGENT: Sending Logs to server...");
     local req = http.post(
-            "http://199.115.118.221/cgi-bin/addDeviceLog.py",
+            "http://www.hiku.us/cgi-bin/addDeviceLog.py",
             {"Content-Type": "application/x-www-form-urlencoded", 
             "Accept": "application/json"}, 
             data);
@@ -275,21 +238,24 @@ function sendLogToServer(data)
     // until it times out.  Events seem to be queued on the server 
     // with no ill effects.  They do not block the device.  Could consider 
     // moving to async. The timeout period (tested) is 60 seconds.  
-    req.sendasync(onComplete);
-}
+    local res;
+    local transactionTime = time();
+    res = req.sendsync();
+    transactionTime = time() - transactionTime;
+    server.log(format("AGENT: Log Status: Server transaction time: %ds", transactionTime));
 
-function onComplete(m)
-{
-    if (m.statuscode != 200)
+    if (res.statuscode != 200)
     {
         server.log(format("AGENT: Log Status: Error: got status code %d, expected 200", 
-                    m.statuscode));
+                    res.statuscode));
     }
     else
     {
+        // TODO DEBUG remove
+        //agentLog(res.body);
 
         // Parse the response (in JSON format)
-        local body = http.jsondecode(m.body);
+        local body = http.jsondecode(res.body);
 
         try 
         {
@@ -416,7 +382,7 @@ http.onrequest(function (request, res)
     }
     else if (request.path == "/devicePage") 
     {
-        //device.send("devicePage",1);
+        device.send("devicePage",1);
     	res.send(200, "OK");
     } 
     else
@@ -427,40 +393,19 @@ http.onrequest(function (request, res)
 });
 
 
-function xlate_bootreason_to_string(boot_reason)
-{
-	local reason = "";
-	local pin = 0;
-	for( pin =0; pin < 8; pin ++ )
-	{
-		if( boot_reason & ( 1 << pin ) )
-		{
-			reason += boot_reasons[pin];
-		}
-	}
-	if( reason == "")
-	{
-		reason = "COLDBOOT";
-	}
-	return reason;
-}
-
-
 //**********************************************************************
 // Receive impee ID from the device and send to the external requestor 
 device.on("init_status", function(data) {
     nv.gImpeeId = data.impeeId;
+    nv.gChargerState = data.charger_state;
     nv.gFwVersion = data.fw_version;
-    nv.gWakeUpReason = data.bootup_reason;
-    
-    //server.log(format("Device to Agent Time: %dms", (time()*1000 - data.time_stamp)));
     
     sendDeviceEvents(
     					{  	  
     						  fw_version=nv.gFwVersion,
-    						  charger_state = nv.gChargerState?"attached":"removed",
+    						  charger_state = nv.gChargerState,
     						  battery_level = nv.gBatteryLevel,
-    						  wakeup_reason = xlate_bootreason_to_string(nv.gWakeUpReason),
+    						  wakeup_reason = "button",
     						  boot_time = nv.gBootTime,
     						  sleep_duration = nv.gSleepDuration
     					}
@@ -471,12 +416,9 @@ device.on("init_status", function(data) {
 // external server
 // @param: chargerState of True means Charger is attached, false otherwise
 device.on("chargerState", function( chargerState ){
-    nv.gChargerState = chargerState;
-    sendDeviceEvents(
-    					{  	  
-    						  charger_state = nv.gChargerState?"attached":"removed",
-    					}
-    				); 		 
+    nv.gChargerState = chargerState? "attached":"removed";
+    agentLog(format("chargerState: %s", nv.gChargerState));
+    						 
 });
 
 
