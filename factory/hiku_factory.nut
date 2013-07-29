@@ -10,9 +10,9 @@ if (!("nv" in getroottable()))
 }
 
 // Consts and enums
-const cFirmwareVersion = "0.5.0"
+const cFirmwareVersion = "0.5.2"
 const cButtonTimeout = 6;  // in seconds
-const cDelayBeforeDeepSleep = 3600.0;  // in seconds and just change this one
+const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
 // The two variables below here are to use a hysteresis for the Accelerometer to stop
 // moving, and if the accelerometer doesn’t stop moving within the cDelayBeforeAccelClear
@@ -27,7 +27,7 @@ const cDelayBeforeDeepSleep = 3600.0;  // in seconds and just change this one
 local cDelayBeforeAccelClear = 2;
 local cActualDelayBeforeDeepSleep = cDelayBeforeDeepSleep - cDelayBeforeAccelClear;
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
-const SpecialBarCode = "W15290/1";
+const SpecialBarCode = "00062534";
 
 // Change this to enable the factory blink-up
 // This is the WIFI SSID and password that will be used for factory blink-up
@@ -217,7 +217,7 @@ class Piezo
             "sleep":   [[noteE5, dc, longTone], [noteB4, dc, shortTone]],
             "startup": [[noteB4, dc, longTone], [noteE5, dc, shortTone]],
             "charger-attached": [[noteB4, dc, shortTone], [noteB4, dc, shortTone]],
-            "device-page": [[noteB4, dc, shortTone],[noteB4, 0, longTone]],
+            "charger-removed": [[noteB4, dc, longTone],[noteB4, 0, longTone]],
         };
     }
     
@@ -239,65 +239,6 @@ class Piezo
         } 
         return true;   
     }    
-    
-    function isPaging()
-    {
-    	return page_device;
-    }
-    
-    function stopPageTone()
-    {
-    	page_device = false;
-    }
-    
-    function playPageTone()
-    {
-		if( !validate_tone("device-page"))
-		{
-			return;
-		}
-    	
-    	page_device = true;
-    	
-    	// Play the first note
-        local params = tonesParamsList["device-page"][0];
-        pin.configure(PWM_OUT, params[0], params[1]);
-            
-    	// Play the next note after the specified delay
-        pageToneIdx = 1;
-        imp.wakeup(params[2], continuePageTone.bindenv(this));   	
-    	
-    }
-    
-    // Continue playing the device page tone until a button is pressed
-    function continuePageTone()
-    {
-        // Turn off the previous note
-        pin.write(0);
-        
-        if( !page_device )
-        {
-        	return;
-        }
-
-        // Play the next note, if any
-        if (tonesParamsList["device-page"].len() > pageToneIdx)
-        {
-            local params = tonesParamsList["device-page"][pageToneIdx];
-            pin.configure(PWM_OUT, params[0], params[1]);
-
-            pageToneIdx++;
-            imp.wakeup(params[2], continuePageTone.bindenv(this));
-        }
-        else 
-        {
-            pageToneIdx = 0;
-            if( page_device )
-            {
-            	playPageTone();
-            }
-        }
-    }
 
     //**********************************************************
     // Play a tone (a set of notes).  Defaults to asynchronous
@@ -802,6 +743,8 @@ class Scanner extends IoExpanderDevice
                     if( scannerOutput == SpecialBarCode )
                     {
                     	nv.bless_device=true;
+                    	// To indicate to the tester that it scanned the right barcode
+                    	hwPiezo.playSound("success-server");
                     }
                     
                     // Stop collecting data
@@ -913,17 +856,12 @@ class PushButton extends IoExpanderDevice
                 	{
                 		blessDevice();
                 	}
-                	else if (buttonPressCount == 5)
-                	{
-                		blinkUpDevice(true);
-                	}
                 	
                 } 
                 else
                 {
                 	buttonPressCount = 0;
                 	buttonTimer.disable();
-                	blinkUpDevice(false);
                 	if (buttonState == ButtonState.BUTTON_UP)
                 	{
                     	updateDeviceState(DeviceState.SCAN_RECORD);
@@ -990,6 +928,16 @@ class PushButton extends IoExpanderDevice
     function blessServerCallback(result)
     {
     	server.log(format("Bless Status for MAC=%s : %s",imp.getmacaddress(),result?"success":"failure"));
+    	
+    	if( result )
+    	{
+    		hwPiezo.playSound("startup");
+    	}
+    	else
+    	{
+    		hwPiezo.playSound("unknown-upc");
+    	}
+    	
     	imp.wakeup(2, function(){
     		server.restart();
     		});
@@ -1191,7 +1139,11 @@ class ChargeStatus extends IoExpanderDevice
         if ( (!previous_state) && (charging))
         {
           // Play the tone here
-          //hwPiezo.playSound("charger-attached");
+          hwPiezo.playSound("charger-attached");
+        }
+        else
+        {
+        	hwPiezo.playSound("charger-removed");
         }
         previous_state = (charging==0)? false:true; // update the previous state with the current state
         //agent.send("chargerState", previous_state); // update the charger state
