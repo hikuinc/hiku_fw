@@ -64,7 +64,8 @@ function sendDeviceEvents(data)
     // Create and send the request
     server.log("AGENT: Sending Event to server...");
     local req = http.post(
-            "http://199.115.118.221/cgi-bin/addDeviceEvent.py",
+            //"http://199.115.118.221/cgi-bin/addDeviceEvent.py",
+            "http://srv2.hiku.us/cgi-bin/addDeviceEvent.py",
             {"Content-Type": "application/x-www-form-urlencoded", 
             "Accept": "application/json"}, 
             data);
@@ -113,7 +114,8 @@ function sendBeepToHikuServer(data)
     local req = http.post(
             //"http://bobert.net:4444", 
             //"http://www.hiku.us/sand/cgi-bin/readRawDeviceData.py", 
-            "http://199.115.118.221/scanner_1/imp_beep",
+            //"http://199.115.118.221/scanner_1/imp_beep",
+            "http://srv2.hiku.us/scanner_1/imp_beep",
             {"Content-Type": "application/x-www-form-urlencoded", 
             "Accept": "application/json"}, 
             data);
@@ -266,7 +268,8 @@ function sendLogToServer(data)
     // Create and send the request
     server.log("AGENT: Sending Logs to server...");
     local req = http.post(
-            "http://199.115.118.221/cgi-bin/addDeviceLog.py",
+            //"http://199.115.118.221/cgi-bin/addDeviceLog.py",
+            "http://srv2.hiku.us/cgi-bin/addDeviceLog.py",
             {"Content-Type": "application/x-www-form-urlencoded", 
             "Accept": "application/json"}, 
             data);
@@ -427,6 +430,28 @@ http.onrequest(function (request, res)
 });
 
 
+function getDisconnectReason(reason)
+{
+  //NO_WIFI=1, NO_IP_ADDRESS=2, NO_SERVER=4, NOT_RESOLVED=3
+    if (reason == 1) {
+        return "Wifi went away";
+    }
+ 
+    if (reason == 2) {
+        return "Failed to get IP address";
+    }
+ 
+    if (reason == 4) {
+        return "Failed to connect to server";
+    }
+ 
+    if (reason == 3) {
+        return "Failed to resolve server";
+    }
+ 
+    return "No Disconnects"
+}
+
 function xlate_bootreason_to_string(boot_reason)
 {
 	local reason = "";
@@ -452,17 +477,19 @@ device.on("init_status", function(data) {
     nv.gImpeeId = data.impeeId;
     nv.gFwVersion = data.fw_version;
     nv.gWakeUpReason = data.bootup_reason;
+    nv.gSleepDuration = data.sleep_duration;
     
     //server.log(format("Device to Agent Time: %dms", (time()*1000 - data.time_stamp)));
     
     sendDeviceEvents(
     					{  	  
     						  fw_version=nv.gFwVersion,
-    						  charger_state = nv.gChargerState?"attached":"removed",
     						  battery_level = nv.gBatteryLevel,
     						  wakeup_reason = xlate_bootreason_to_string(nv.gWakeUpReason),
     						  boot_time = nv.gBootTime,
-    						  sleep_duration = nv.gSleepDuration
+    						  sleep_duration = nv.gSleepDuration,
+    						  rssi = data.rssi,
+    						  dc_reason = getDisconnectReason(data.disconnect_reason)
     					}
     				);
 });

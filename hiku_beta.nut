@@ -17,6 +17,10 @@ gInitTime <- {
 				init_unused = 0,
 			}; 
 
+local scheme_new = true;
+
+local connection_available = false;
+
 /*
 // BOOT UP REASON MASK
 const BOOT_UP_REASON_COLD_BOOT= 0x0000h;
@@ -44,7 +48,14 @@ if (!("nv" in getroottable()))
     	    sleep_not_allowed=false,
     	    boot_up_reason = 0,
     	    voltage_level = 0.0,
+    	    sleep_duration = 0.0,
     	  };
+}
+
+// Get the Sleep Duration early on
+if( nv.sleep_count != 0 )
+{
+	nv.sleep_duration = time() - nv.sleep_duration;
 }
 
 // Consts and enums
@@ -269,6 +280,7 @@ class Piezo
             // [[period, duty cycle, duration], ...]
             "success": [[noteE5, 0.15, longTone], [noteE6, 0.85, shortTone]],
             "success-local": [[noteE5, 0.15, longTone]],
+            "start-local": [[noteE6, 0.15, longTone]],
             "success-server": [[noteE6, 0.85, shortTone]],
             "failure": [[noteB4, 0.85, shortTone]],
             "unknown-upc": [[noteB4, 0.85, shortTone], [noteB4, 0, shortTone], 
@@ -1042,6 +1054,10 @@ class PushButton
                 
                 if (buttonState == ButtonState.BUTTON_UP)
                 {
+                 	if(scheme_new && connection_available)
+                	{
+                		hwPiezo.playSound("start-local");
+                	}               
                     updateDeviceState(DeviceState.SCAN_RECORD);
                     buttonState = ButtonState.BUTTON_DOWN;
                     //log("Button state change: DOWN");
@@ -1620,6 +1636,7 @@ function sleepHandler()
     log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", hardware.pin1.read()));
     nv.sleep_count++;
     nv.boot_up_reason = 0x0;
+    nv.sleep_duration = time();
     server.disconnect();
     //server.flush(2);
     imp.deepsleepfor(cDeepSleepDuration);   
@@ -1644,6 +1661,7 @@ function init_done()
 	if( init_completed )
 	{
 		intHandler.handlePin1Int(); 
+		log(format("init_stage1: %d\n", gInitTime.init_stage1));
 	}
 	else
 	{
@@ -1654,8 +1672,13 @@ function init_done()
 function onConnected(status)
 {
 	gIsConnecting = false;
+	if(!scheme_new)
+	{
+		hwPiezo.playSound("startup");
+	}
+	
     if (status == SERVER_CONNECTED) {
-    	
+    	connection_available = true;
         imp.configure("hiku", [], []);    
 		log(format("Reconnected after unexpected disconnect: %d ",nv.disconnect_reason));
 		init_nv_items();
@@ -1666,6 +1689,8 @@ function onConnected(status)
         				fw_version = cFirmwareVersion,
         				bootup_reason = nv.boot_up_reason,
         				disconnect_reason = nv.disconnect_reason,
+        				rssi = imp.rssi(),
+        				sleep_duration = nv.sleep_duration,
         			};
         agent.send("init_status", data);
         
@@ -1676,7 +1701,6 @@ function onConnected(status)
         	log("Setup Completed!");
         }
         nv.disconnect_reason = 0;
-        hwPiezo.playSound("startup");
         
 
     	log(format("total_init:%d, init_stage1: %d, init_stage2: %d, init_unused: %d\n",
@@ -1687,7 +1711,10 @@ function onConnected(status)
     }
     else
     {
-    	hwPiezo.playSound("no-connection");	
+    	if(!scheme_new)
+    	{
+    		hwPiezo.playSound("no-connection");	
+    	}
    		nv.disconnect_reason = status;
     }
     
@@ -1707,6 +1734,8 @@ function onConnectedResume(status)
 	{
 		nv.disconnect_reason = status;
 		imp.wakeup(10, tryToConnect );
+		//hwPiezo.playSound("no-connection");
+		connection_available = false;
 	}
 	else
 	{ 
@@ -1737,6 +1766,7 @@ function tryToConnect()
 function onUnexpectedDisconnect(status)
 {
     nv.disconnect_reason = status;
+    connection_available = false;
     if( !gIsConnecting )
     {
    		imp.wakeup(2, tryToConnect);
@@ -1753,7 +1783,7 @@ function init_connections()
 	else
 	{
     	
-    	hwPiezo.playSound("no-connection");
+    	//hwPiezo.playSound("no-connection");
     	server.onunexpecteddisconnect(onUnexpectedDisconnect);
 		server.onshutdown(onShutdown);    	
     	server.connect(onConnectedResume, 10);
@@ -1765,7 +1795,7 @@ function init()
     // We will always be in deep sleep unless button pressed, in which
     // case we need to be as responsive as possible. 
     imp.setpowersave(false);
-	//gInitTime.init_stage1 = hardware.millis();
+	gInitTime.init_stage1 = hardware.millis();
     // I2C bus addresses
     //const cAddrAccelerometer = 0x18;
 
@@ -1847,6 +1877,7 @@ function init()
     // We only wake due to an interrupt or after power loss.  If the 
 	// former, we need to handle any pending interrupts. 
 	//intHandler.handlePin1Int();     
+	gInitTime.init_stage1 = hardware.millis() - gInitTime.init_stage1;
     init_completed = true;
 }
 // start off here and things should move
