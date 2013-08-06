@@ -216,8 +216,8 @@ class Piezo
             "timeout": [/*silence*/],
             "sleep":   [[noteE5, dc, longTone], [noteB4, dc, shortTone]],
             "startup": [[noteB4, dc, longTone], [noteE5, dc, shortTone]],
-            "charger-attached": [[noteB4, dc, shortTone], [noteB4, dc, shortTone]],
-            "charger-removed": [[noteB4, dc, longTone],[noteB4, 0, longTone]],
+            "charger-removed": [[noteB4, 0.85, shortTone], [noteB4, dc, shortTone]],
+            "charger-attached": [[noteB4, dc, longTone],[noteB4, 0.85, longTone]],
         };
     }
     
@@ -1153,6 +1153,282 @@ class ChargeStatus extends IoExpanderDevice
 
 
 //======================================================================
+// Accelerometer
+
+// Interrupt pin for accelerometer I2C device
+class AccelerometerInt extends IoExpanderDevice
+{
+    pin = null; // IO expander pin assignment
+
+    constructor(intHandler, accelPin)
+    {
+        base.constructor(intHandler);
+
+        // Save assignments
+        pin = accelPin;
+
+        // Configure pin as input, IRQ on both edges
+        setDir(pin, 1); // set as input
+        setPullDown(pin, 1); // enable pulldown
+        setIrqMask(pin, 1); // enable IRQ
+        setIrqEdges(pin, 1, 0); // rising only
+    }
+
+    function readState()
+    {
+        return getPin(pin);
+    }
+}
+
+
+// Accelerometer I2C device
+class Accelerometer extends I2cDevice
+{
+    i2cPort = null;
+    i2cAddress = null;
+    interruptDevice = null; 
+    reenableInterrupts = false;  // Allow interrupts to be re-enabled after 
+                                 // an interrupt
+
+    constructor(port, address, pin, intHandler)
+    {
+        base.constructor(port, address);
+
+        // Verify communication by reading WHO_AM_I register
+        local whoami = read(0x0F);
+        if (whoami != 0x33)
+        {
+            log(format("Error reading accelerometer; whoami=0x%02X", 
+                              whoami));
+        }
+        
+        // TODO: Once the ADC to read the battery level is stable
+        // Start monitoring the vBATT level
+		//initBatteryMonitor();
+
+        // Configure and enable accelerometer and interrupt
+        write(0x20, 0x2F); // CTRL_REG1: 10 Hz, low power mode, 
+                             // all 3 axes enabled
+
+        write(0x21, 0x09); // CTRL_REG2: Enable high pass filtering and data
+
+        //enableInterrupts();
+        disableInterrupts();
+
+        write(0x23, 0x00); // CTRL_REG4: Default related control settings
+
+        write(0x24, 0x08); // CTRL_REG5: Interrupt latched
+
+        // Note: maximum value is 0111 11111 (0x7F). High bit must be 0.
+        write(0x32, 0x10); // INT1_THS: Threshold
+
+        write(0x33, 0x1); // INT1_DURATION: any duration
+
+        // Read HP_FILTER_RESET register to set filter. See app note 
+        // section 6.3.3. It sounds like this might be the REFERENCE
+        // register, 0x26. Commented out as I found it is not needed. 
+        //read(0x26);
+
+        write(0x30, 0x2A); // INT1_CFG: Enable OR interrupt for 
+                           // "high" values of X, Y, Z
+                           
+        
+
+        // Clear interrupts before setting handler.  This is needed 
+        // otherwise we get a spurious interrupt at boot. 
+        clearAccelInterrupt();
+
+        // Set the interrupt handler 
+        interruptDevice = AccelerometerInt(intHandler, pin); 
+        // Set event handler for IRQ
+        intHandler.setIrqCallback(pin, handleAccelInt.bindenv(this));
+    }
+    
+    /*
+    function initBatteryMonitor()
+    {
+        local result;
+        result = read(0x1F);
+        result = result | 0x80;
+        write(0x1F, result); // enable the AUX_ADC by setting the ADC_PD bit to 1
+        
+        result = read(0x07);
+        log(format("STATUS_AUX: 0x%02X", result));
+        
+        log(format("OUT3_ADC_L: 0x%02X, OUT3_ADC_H: 0x%02X", read(0x0C), read(0x0D)));
+        imp.wakeup(3, monitorBattery.bindenv(this));    
+    }
+    */
+    
+    
+    /*
+    function monitorBattery()
+    {
+        log(format("STATUS_AUX: 0x%02X", read(0x7)));
+        log(format("OUT3_ADC_L: 0x%02X, OUT3_ADC_H: 0x%02X", read(0x0C), read(0x0D)));
+        //imp.wakeup(3, monitorBattery.bindenv(this));   
+    }*/
+
+    function enableInterrupts()
+    {
+        write(0x22, 0x40); // CTRL_REG3: Enable AOI interrupts
+    }
+
+    function disableInterrupts()
+    {
+        write(0x22, 0x00); // CTRL_REG3: Disable AOI interrupts
+    }
+
+    function clearAccelInterruptUntilCleared()
+    {
+        // Repeatedly clear the accel interrupt by reading INT1_SRC
+        // until there are no interrupts left
+        // WARNING: adding log statements in this function
+        // causes it to fail for some reason
+        local reg;
+        while ((reg = read(0x31)) != 0x15)
+        {
+            imp.sleep(0.001);
+        }
+    }
+
+    function clearAccelInterrupt()
+    {
+        read(0x31); // Clear the accel interrupt by reading INT1_SRC
+    }
+
+    function handleAccelInt() 
+    {
+        //log("accelerometer interrupted");
+        gAccelInterrupted = true;
+        disableInterrupts();
+        clearAccelInterrupt();
+        if(reenableInterrupts)
+        {
+            enableInterrupts();
+        }
+    }
+/*
+    // Debug printout of the orientation registers on one line
+    function printOrientation() 
+    {
+        local values = [];
+        local reg;
+
+        // Read the X, Y, and Z acceleration values
+        for(local i = 0x28; i < 0x2E; i++)
+        {
+            reg = read(i);
+            
+            // Convert from 2's complement)
+            if (reg & 0x80)
+            {
+                reg = -((~(reg-1))& 0x7F);
+            }
+
+            values.append(reg);
+        }
+
+        // Log the results
+        //printRegister(0x31, "INT1_SRC");
+        printRegister(0x32, "INT1_THS");
+        log(format(
+                    "XH=%03d, YH=%03d, ZH=%03d, XL=%03d, YL=%03d, ZL=%03d", 
+                          values[1], values[3], values[5],
+                          values[0], values[2], values[4]
+                         ));
+    }
+
+    // Print and label expander registers
+    function printI2cRegs(min=0x07, max=0x3D)
+    {
+        local label = "";
+        for (local i=min; i<max+1; i++)
+        {
+            // Skip reserved registers
+            if ((i>=0x10 && i<=0x1E) || (i>=0x34 && i<=0x37)) 
+            {
+                continue;
+            }
+            // Stop early because the rest aren't that important
+            if (i>0x33) 
+            {
+                continue;
+            }
+
+            switch (i) {
+                case 0x0E:
+                    label = "INT_COUNTER_REG";
+                    break;
+                case 0x0F:
+                    label = "WHO_AM_I (should be 0x33)";
+                    break;
+                case 0x20:
+                    label = "CTRL_REG1";
+                    break;
+                case 0x21:
+                    label = "CTRL_REG2";
+                    break;
+                case 0x22:
+                    label = "CTRL_REG3";
+                    break;
+                case 0x23:
+                    label = "CTRL_REG4";
+                    break;
+                case 0x24:
+                    label = "CTRL_REG5";
+                    break;
+                case 0x25:
+                    label = "CTRL_REG6";
+                    break;
+                case 0x26:
+                    label = "REFERENCE";
+                    break;
+                case 0x27:
+                    label = "STATUS_REG2";
+                    break;
+                case 0x28:
+                    label = "OUT_X_L";
+                    break;
+                case 0x29:
+                    label = "OUT_X_H";
+                    break;
+                case 0x2A:
+                    label = "OUT_Y_L";
+                    break;
+                case 0x2B:
+                    label = "OUT_Y_H";
+                    break;
+                case 0x2C:
+                    label = "OUT_Z_L";
+                    break;
+                case 0x2D:
+                    label = "OUT_Z_H";
+                    break;
+                case 0x30:
+                    label = "INT1_CFG";
+                    break;
+                case 0x31:
+                    label = "INT1_SOURCE";
+                    break;
+                case 0x32:
+                    label = "INT1_THS";
+                    break;
+                case 0x33:
+                    label = "INT1_DURATION";
+                    break;
+                default:
+                    label = "";
+                    break;
+            }
+            printRegister(i, label);
+        }
+    }
+    */
+}
+
+
+//======================================================================
 // 3.3 volt switch pin for powering most peripherals
 class Switch3v3Accessory extends IoExpanderDevice
 {
@@ -1441,6 +1717,10 @@ function init_board()
                                [buf1, buf2, buf3], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
 
+    // Accelerometer config
+    hwAccelerometer <- Accelerometer(I2C_89, cAddrAccelerometer, 
+                                     cIoPinAccelerometerInt, intHandler);
+
     // Create our timers
     gButtonTimer <- CancellableTimer(cButtonTimeout, 
                                      hwButton.handleButtonTimeout.bindenv(
@@ -1485,22 +1765,33 @@ function preSleepHandler() {
 		return;
 	}
 
-    // Handle any last interrupts before we clear them all and go to sleep
-    //server.log("preSleepHandler: handle any pending interrupts");
-    intHandler.handlePin1Int(); 
+    	// Re-enable accelerometer interrupts
+    	server.log("preSleepHandler: about to re-enable accel Intterupts");
+    	hwAccelerometer.reenableInterrupts = true;
+    	hwAccelerometer.enableInterrupts();
 
-    //server.log("preSleepHandler: clear out all the IOExpander Interrupts");
-    intHandler.clearAllIrqs(); 
+    	// Handle any last interrupts before we clear them all and go to sleep
+    	server.log("preSleepHandler: handle any pending interrupts");
+    	intHandler.handlePin1Int(); 
+
+    	// Clear any accelerometer interrupts, then clear the IO expander. 
+    	// We found this to be necessary to not hang on sleep, as we were
+    	// getting spurious interrupts from the accelerometer when re-enabling,
+    	// that were not caught by handlePin1Int. Race condition? 
+    	//log("preSleepHandler: clear out all the pending accel interrupts");
+    	hwAccelerometer.clearAccelInterruptUntilCleared();
+    	//log("preSleepHandler: clear out all the IOExpander Interrupts");
+    	intHandler.clearAllIrqs(); 
     
-    // When the timer below expires we will hit the sleepHandler function below
-    // only enter into the delay wait if the current state is either IDLE or PRE_SLEEP
-    // otherwise just get out of this because it would just go into sleep even though
-    // someone pushed the button
-    if( (gDeviceState == DeviceState.IDLE) || (gDeviceState == DeviceState.PRE_SLEEP) )
-    {
-    	gAccelInterrupted = false;
-    	gAccelHysteresis.enable();
-    }
+    	// When the timer below expires we will hit the sleepHandler function below
+    	// only enter into the delay wait if the current state is either IDLE or PRE_SLEEP
+    	// otherwise just get out of this because it would just go into sleep even though
+    	// someone pushed the button
+    	if( (gDeviceState == DeviceState.IDLE) || (gDeviceState == DeviceState.PRE_SLEEP) )
+    	{
+    		gAccelInterrupted = false;
+    		gAccelHysteresis.enable();
+    	}
 }
 
 //**********************************************************************
