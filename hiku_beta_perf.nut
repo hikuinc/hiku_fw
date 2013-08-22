@@ -105,7 +105,7 @@ local init_completed = false;
 gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
 const gAudioBufferSize = 2000; // Size of each audio buffer 
-const gAudioSampleRate = 16000; // in Hz
+const gAudioSampleRate = 8000; // in Hz
 
 // Workaround to capture last buffer after sampler is stopped
 gSamplerStopping <- false; 
@@ -1334,9 +1334,6 @@ class ChargeStatus
     	// TODO: change the period of measurement so that it doesn’t drain the
     	// battery
     	log(format("Battery Level: %d", nv.voltage_level));
-    	imp.wakeup(1, function() {
-    		agent.send("batteryLevel", nv.voltage_level)
-    	});
     	imp.wakeup(15, batteryMeasurement.bindenv(this));
     }
     

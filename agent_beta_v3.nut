@@ -4,25 +4,17 @@
 if (!("nv" in getroottable()))
 {
     nv <- { 
-            gImpeeId = "", 
+        	gImpeeId = "", 
     	    gChargerState = "removed" , 
     	    gLinkedRecordTimeout = null,
 			gBootTime = 0.0,
 			gSleepDuration = 0.0,
-			gWakeUpReason = "",
+			gWakeUpReason = 0x0000,
 			gBatteryLevel = 0.0,
 			gFwVersion = 0.0,
 			
     	  };
 }
-
-gVersion <- {
-				model = "alpha",
-				version = "0.5.1"
-			};
-			
-gHeartBeatTime <- 300;			
-		
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
@@ -35,6 +27,26 @@ gLinkedRecord <- ""; // Used to link unknown UPCs to audio records.
                      // so from the server, then clear it after we 
                      // send the next audio beep, after next barcode, 
                      // or after a timeout
+                     
+local boot_reasons = [
+						"accelerometer", 
+						"charger_status", 
+						"button", 
+						"touch", 
+						"not-used", 
+						"not-used",
+						"not-used",
+						"charger-det", 
+					  ];
+
+gAuthData <-{
+			    app_id="e3a8ccb635d08ce76b407ec644",
+    			sig="447b102176d7197b783cacc666ac85c7",
+			}
+			
+gServerUrl <- "http://glacial-bastion-5196.herokuapp.com/api/v1/list";	
+
+gBatteryUrl <- "http://glacial-bastion-5196.herokuapp.com/api/v1/device";
 
 //======================================================================
 // Beep handling 
@@ -61,6 +73,7 @@ function sendDeviceEvents(data)
     // Create and send the request
     server.log("AGENT: Sending Event to server...");
     local req = http.post(
+            //"http://199.115.118.221/cgi-bin/addDeviceEvent.py",
             "http://srv2.hiku.us/cgi-bin/addDeviceEvent.py",
             {"Content-Type": "application/x-www-form-urlencoded", 
             "Accept": "application/json"}, 
@@ -69,11 +82,80 @@ function sendDeviceEvents(data)
     req.sendasync(onComplete);
 }
 
+function sendBatteryLevelToHikuServer(data)
+{
+    local disableSendToServer = false;
+    local urlToPut = gBatteryUrl + "/" + nv.gImpeeId;
+    local newData;
+    
+    server.log(format("AGENT: Battery Level URL: %s", urlToPut));
+    //disableSendToServer = true;
+    if (disableSendToServer)
+    {
+        server.log("AGENT: (sending to hiku server not enabled)");
+        return;
+    }
+        
+    // URL-encode the whole thing
+    //data = http.jsonencode(data);
+    
+    newData = {
+    			"batteryLevel":data.batteryLevel,
+    			"token": nv.gImpeeId,
+                "sig": gAuthData.sig,
+                "app_id": gAuthData.app_id
+    		  };
+    
+    data = http.urlencode( newData );
+    server.log("AGENT: "+data);
+
+    // Create and send the request
+    server.log("AGENT: Sending Event to server...");
+    local req = http.put(
+            //"http://199.115.118.221/cgi-bin/addDeviceEvent.py",
+           // "http://srv2.hiku.us/cgi-bin/addDeviceEvent.py",
+           urlToPut,
+            {"Content-Type": "application/x-www-form-urlencoded", 
+            "Accept": "application/json"}, 
+            data);
+
+    req.sendasync(onCompleteEvent);
+}
+
+function onCompleteEvent(m)
+{
+	if (m.statuscode != 200)
+    {
+        agentLog(format("Error: got status code %d, expected 200", 
+                    m.statuscode));
+    }
+    else
+    {
+
+        // Parse the response (in JSON format)
+        local body = http.jsondecode(m.body);
+		local body = body.response;
+		
+        try 
+        {
+            // Handle the various non-OK responses.  Nothing to do for "ok". 
+        	agentLog(format("Status Code: %d", m.statuscode));
+        }
+        catch(e)
+        {
+            agentLog(format("Caught exception: %s", e));
+            agentLog("Error: malformed response");
+        }
+    }
+
+}
+
 //**********************************************************************
 // Send the barcode to hiku's server
 function sendBeepToHikuServer(data)
 {
     local disableSendToServer = false;
+    local newData;
     //disableSendToServer = true;
     if (disableSendToServer)
     {
@@ -88,18 +170,54 @@ function sendBeepToHikuServer(data)
         // "scansize" parameter is applicable for both audio and barcodes. 
         data.audiodata = http.base64encode(gAudioBuffer);
         data.scansize = data.audiodata.len();
-
+        
         // If not expired, attach the current linkedrecord (usually 
         // blank). Then reset the global. 
         agentLog("checking if linked record");
         if (nv.gLinkedRecordTimeout && time() < nv.gLinkedRecordTimeout)
         {
             agentLog("record linked");
-            data.linkedrecord = gLinkedRecord;
+            data.scandata = gLinkedRecord;
         }
         gLinkedRecord = ""; 
         nv.gLinkedRecordTimeout = null;
     }
+    
+    if ( data.scandata == "" )
+    {
+    	newData = {
+    			"size": data.audiodata.len(),
+    			"audioData": data.audiodata,
+    			"audioType": "alaw",
+    			"token": nv.gImpeeId,
+                "sig": gAuthData.sig,
+                "app_id": gAuthData.app_id
+    		  };    	
+    }
+    else
+    {
+    	newData = {
+    			"ean":data.scandata,
+    			"token": nv.gImpeeId,
+                "sig": gAuthData.sig,
+                "app_id": gAuthData.app_id
+    		  };    
+    }
+
+	/*
+ 	newData = {
+    			"ean":data.scandata,
+    			"size": data.audiodata.len(),
+    			"audioData": data.audiodata,
+    			"audioType": "alaw",
+    			//"token": nv.gImpeeId,
+                "token": "84701630318",
+                "app_id": "hg11ohtugw",
+                "sig": "b4e89c5d93e30b69d43af5c51ea2cf9c"
+    		  };   
+    */		  
+    //data = gAuthData + newData;
+    data = newData;
         
     // URL-encode the whole thing
     data = http.urlencode(data);
@@ -110,7 +228,8 @@ function sendBeepToHikuServer(data)
     local req = http.post(
             //"http://bobert.net:4444", 
             //"http://www.hiku.us/sand/cgi-bin/readRawDeviceData.py", 
-            "http://srv2.hiku.us/scanner_1/imp_beep",
+            //"http://199.115.118.221/scanner_1/imp_beep",
+            gServerUrl,
             {"Content-Type": "application/x-www-form-urlencoded", 
             "Accept": "application/json"}, 
             data);
@@ -141,28 +260,20 @@ function sendBeepToHikuServer(data)
 
         // Parse the response (in JSON format)
         local body = http.jsondecode(res.body);
-
+		local body = body.response;
         try 
         {
             // Handle the various non-OK responses.  Nothing to do for "ok". 
             if (body.status != "ok")
             {
                 // Possible causes: speech2text failure, unknown.
-                if ("error" in body.cause)
+                if (body.errMsg == "EAN_NOT_FOUND")
                 {
-                    returnString = "failure";
-                    agentLog(format("Error: server responded with %s", 
-                                         body.cause.error));
-                }
-                // Possible causes: unknown UPC code
-                else if ("linkedrecord" in body.cause)
-                {
-                    gLinkedRecord = body.cause.linkedrecord;
+                    gLinkedRecord = newData.ean;
                     nv.gLinkedRecordTimeout = time()+10; // in seconds
                     returnString = "unknown-upc";
                     agentLog("Response: unknown UPC code");
                 }
-                // Unknown response type
                 else
                 {
                     returnString = "failure";
@@ -183,6 +294,7 @@ function sendBeepToHikuServer(data)
     // the device went back to sleep.  Handle that? 
     device.send("uploadCompleted", returnString);
 }
+
 
 /*
 function onBeepComplete(m)
@@ -263,6 +375,7 @@ function sendLogToServer(data)
     // Create and send the request
     server.log("AGENT: Sending Logs to server...");
     local req = http.post(
+            //"http://199.115.118.221/cgi-bin/addDeviceLog.py",
             "http://srv2.hiku.us/cgi-bin/addDeviceLog.py",
             {"Content-Type": "application/x-www-form-urlencoded", 
             "Accept": "application/json"}, 
@@ -310,6 +423,42 @@ device.on("uploadBeep", function(data) {
     gLinkedRecord = "";  // Clear on next (i.e. this) barcode scan
     nv.gLinkedRecordTimeout = null;
     sendBeepToHikuServer(data);  
+});
+
+//**********************************************************************
+// Receive and send out the beep packet
+device.on("batteryLevel", function(data) {
+
+	if( data >= 58302 )
+	{
+		data = 100;
+	}
+	else if ( data < 58302 && data >= 56844 ) 
+	{
+		data = 75;
+	} 
+	else if ( data < 56844 && data >= 55386 )
+	{
+		data = 50;
+	}
+	else if( data < 55386 && data >= 53928 )
+	{
+		data = 25;
+	}
+	else if( data < 53928 && data >= 52471 )
+	{
+		data = 10;
+	}
+	else if( data < 52371 && data >= 51014 )
+	{
+		data = 5;
+	}
+	else
+	{
+		data = 1;
+	}
+
+    sendBatteryLevelToHikuServer({batteryLevel=data});  
 });
 
 
@@ -424,102 +573,69 @@ http.onrequest(function (request, res)
 });
 
 
+function getDisconnectReason(reason)
+{
+  //NO_WIFI=1, NO_IP_ADDRESS=2, NO_SERVER=4, NOT_RESOLVED=3
+    if (reason == 1) {
+        return "Wifi went away";
+    }
+ 
+    if (reason == 2) {
+        return "Failed to get IP address";
+    }
+ 
+    if (reason == 4) {
+        return "Failed to connect to server";
+    }
+ 
+    if (reason == 3) {
+        return "Failed to resolve server";
+    }
+ 
+    return "No Disconnects"
+}
+
+function xlate_bootreason_to_string(boot_reason)
+{
+	local reason = "";
+	local pin = 0;
+	for( pin =0; pin < 8; pin ++ )
+	{
+		if( boot_reason & ( 1 << pin ) )
+		{
+			reason += boot_reasons[pin];
+		}
+	}
+	if( reason == "")
+	{
+		reason = "COLDBOOT";
+	}
+	return reason;
+}
+
+
 //**********************************************************************
 // Receive impee ID from the device and send to the external requestor 
 device.on("init_status", function(data) {
     nv.gImpeeId = data.impeeId;
     nv.gFwVersion = data.fw_version;
+    nv.gWakeUpReason = data.bootup_reason;
+    nv.gSleepDuration = data.sleep_duration;
+    
     //server.log(format("Device to Agent Time: %dms", (time()*1000 - data.time_stamp)));
     
     sendDeviceEvents(
     					{  	  
     						  fw_version=nv.gFwVersion,
-    						  charger_state = nv.gChargerState?"attached":"removed",
     						  battery_level = nv.gBatteryLevel,
-    						  wakeup_reason = "button",
+    						  wakeup_reason = xlate_bootreason_to_string(nv.gWakeUpReason),
     						  boot_time = nv.gBootTime,
     						  sleep_duration = nv.gSleepDuration,
-    						  rssi = data.rssi
+    						  rssi = data.rssi,
+    						  dc_reason = getDisconnectReason(data.disconnect_reason)
     					}
     				);
-    imp.wakeup(1, heartBeat);				
 });
-
-
-function heartBeat()
-{
-    local disableSendToServer = false;
-    local data;
-    //disableSendToServer = true;
-    if (disableSendToServer)
-    {
-        server.log("AGENT: (sending to hiku server not enabled)");
-        return;
-    }
-        
-    // URL-encode the whole thing
-    //data = http.urlencode(data);
-    data = http.jsonencode(gVersion);
-	data = { deviceID = nv.gImpeeId,
-			 eventData = data };
-    data = http.urlencode( data );
-    server.log("AGENT heartbeat: "+data);
-
-    // Create and send the request
-    server.log("AGENT: Heart Beat to server...");
-    local req = http.post(
-            "http://srv2.hiku.us/cgi-bin/heartBeat.py",
-            {"Content-Type": "application/x-www-form-urlencoded", 
-            "Accept": "application/json"}, 
-            data);
-
-    req.sendasync(onHeartBeatComplete);	
-    
-    imp.wakeup( gHeartBeatTime, heartBeat );
-}
-
-function onHeartBeatComplete(m)
-{
-    local restartRequired = false;
-    if (m.statuscode != 200)
-    {
-        server.log(format("AGENT: Log Status: Error: got status code %d, expected 200", 
-                    m.statuscode));
-    }
-    else
-    {
-
-        // Parse the response (in JSON format)
-        local body = http.jsondecode(m.body);
-
-        try 
-        {
-            // Handle the various non-OK responses.  Nothing to do for "ok". 
-            if (body.returnVal != 1)
-            {
-			    if( body.reason == "restart" )
-            	{
-					restartRequired = true;
-            	}
-            }
-            else
-            {
-            	server.log("AGENT: nothing to do");
-            }
-        }
-        catch(e)
-        {
-            server.log(format("AGENT: Caught exception: %s", e));
-            server.log("AGENT: Error: malformed response");
-        }
-        
-        if( restartRequired )
-        {
-          server.log("Restarting Agent");
-          server.restart();
-        }
-    }
-}
 
 // Receive the Charger state update from the device to be used to send to the
 // external server

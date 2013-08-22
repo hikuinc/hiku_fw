@@ -938,7 +938,8 @@ class PushButton extends IoExpanderDevice
     		hwPiezo.playSound("unknown-upc");
     	}
     	
-    	imp.wakeup(2, function(){
+    	imp.wakeup(5, function(){
+    		imp.clearconfiguration();
     		server.restart();
     		});
     }    
