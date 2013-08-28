@@ -194,14 +194,26 @@ function sendBeepToHikuServer(data)
                 "app_id": gAuthData.app_id
     		  };    	
     }
-    else
+    else if( data.scandata != "" && data.audiodata != "" )
     {
     	newData = {
     			"ean":data.scandata,
+    			"size": data.audiodata.len(),
+    			"audioData": data.audiodata,
+    			"audioType": "alaw",    			
     			"token": nv.gImpeeId,
                 "sig": gAuthData.sig,
                 "app_id": gAuthData.app_id
     		  };    
+    }
+    else
+    {
+    	newData = {
+    			"ean":data.scandata,   			
+    			"token": nv.gImpeeId,
+                "sig": gAuthData.sig,
+                "app_id": gAuthData.app_id
+    		  };       
     }
 
 	/*
