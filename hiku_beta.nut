@@ -1144,7 +1144,7 @@ class PushButton
         // Sample the button multiple times to debounce. Total time 
         // taken is (numSamples-1)*sleepSecs
         local state = readState();
-        local curr_time;
+        local curr_time, delta;
         
         for (local i=1; i<numSamples; i++)
         {
@@ -1172,7 +1172,8 @@ class PushButton
                 curr_time = hardware.millis();
                 local prv_time = previousTime;
         		previousTime = curr_time;
-                buttonPressCount = ( curr_time - prv_time <= 500 )?++buttonPressCount:0;
+        		delta = curr_time - prv_time;
+                buttonPressCount = ( delta <= 800 )?++buttonPressCount:0;
                 
                 if ((BLINK_UP_BUTTON_COUNT-1 == buttonPressCount))
                 {
@@ -1180,6 +1181,12 @@ class PushButton
                 	buttonPressCount = 0;
                 	return;
                 }
+                
+                if( delta <= 800 )
+                {
+                	return;
+                }
+                
                 //log(format("buttonPressCount=%d",buttonPressCount));                
                 
                 if (buttonState == ButtonState.BUTTON_UP)
@@ -1187,7 +1194,10 @@ class PushButton
                  	if(scheme_new && !connection)
                 	{
                 		// Here we play the no connection sound and return from the state machine
-                		hwPiezo.playSound("no-connection");
+                		if( !nv.setup_required )
+                		{
+                			hwPiezo.playSound("no-connection");
+                		}
                 		buttonState = ButtonState.BUTTON_DOWN;
                 		return;
                 	}               
@@ -1286,7 +1296,7 @@ class ChargeStatus
         intHandler.setIrqCallback(7, chargerDetectionCB.bindenv(this));
         
         hardware.pinB.configure(ANALOG_IN);
-        imp.wakeup(15, batteryMeasurement.bindenv(this));
+        imp.wakeup(5, batteryMeasurement.bindenv(this));
 
         // Configure pin as input, IRQ on both edges
         ioExpander.setDir(pin, 1); // set as input
@@ -1333,7 +1343,7 @@ class ChargeStatus
     	// every 15 seconds wake up and read the battery level
     	// TODO: change the period of measurement so that it doesn’t drain the
     	// battery
-    	log(format("Battery Level: %d", nv.voltage_level));
+    	//log(format("Battery Level: %d, Input Voltage: %.2f", nv.voltage_level, hardware.voltage()));
     	imp.wakeup(1, function() {
     		agent.send("batteryLevel", nv.voltage_level)
     	});
@@ -1360,7 +1370,7 @@ class ChargeStatus
             charging += isCharging()?1:0;
             imp.sleep(sleepSecs)
         }
-        log(format("Charger: %s",charging?"charging":"not charging"));
+        //log(format("Charger: %s",charging?"charging":"not charging"));
         
 
         previous_state = (charging==0)? false:true; // update the previous state with the current state
