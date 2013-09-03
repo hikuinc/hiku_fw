@@ -44,9 +44,9 @@ gAuthData <-{
     			sig="447b102176d7197b783cacc666ac85c7",
 			}
 			
-gServerUrl <- "http://glacial-bastion-5196.herokuapp.com/api/v1/list";	
+gServerUrl <- "http://hiku.herokuapp.com/api/v1/list";	
 
-gBatteryUrl <- "http://glacial-bastion-5196.herokuapp.com/api/v1/device";
+gBatteryUrl <- "http://hiku.herokuapp.com/api/v1/device";
 
 //======================================================================
 // Beep handling 
