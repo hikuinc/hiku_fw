@@ -48,6 +48,8 @@ gServerUrl <- "http://hiku.herokuapp.com/api/v1/list";
 
 gBatteryUrl <- "http://hiku.herokuapp.com/api/v1/device";
 
+gLogUrl <- "http://hiku.herokuapp.com/api/v1/log";
+
 //======================================================================
 // Beep handling 
 
@@ -64,17 +66,22 @@ function sendDeviceEvents(data)
         
     // URL-encode the whole thing
     //data = http.urlencode(data);
-    data = http.jsonencode(data);
-	data = { deviceID = nv.gImpeeId,
-			 eventData = data };
+	data = {    
+			"sig": gAuthData.sig,
+            "app_id": gAuthData.app_id,
+			serialNumber = nv.gImpeeId,
+			 logData = http.jsonencode(data) };
+			 	 
     data = http.urlencode( data );
     server.log("AGENT: "+data);
+
 
     // Create and send the request
     server.log("AGENT: Sending Event to server...");
     local req = http.post(
             //"http://199.115.118.221/cgi-bin/addDeviceEvent.py",
-            "http://srv2.hiku.us/cgi-bin/addDeviceEvent.py",
+            //"http://srv2.hiku.us/cgi-bin/addDeviceEvent.py",
+            gLogUrl,
             {"Content-Type": "application/x-www-form-urlencoded", 
             "Accept": "application/json"}, 
             data);
@@ -124,9 +131,9 @@ function sendBatteryLevelToHikuServer(data)
 
 function onCompleteEvent(m)
 {
-	if (m.statuscode != 200)
+    if (m.statuscode != 200)
     {
-        agentLog(format("Error: got status code %d, expected 200", 
+        server.log(format("AGENT: Battery Event: Error: got status code %d, expected 200", 
                     m.statuscode));
     }
     else
@@ -134,20 +141,20 @@ function onCompleteEvent(m)
 
         // Parse the response (in JSON format)
         local body = http.jsondecode(m.body);
-		local body = body.response;
-		
+        local body = body.response;
         try 
         {
             // Handle the various non-OK responses.  Nothing to do for "ok". 
-        	agentLog(format("Status Code: %d", m.statuscode));
+            if (body.status != "ok")
+            {
+				server.log(format("AGENT: Battery Event - Error: %s", body.errMsg));
+            }
         }
         catch(e)
         {
-            agentLog(format("Caught exception: %s", e));
-            agentLog("Error: malformed response");
+            server.log(format("AGENT: Battery Event - Caught exception: %s", e));
         }
     }
-
 }
 
 //**********************************************************************
@@ -267,9 +274,6 @@ function sendBeepToHikuServer(data)
     }
     else
     {
-        // TODO DEBUG remove
-        agentLog(res.body);
-
         // Parse the response (in JSON format)
         local body = http.jsondecode(res.body);
 		local body = body.response;
@@ -289,15 +293,14 @@ function sendBeepToHikuServer(data)
                 else
                 {
                     returnString = "failure";
-                    agentLog("Error: unexpected cause in response");
                 }
+				agentLog(format("AGENT: Beep Error: %s",http.jsonencode(body)));
             }
         }
         catch(e)
         {
             agentLog(format("Caught exception: %s", e));
             returnString = "failure";
-            agentLog("Error: malformed response");
         }
     }
 
@@ -381,14 +384,22 @@ function sendLogToServer(data)
     }
         
     // URL-encode the whole thing
+   // data = http.urlencode(data);
+    
+    data = {    
+			"sig": gAuthData.sig,
+            "app_id": gAuthData.app_id,
+			serialNumber = nv.gImpeeId,
+			logData = http.jsonencode(data)
+		   };
     data = http.urlencode(data);
     server.log("sendToLogServer: "+data);
 
     // Create and send the request
-    server.log("AGENT: Sending Logs to server...");
     local req = http.post(
             //"http://199.115.118.221/cgi-bin/addDeviceLog.py",
-            "http://srv2.hiku.us/cgi-bin/addDeviceLog.py",
+            //"http://srv2.hiku.us/cgi-bin/addDeviceLog.py",
+            gLogUrl,
             {"Content-Type": "application/x-www-form-urlencoded", 
             "Accept": "application/json"}, 
             data);
@@ -412,19 +423,24 @@ function onComplete(m)
 
         // Parse the response (in JSON format)
         local body = http.jsondecode(m.body);
-
+        local body = body.response;
         try 
         {
             // Handle the various non-OK responses.  Nothing to do for "ok". 
-            if (body.returnVal != 1)
+            // Handle the various non-OK responses.  Nothing to do for "ok". 
+            //dumpTable(body);
+            if (body.status != "ok")
             {
-				server.log("AGENT: sendLogToServer: "+body);
+				server.log(format("AGENT: Log Status - Error: %s", body.errMsg));
+            }
+            else
+            {
+            	server.log(format("AGENT: Log Status Success: %s", http.jsonencode(body.data)));
             }
         }
         catch(e)
         {
-            server.log(format("AGENT: Caught exception: %s", e));
-            server.log("AGENT: Error: malformed response");
+            server.log(format("AGENT: Log Status - Caught exception: %s", e));
         }
     }
 }
@@ -487,7 +503,7 @@ device.on("startAudioUpload", function(data) {
 device.on("deviceLog", function(str){
 	// this needs to be changed post to an http url
 	server.log(format("DEVICE: %s",str));
-	sendLogToServer({log=format("DEVICE: %s",str), deviceID=nv.gImpeeId});
+	sendLogToServer({log=format("DEVICE: %s",str)});
 });
 
 //**********************************************************************
@@ -696,9 +712,9 @@ function dumpTable(data, prefix="")
     {
         if (typeof v == "table")
         {
-            agentLog(prefix + k.tostring() + " {");
+            server.log(prefix + k.tostring() + " {");
             dumpTable(v, prefix+"-");
-            agentLog(prefix + "}");
+            server.log(prefix + "}");
         }
         else
         {
@@ -706,7 +722,7 @@ function dumpTable(data, prefix="")
             {
                 v = "(null)"
             }
-            agentLog(prefix + k.tostring() + "=" + v.tostring());
+            server.log(prefix + k.tostring() + "=" + v.tostring());
         }
     }
 }
