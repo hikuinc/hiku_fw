@@ -4,7 +4,7 @@
 if (!("nv" in getroottable()))
 {
     nv <- { 
-        	gImpeeId = "", 
+            gImpeeId = "", 
     	    gChargerState = "removed" , 
     	    gLinkedRecordTimeout = null,
 			gBootTime = 0.0,
@@ -18,6 +18,7 @@ if (!("nv" in getroottable()))
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
+gAgentVersion <- "1.0.9";
 
 gAudioBuffer <- blob(0); // Contains the audio data for the current 
                          // session.  Resized as new buffers come in.  
@@ -41,7 +42,7 @@ local boot_reasons = [
 
 gAuthData <-{
 			    app_id="e3a8ccb635d08ce76b407ec644",
-    			sig="447b102176d7197b783cacc666ac85c7",
+    			secret="c923b1e09386"
 			}
 			
 gServerUrl <- "http://hiku.herokuapp.com/api/v1/list";	
@@ -66,8 +67,14 @@ function sendDeviceEvents(data)
         
     // URL-encode the whole thing
     //data = http.urlencode(data);
+    
+    local timeStr = getUTCTime();
+    local mySig = http.hash.sha256(gAuthData.app_id+gAuthData.secret+timeStr);
+    mySig = BlobToHexString(mySig);       
+    
 	data = {    
-			"sig": gAuthData.sig,
+            "sig": mySig,
+            "time": timeStr, 
             "app_id": gAuthData.app_id,
 			serialNumber = nv.gImpeeId,
 			 logData = http.jsonencode(data) };
@@ -102,6 +109,10 @@ function sendBatteryLevelToHikuServer(data)
         server.log("AGENT: (sending to hiku server not enabled)");
         return;
     }
+    
+    local timeStr = getUTCTime();
+    local mySig = http.hash.sha256(gAuthData.app_id+gAuthData.secret+timeStr);
+    mySig = BlobToHexString(mySig);    
         
     // URL-encode the whole thing
     //data = http.jsonencode(data);
@@ -109,7 +120,8 @@ function sendBatteryLevelToHikuServer(data)
     newData = {
     			"batteryLevel":data.batteryLevel,
     			"token": nv.gImpeeId,
-                "sig": gAuthData.sig,
+                "sig": mySig,
+                "time": timeStr,              
                 "app_id": gAuthData.app_id
     		  };
     
@@ -170,6 +182,10 @@ function sendBeepToHikuServer(data)
         return;
     }
     
+    local timeStr = getUTCTime();
+    local mySig = http.hash.sha256(gAuthData.app_id+gAuthData.secret+timeStr);
+    mySig = BlobToHexString(mySig);
+        
     // Special handling for audio beeps 
     if (data.scandata == "")
     {
@@ -197,8 +213,9 @@ function sendBeepToHikuServer(data)
     			"audioData": data.audiodata,
     			"audioType": "alaw",
     			"token": nv.gImpeeId,
-                "sig": gAuthData.sig,
-                "app_id": gAuthData.app_id
+                "sig": mySig,
+                "app_id": gAuthData.app_id,
+                "time": timeStr,
     		  };    	
     }
     else if( data.scandata != "" && data.audiodata != "" )
@@ -209,8 +226,9 @@ function sendBeepToHikuServer(data)
     			"audioData": data.audiodata,
     			"audioType": "alaw",    			
     			"token": nv.gImpeeId,
-                "sig": gAuthData.sig,
-                "app_id": gAuthData.app_id
+                "sig": mySig,
+                "app_id": gAuthData.app_id,
+                "time": timeStr,
     		  };    
     }
     else
@@ -218,8 +236,9 @@ function sendBeepToHikuServer(data)
     	newData = {
     			"ean":data.scandata,   			
     			"token": nv.gImpeeId,
-                "sig": gAuthData.sig,
-                "app_id": gAuthData.app_id
+                "sig": mySig,
+                "app_id": gAuthData.app_id,
+                "time": timeStr,
     		  };       
     }
 
@@ -385,9 +404,12 @@ function sendLogToServer(data)
         
     // URL-encode the whole thing
    // data = http.urlencode(data);
-    
+    local timeStr = getUTCTime();
+    local mySig = http.hash.sha256(gAuthData.app_id+gAuthData.secret+timeStr);
+    mySig = BlobToHexString(mySig);
     data = {    
-			"sig": gAuthData.sig,
+			"sig": mySig,
+			"time":timeStr,
             "app_id": gAuthData.app_id,
 			serialNumber = nv.gImpeeId,
 			logData = http.jsonencode(data)
@@ -593,6 +615,10 @@ http.onrequest(function (request, res)
         //device.send("devicePage",1);
     	res.send(200, "OK");
     } 
+    else if( request.path == "/getAgentVersion" )
+    {
+    	res.send(200,gAgentVersion);
+    }
     else
     {
         agentLog(format("AGENT Error: unexpected path %s", request.path));
@@ -680,6 +706,23 @@ device.on("chargerState", function( chargerState ){
 
 //======================================================================
 // Utility Functions
+
+
+
+function getUTCTime()
+{
+	local str ="";
+	//[dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss.SSSSSS"];
+	local d=date();
+    str = format("%04d-%02d-%02d %02d:%02d:%02d.000000", d.year, d.month+1, d.day, d.hour, d.min, d.sec);
+    return str;
+}
+
+function BlobToHexString(data) {
+  local str = "";
+  foreach (b in data) str += format("%02x", b);
+  return str;
+}
 
 //**********************************************************************
 // Print all ServerRequest fields 

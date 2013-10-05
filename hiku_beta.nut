@@ -5,7 +5,7 @@ server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 local entryTime = hardware.millis();
 
 gInitTime <- { 
-    			overall = 0, 
+      		overall = 0, 
 				piezo = 0, 
 				button = 0, 
 				accel = 0,
@@ -59,7 +59,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.0.0" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.0.4" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -106,6 +106,7 @@ gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
 const gAudioBufferSize = 2000; // Size of each audio buffer 
 const gAudioSampleRate = 16000; // in Hz
+local sendBufferSize = 8*1024; // 8K send buffer size
 
 // Workaround to capture last buffer after sampler is stopped
 gSamplerStopping <- false; 
@@ -123,6 +124,7 @@ gIsConnecting <- false;
 buf1 <- blob(gAudioBufferSize);
 buf2 <- blob(gAudioBufferSize);
 buf3 <- blob(gAudioBufferSize);
+buf4 <- blob(gAudioBufferSize);
 
 //======================================================================
 // Class to handle all the connection management and retry mechanisms
@@ -214,7 +216,17 @@ class ConnectionManager
 	function onShutdown(status)
 	{
 		agent.send("shutdownRequestReason", status);
-		server.restart();
+		if((status == SHUTDOWN_NEWSQUIRREL) || (status == SHUTDOWN_NEWFIRMWARE))
+		{
+			hwPiezo.playSound("software-update");
+			imp.wakeup(2, function(){
+				server.restart();
+			});
+		}
+		else
+		{
+			server.restart();
+		}
 	}		
 }
 
@@ -397,15 +409,15 @@ class Piezo
             "": [/*silence*/],
             "timeout":  [/*silence*/],
             "startup": [[noteB4, 0.85, longTone], [noteE5, 0.15, shortTone]],
-            "charger-attached": [[noteB4, 0.85, shortTone], [noteB4, 0.85, shortTone]],
+            "charger-removed": [[noteE5, 0.15, shortTone], [noteB4, 0.85, longTone]],
+            "charger-attached": [[noteB4, 0.85, longTone], [noteE5, 0.15, shortTone]],
             "device-page": [[noteB4, 0.85, shortTone],[noteB4, 0, longTone]],
             // rmk modified the no-connection to a double beep and reduced time to the new extraShortTone
             "no-connection": [[noteB4, 0.85, extraShortTone], [noteB4, 0, extraShortTone], [noteB4, 0.85, extraShortTone], [noteB4, 0, extraShortTone]],
             "blink-up-enabled": [[noteE5, 0, shortTone], [noteB4, 0.85, longTone]],
+            "software-update": [[noteB4, 0.85, shortTone], [noteE5, 0, extraShortTone], [noteE5, 0.85, shortTone], [noteB4, 0, extraShortTone]]
         };
 
-
-        
         //gInitTime.piezo = hardware.millis() - gInitTime.piezo;
     }
     
@@ -1079,8 +1091,8 @@ class PushButton
     // WARNING: increasing these can cause buffer overruns during 
     // audio recording, because this the button debouncing on "up"
     // happens before the audio sampler buffer is serviced. 
-    static numSamples = 5; // For debouncing
-    static sleepSecs = 0.004;  // For debouncing
+    //static numSamples = 5; // For debouncing
+   // static sleepSecs = 0.004;  // For debouncing
 
     constructor(btnPin)
     {   
@@ -1146,11 +1158,9 @@ class PushButton
         local state = readState();
         local curr_time, delta;
         
-        for (local i=1; i<numSamples; i++)
-        {
-            state += readState()
-            imp.sleep(sleepSecs)
-        }
+
+		imp.sleep(0.020);
+        state += readState();
 
 		//log("buttonCallBack entry time: " + hardware.millis() + "ms");
 
@@ -1209,7 +1219,7 @@ class PushButton
                 }
                 
                 break;
-            case numSamples:
+            case 2:
                 // Button in released state
                 if (buttonState == ButtonState.BUTTON_DOWN)
                 {
@@ -1282,9 +1292,7 @@ class ChargeStatus
 {
     pin = null; // IO expander pin assignment
     previous_state = false; // the previous state of the charger
-    
-    static numSamples = 5; // For debouncing
-    static sleepSecs = 0.004;  // For debouncing    
+   
 
     constructor(chargePin)
     {
@@ -1334,7 +1342,6 @@ class ChargeStatus
     	for(local i = 0; i < 10; i++)
     	{
     	  raw_read += hardware.pinB.read();
-    	  imp.sleep(0.0001);
     	}
     	
     	raw_read = (raw_read / 10.0);
@@ -1365,15 +1372,15 @@ class ChargeStatus
         charging = isCharging()?1:0;
         
         //Total time taken is (numSamples-1)*sleepSecs
-        for (local i=1; i<numSamples; i++)
+        for (local i=1; i<5; i++)
         {
             charging += isCharging()?1:0;
-            imp.sleep(sleepSecs)
         }
         //log(format("Charger: %s",charging?"charging":"not charging"));
         
 
         previous_state = (charging==0)? false:true; // update the previous state with the current state
+        hwPiezo.playSound(previous_state?"charger-attached":"charger-removed");
         agent.send("chargerState", previous_state); // update the charger state
     }
 }
@@ -1668,7 +1675,7 @@ function init_nv_items()
 {
 	log(format("sleep_count=%d setup_required=%s", 
 					nv.sleep_count, (nv.setup_required?"yes":"no")));
-	server.log(format("Bootup Reason: %xh", nv.boot_up_reason));
+	//server.log(format("Bootup Reason: %xh", nv.boot_up_reason));
 }
 
 function init_unused_pins(i2cDev)
@@ -1880,8 +1887,11 @@ function init()
     // Microphone sampler config
     hwMicrophone <- hardware.pin2;
     hardware.sampler.configure(hwMicrophone, gAudioSampleRate, 
-                               [buf1, buf2, buf3], 
+                               [buf1, buf2, buf3, buf4], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
+                       
+    //local newsize = imp.setsendbuffersize(sendBufferSize);
+	//server.log("Set send buffer size to " + newsize + " bytes.");        
     // Accelerometer config
     hwAccelerometer <- Accelerometer(I2C_89, 0x18, 
                                      0);
