@@ -1823,14 +1823,13 @@ function init_done()
 	{
 		intHandler.handlePin1Int(); 
 		//log(format("init_stage1: %d\n", gInitTime.init_stage1));
-		/*
+		
 		// Since the blinkup is always enabled, there is no need to enable
 		// them here
 		if( nv.setup_required )
     	{
     		hwButton.blinkUpDevice(nv.setup_required);
     	}
-    	*/
 	}
 	else
 	{
