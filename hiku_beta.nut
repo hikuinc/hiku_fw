@@ -4,6 +4,7 @@ server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 
 local entryTime = hardware.millis();
 
+/*
 gInitTime <- { 
       		overall = 0, 
 				piezo = 0, 
@@ -16,7 +17,7 @@ gInitTime <- {
 				init_stage2 = 0,
 				init_unused = 0,
 			}; 
-
+*/
 local scheme_new = true;
 
 local connection_available = false;
@@ -59,7 +60,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.0.4" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.0.22" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -79,6 +80,8 @@ const BLINK_UP_TIME = 300.0; // in seconds (5M)
 
 // This is the number of button presses required to enter blink up mode
 const BLINK_UP_BUTTON_COUNT = 3;
+
+const CONNECT_RETRY_TIME = 10; // for now 10 seconds retry time
 
 enum DeviceState
 /*
@@ -137,6 +140,8 @@ class ConnectionManager
 	
 	constructor()
 	{
+		// always enable the blinkup during init
+		imp.enableblinkup(true);
 	}
 	
 	function registerCallback(func)
@@ -155,11 +160,15 @@ class ConnectionManager
 		{
 			notifyConnectionStatus(SERVER_CONNECTED);
 		}
+		else
+		{
+			server.connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
+		}
 
     	//hwPiezo.playSound("no-connection");
     	server.onunexpecteddisconnect(onUnexpectedDisconnect.bindenv(this));
 		server.onshutdown(onShutdown.bindenv(this));    	
-    	server.connect(onConnectedResume.bindenv(this), 10);
+    	
 	}
 	
 	function notifyConnectionStatus(status)
@@ -178,10 +187,10 @@ class ConnectionManager
 	// otherwise its going to beep left and right which is nasty!
 	function onConnectedResume(status)
 	{
-		if( status != SERVER_CONNECTED )
+		if( status != SERVER_CONNECTED && !nv.setup_required)
 		{
 			nv.disconnect_reason = status;
-			imp.wakeup(10, tryToConnect.bindenv(this) );
+			imp.wakeup(CONNECT_RETRY_TIME, tryToConnect.bindenv(this) );
 			//hwPiezo.playSound("no-connection");
 			connection_available = false;
 		}
@@ -194,10 +203,10 @@ class ConnectionManager
 
 	function tryToConnect()
 	{
-    	if (!server.isconnected() && !gIsConnecting) {
+    	if (!server.isconnected() && !gIsConnecting && !nv.setup_required) {
     		gIsConnecting = true;
-        	server.connect(onConnectedResume.bindenv(this), 10);
-        	imp.wakeup(10, tryToConnect);
+        	server.connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
+        	imp.wakeup(CONNECT_RETRY_TIME, tryToConnect);
     	}
 	}
 
@@ -1813,7 +1822,11 @@ function init_done()
 	if( init_completed )
 	{
 		intHandler.handlePin1Int(); 
-		log(format("init_stage1: %d\n", gInitTime.init_stage1));
+		//log(format("init_stage1: %d\n", gInitTime.init_stage1));
+		if( nv.setup_required )
+    	{
+    		hwButton.blinkUpDevice(nv.setup_required);
+    	}
 	}
 	else
 	{
@@ -1841,7 +1854,7 @@ function init()
     // We will always be in deep sleep unless button pressed, in which
     // case we need to be as responsive as possible. 
     imp.setpowersave(false);
-	gInitTime.init_stage1 = hardware.millis();
+	//gInitTime.init_stage1 = hardware.millis();
     // I2C bus addresses
     //const cAddrAccelerometer = 0x18;
 
@@ -1926,7 +1939,7 @@ function init()
     // We only wake due to an interrupt or after power loss.  If the 
 	// former, we need to handle any pending interrupts. 
 	//intHandler.handlePin1Int();     
-	gInitTime.init_stage1 = hardware.millis() - gInitTime.init_stage1;
+	//gInitTime.init_stage1 = hardware.millis() - gInitTime.init_stage1;
     init_completed = true;
 }
 
@@ -1952,6 +1965,7 @@ function onConnected(status)
         				disconnect_reason = nv.disconnect_reason,
         				rssi = imp.rssi(),
         				sleep_duration = nv.sleep_duration,
+        				osVersion = imp.getsoftwareversion(),
         			};
         agent.send("init_status", data);
         
@@ -1963,11 +1977,11 @@ function onConnected(status)
         }
         nv.disconnect_reason = 0;
         
-
+/*
     	log(format("total_init:%d, init_stage1: %d, init_stage2: %d, init_unused: %d\n",
     		(hardware.millis() - entryTime), gInitTime.init_stage1, gInitTime.init_stage2, gInitTime.init_unused));
     	log(format("scanner:%d, button: %d, charger: %d, accel: %d, int handler: %d\n",
-    		gInitTime.scanner, gInitTime.button, gInitTime.charger, gInitTime.accel, gInitTime.inthandler));     		      
+    		gInitTime.scanner, gInitTime.button, gInitTime.charger, gInitTime.accel, gInitTime.inthandler));  */    		      
         
 	}
     else
@@ -1977,11 +1991,6 @@ function onConnected(status)
     		hwPiezo.playSound("no-connection");	
     	}
    		nv.disconnect_reason = status;
-    }
-    
-    if( nv.setup_required )
-    {
-    	hwButton.blinkUpDevice(nv.setup_required);
     }
 }	
 
