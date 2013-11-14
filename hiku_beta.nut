@@ -19,7 +19,7 @@ gInitTime <- {
 			}; 
 */
 local scheme_new = true;
-
+local blinkup_enabled = false;
 local connection_available = false;
 
 /*
@@ -60,7 +60,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.0.22" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.0.24" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -81,7 +81,7 @@ const BLINK_UP_TIME = 300.0; // in seconds (5M)
 // This is the number of button presses required to enter blink up mode
 const BLINK_UP_BUTTON_COUNT = 3;
 
-const CONNECT_RETRY_TIME = 10; // for now 10 seconds retry time
+const CONNECT_RETRY_TIME = 20; // for now 10 seconds retry time
 
 enum DeviceState
 /*
@@ -140,8 +140,6 @@ class ConnectionManager
 	
 	constructor()
 	{
-		// always enable the blinkup during init
-		imp.enableblinkup(true);
 	}
 	
 	function registerCallback(func)
@@ -187,7 +185,7 @@ class ConnectionManager
 	// otherwise its going to beep left and right which is nasty!
 	function onConnectedResume(status)
 	{
-		if( status != SERVER_CONNECTED && !nv.setup_required)
+		if( status != SERVER_CONNECTED )
 		{
 			nv.disconnect_reason = status;
 			imp.wakeup(CONNECT_RETRY_TIME, tryToConnect.bindenv(this) );
@@ -203,10 +201,10 @@ class ConnectionManager
 
 	function tryToConnect()
 	{
-    	if (!server.isconnected() && !gIsConnecting && !nv.setup_required) {
+    	if (!server.isconnected() && !gIsConnecting ) {
     		gIsConnecting = true;
         	server.connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
-        	imp.wakeup(CONNECT_RETRY_TIME, tryToConnect);
+        	imp.wakeup(CONNECT_RETRY_TIME+1, tryToConnect);
     	}
 	}
 
@@ -1272,7 +1270,9 @@ class PushButton
     
     function blinkUpDevice(blink=false)
     {
-     	imp.enableblinkup(blink);
+    	// Since the blinkup is enabled all the time, lets not enable them
+    	// again, its unnecessary
+     	//imp.enableblinkup(blink);
     	if( blink )
     	{
     		hwPiezo.playSound("blink-up-enabled");
@@ -1823,10 +1823,14 @@ function init_done()
 	{
 		intHandler.handlePin1Int(); 
 		//log(format("init_stage1: %d\n", gInitTime.init_stage1));
+		/*
+		// Since the blinkup is always enabled, there is no need to enable
+		// them here
 		if( nv.setup_required )
     	{
     		hwButton.blinkUpDevice(nv.setup_required);
     	}
+    	*/
 	}
 	else
 	{
@@ -1903,8 +1907,8 @@ function init()
                                [buf1, buf2, buf3, buf4], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
                        
-    //local newsize = imp.setsendbuffersize(sendBufferSize);
-	//server.log("Set send buffer size to " + newsize + " bytes.");        
+    local newsize = imp.setsendbuffersize(sendBufferSize);
+	server.log("Set send buffer size to " + newsize + " bytes.");        
     // Accelerometer config
     hwAccelerometer <- Accelerometer(I2C_89, 0x18, 
                                      0);
@@ -1946,6 +1950,9 @@ function init()
 function onConnected(status)
 {
 	gIsConnecting = false;
+	
+	// always enable the blinkup when a connection call back happens
+	imp.enableblinkup(true);
 	if(!scheme_new)
 	{
 		hwPiezo.playSound("startup");
