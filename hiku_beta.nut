@@ -60,7 +60,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.0.24" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.0.26" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -185,10 +185,10 @@ class ConnectionManager
 	// otherwise its going to beep left and right which is nasty!
 	function onConnectedResume(status)
 	{
-		if( status != SERVER_CONNECTED )
+		if( status != SERVER_CONNECTED && !nv.setup_required )
 		{
 			nv.disconnect_reason = status;
-			imp.wakeup(CONNECT_RETRY_TIME, tryToConnect.bindenv(this) );
+			imp.wakeup(2, tryToConnect.bindenv(this) );
 			//hwPiezo.playSound("no-connection");
 			connection_available = false;
 		}
@@ -201,10 +201,10 @@ class ConnectionManager
 
 	function tryToConnect()
 	{
-    	if (!server.isconnected() && !gIsConnecting ) {
+    	if (!server.isconnected() && !gIsConnecting && !nv.setup_required ) {
     		gIsConnecting = true;
         	server.connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
-        	imp.wakeup(CONNECT_RETRY_TIME+1, tryToConnect);
+        	imp.wakeup(CONNECT_RETRY_TIME+2, tryToConnect);
     	}
 	}
 
@@ -1272,7 +1272,7 @@ class PushButton
     {
     	// Since the blinkup is enabled all the time, lets not enable them
     	// again, its unnecessary
-     	//imp.enableblinkup(blink);
+     	imp.enableblinkup(blink);
     	if( blink )
     	{
     		hwPiezo.playSound("blink-up-enabled");
@@ -1951,7 +1951,10 @@ function onConnected(status)
 	gIsConnecting = false;
 	
 	// always enable the blinkup when a connection call back happens
-	imp.enableblinkup(true);
+	if( !nv.setup_required)
+	{
+		imp.enableblinkup(true);
+	}
 	if(!scheme_new)
 	{
 		hwPiezo.playSound("startup");
