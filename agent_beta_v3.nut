@@ -18,7 +18,7 @@ if (!("nv" in getroottable()))
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "1.0.15";
+gAgentVersion <- "1.0.17";
 
 gAudioBuffer <- blob(0); // Contains the audio data for the current 
                          // session.  Resized as new buffers come in.  
@@ -185,6 +185,9 @@ function sendBeepToHikuServer(data)
     local timeStr = getUTCTime();
     local mySig = http.hash.sha256(gAuthData.app_id+gAuthData.secret+timeStr);
     mySig = BlobToHexString(mySig);
+    
+    server.log(format("Current Impee Id=%s Valid ImpeeId=%s",nv.gImpeeId, data.serial));
+    nv.gImpeeId = data.serial;
         
     // Special handling for audio beeps 
     if (data.scandata == "")
@@ -693,6 +696,22 @@ function xlate_bootreason_to_string(boot_reason)
 		reason = "COLDBOOT";
 	}
 	return reason;
+}
+
+
+function updateImpeeId(data)
+{
+	nv.gImpeeId = data
+    server.log(format("Impee Id got Updated: %s", nv.gImpeeId));
+    sendDeviceEvents(
+    					{  	  
+    						  fw_version=nv.gFwVersion,
+    						  wakeup_reason = xlate_bootreason_to_string(nv.gWakeUpReason),
+    						  boot_time = nv.gBootTime,
+    						  sleep_duration = nv.gSleepDuration,
+    						  rssi = data.rssi,
+    					}
+    				);	
 }
 
 
