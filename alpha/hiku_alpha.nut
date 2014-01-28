@@ -20,6 +20,10 @@ gInitTime <- {
 local scheme_new = true;
 
 local connection_available = false;
+// This is the connection time-out used
+// if the blink-up enabled we increase the timeout to 
+// 4*connection_timeout
+local connection_timeout = 20;
 
 /*
 // BOOT UP REASON MASK
@@ -124,7 +128,6 @@ gIsConnecting <- false;
 buf1 <- blob(gAudioBufferSize);
 buf2 <- blob(gAudioBufferSize);
 buf3 <- blob(gAudioBufferSize);
-buf4 <- blob(gAudioBufferSize);
 
 //======================================================================
 // Class to handle all the connection management and retry mechanisms
@@ -155,11 +158,14 @@ class ConnectionManager
 		{
 			notifyConnectionStatus(SERVER_CONNECTED);
 		}
-
+		else
+		{
+			server.connect(onConnectedResume.bindenv(this), connection_timeout);
+		}
+		
     	//hwPiezo.playSound("no-connection");
     	server.onunexpecteddisconnect(onUnexpectedDisconnect.bindenv(this));
 		server.onshutdown(onShutdown.bindenv(this));    	
-    	server.connect(onConnectedResume.bindenv(this), 10);
 	}
 	
 	function notifyConnectionStatus(status)
@@ -181,7 +187,7 @@ class ConnectionManager
 		if( status != SERVER_CONNECTED )
 		{
 			nv.disconnect_reason = status;
-			imp.wakeup(10, tryToConnect.bindenv(this) );
+			imp.wakeup(connection_timeout+1, tryToConnect.bindenv(this) );
 			//hwPiezo.playSound("no-connection");
 			connection_available = false;
 		}
@@ -196,8 +202,8 @@ class ConnectionManager
 	{
     	if (!server.isconnected() && !gIsConnecting) {
     		gIsConnecting = true;
-        	server.connect(onConnectedResume.bindenv(this), 10);
-        	imp.wakeup(10, tryToConnect);
+        	server.connect(onConnectedResume.bindenv(this), connection_timeout);
+        	imp.wakeup(connection_timeout+1, tryToConnect);
     	}
 	}
 
@@ -1266,6 +1272,7 @@ class PushButton
      	imp.enableblinkup(blink);
     	if( blink )
     	{
+    		connection_timeout = 4* connection_timeout;
     		hwPiezo.playSound("blink-up-enabled");
     		//Enable the 5 minute Timer here
     		// Ensure that we only enable it for the setup_required case
@@ -1275,6 +1282,10 @@ class PushButton
     			nv.sleep_not_allowed = true;
     			blinkTimer.enable();
     		}
+    	}
+    	else
+    	{
+    		connection_timeout = connection_timeout/4;
     	}
     	log(format("Blink-up: %s.",blink?"enabled":"disabled"));
     }
@@ -1887,7 +1898,7 @@ function init()
     // Microphone sampler config
     hwMicrophone <- hardware.pin2;
     hardware.sampler.configure(hwMicrophone, gAudioSampleRate, 
-                               [buf1, buf2, buf3, buf4], 
+                               [buf1, buf2, buf3], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
                        
     //local newsize = imp.setsendbuffersize(sendBufferSize);

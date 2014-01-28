@@ -6,7 +6,7 @@ local entryTime = hardware.millis();
 
 /*
 gInitTime <- { 
-      		overall = 0, 
+        	overall = 0, 
 				piezo = 0, 
 				button = 0, 
 				accel = 0,
@@ -60,7 +60,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.0.26" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.0.28" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -76,12 +76,13 @@ const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //    We enter sleep
 local cActualDelayBeforeDeepSleep = cDelayBeforeDeepSleep - 2;
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
+const cDeepSleepInSetupMode = 2419180.0; // 28 days - 20seconds
 const BLINK_UP_TIME = 300.0; // in seconds (5M)
 
 // This is the number of button presses required to enter blink up mode
 const BLINK_UP_BUTTON_COUNT = 3;
 
-const CONNECT_RETRY_TIME = 20; // for now 10 seconds retry time
+const CONNECT_RETRY_TIME = 45; // for now 45 seconds retry time
 
 enum DeviceState
 /*
@@ -1370,6 +1371,7 @@ class ChargeStatus
     {
     	// the pin is high charger is attached and low is a removal
     	log(format("Charger Detection: %s", ioExpander.getPin(7)? "attached":"removed"));
+	server.log(format("Charger Detection: %s", ioExpander.getPin(7)? "attached":"removed"));
     }
 
     //**********************************************************************
@@ -1391,6 +1393,8 @@ class ChargeStatus
         previous_state = (charging==0)? false:true; // update the previous state with the current state
         hwPiezo.playSound(previous_state?"charger-attached":"charger-removed");
         agent.send("chargerState", previous_state); // update the charger state
+	log(format("Charger Detection: %s", ioExpander.getPin(7)? "attached":"removed"));
+	server.log(format("Charger Detection: %s", ioExpander.getPin(7)? "attached":"removed"));
     }
 }
 
@@ -1517,7 +1521,7 @@ function samplerCallback(buffer, length)
     if (length <= 0)
     {
         gAudioBufferOverran = true;
-        log("Error: audio sampler buffer overrun!!!!!!, last timer="+gAudioTimer+"ms, free-mem:"+imp.getmemoryfree());
+        log("Error: audio sampler buffer overrun!!!!!!, last timer="+gAudioTimer+"ms, free-mem:"+imp.getmemoryfree()+", rssi: "+imp.rssi());
         
     }
     else 
@@ -1804,12 +1808,13 @@ function sleepHandler()
     
     assert(gDeviceState == DeviceState.PRE_SLEEP);
     log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", hardware.pin1.read()));
+    server.expectonlinein(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);
     nv.sleep_count++;
     nv.boot_up_reason = 0x0;
     nv.sleep_duration = time();
     server.disconnect();
     //server.flush(2);
-    imp.deepsleepfor(cDeepSleepDuration);   
+    imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);   
     //server.sleepfor(cDeepSleepDuration); 
 }
 
@@ -1827,9 +1832,9 @@ function init_done()
 		// Since the blinkup is always enabled, there is no need to enable
 		// them here
 		if( nv.setup_required )
-    	{
-    		hwButton.blinkUpDevice(nv.setup_required);
-    	}
+		{
+		hwButton.blinkUpDevice(nv.setup_required);
+		}
 	}
 	else
 	{
@@ -1962,7 +1967,7 @@ function onConnected(status)
 	
     if (status == SERVER_CONNECTED) {
     	connection_available = true;
-        imp.configure("hiku", [], []);    
+        //imp.configure("hiku", [], []);   // this is depcrecated  
 		log(format("Reconnected after unexpected disconnect: %d ",nv.disconnect_reason));
 		init_nv_items();
 		 							             

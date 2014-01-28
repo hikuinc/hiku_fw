@@ -479,30 +479,50 @@ device.on("uploadBeep", function(data) {
 // Receive and send out the beep packet
 device.on("batteryLevel", function(data) {
 
-	if( data >= 58302 )
+	if( data >= 53929 )
 	{
 		data = 100;
 	}
-	else if ( data < 58302 && data >= 56844 ) 
+	else if ( data < 53929 && data >= 53200 ) 
 	{
-		data = 75;
+		data = 90;
 	} 
-	else if ( data < 56844 && data >= 55386 )
+	else if ( data < 53200 && data >= 52471 )
+	{
+		data = 80;
+	}
+	else if( data < 52471 && data >= 51743 )
+	{
+		data = 70;
+	}
+	else if( data < 51743 && data >= 51014 )
+	{
+		data = 60;
+	}
+	else if( data < 51014 && data >= 50285 )
 	{
 		data = 50;
 	}
-	else if( data < 55386 && data >= 53928 )
+	else if( data < 50285 && data >= 49556 )
 	{
-		data = 25;
+		data = 40;
+	}	
+	else if( data < 49556 && data >= 48828 )
+	{
+		data = 30;
 	}
-	else if( data < 53928 && data >= 52471 )
+	else if( data < 48828 && data >= 48099 )
+	{
+		data = 20;
+	}
+	else if( data < 48099 && data >= 47370 )
 	{
 		data = 10;
-	}
-	else if( data < 52371 && data >= 51014 )
+	}	
+	else if( data < 47370 && data >= 47005 )
 	{
 		data = 5;
-	}
+	}			
 	else
 	{
 		data = 1;
@@ -510,7 +530,6 @@ device.on("batteryLevel", function(data) {
 
     sendBatteryLevelToHikuServer({batteryLevel=data});  
 });
-
 
 //**********************************************************************
 // Prepare to receive audio from the device
