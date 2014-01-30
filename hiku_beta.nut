@@ -18,8 +18,6 @@ gInitTime <- {
 				init_unused = 0,
 			}; 
 */
-local scheme_new = true;
-local blinkup_enabled = false;
 local connection_available = false;
 
 /*
@@ -53,6 +51,16 @@ if (!("nv" in getroottable()))
     	  };
 }
 
+if(!("setup" in getroottable()))
+{
+    setup <- {
+                 ssid="",
+				 pass="",
+				 barcode_scanned=false,
+				 time=0.0,
+             }
+}
+
 // Get the Sleep Duration early on
 if( nv.sleep_count != 0 )
 {
@@ -60,7 +68,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.0.28" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.1.1" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -83,6 +91,8 @@ const BLINK_UP_TIME = 300.0; // in seconds (5M)
 const BLINK_UP_BUTTON_COUNT = 3;
 
 const CONNECT_RETRY_TIME = 45; // for now 45 seconds retry time
+
+const SETUP_BARCODE_PREFIX = "4H1KU5"
 
 enum DeviceState
 /*
@@ -110,7 +120,7 @@ gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
 const gAudioBufferSize = 2000; // Size of each audio buffer 
 const gAudioSampleRate = 16000; // in Hz
-local sendBufferSize = 8*1024; // 8K send buffer size
+local sendBufferSize = 24*1024; // 16K send buffer size
 
 // Workaround to capture last buffer after sampler is stopped
 gSamplerStopping <- false; 
@@ -129,6 +139,70 @@ buf1 <- blob(gAudioBufferSize);
 buf2 <- blob(gAudioBufferSize);
 buf3 <- blob(gAudioBufferSize);
 buf4 <- blob(gAudioBufferSize);
+
+
+// Device Setup Related functions
+function determineSetupBarcode(barcode)
+{
+   // local patternString = format("\b%s\b",SETUP_BARCODE_PREFIX);
+    local pattern = regexp(@"\b4H1KU");
+    local res = pattern.search(barcode);
+	local tempBarcode = barcode;
+	server.log(format("Barcode to Match: %s",barcode));
+	server.log("result: "+res);
+	// result is null which means its not the setup barcode
+	if( res == null)
+	{
+	   server.log("regex didn't fint a setup barcode");
+	   return false;
+	}
+	
+	// At this time we have a barcode that has either an ssid or a password
+	// decode it by stripping the first character which identifies an ssid if its 5
+	// identifies a password if its a 6
+	
+	local barcodeType = tempBarcode.slice(res.end, res.end+1);
+	local setupCode = tempBarcode.slice(res.end+1, tempBarcode.len());
+	
+	if(barcodeType == "5")
+	{
+        // This is the SSID
+		setup.ssid = setupCode;
+	}
+	else if( barcodeType == "6")
+	{
+        // This is the password
+		setup.pass = setupCode;
+	}
+	
+	
+	server.log(" setupCode: "+setupCode+" type: "+barcodeType);
+	
+	if(setup.ssid !="" && setup.pass !="")
+	{
+       imp.wakeup(0.1 function(){
+	        ChangeWifi(setup.ssid, setup.pass);
+            setup.ssid = setup.pass = "";
+	   });
+	}
+	
+	return true;
+}
+
+function ChangeWifi(ssid, password) {
+    server.log("device disconnecting");
+    // wait for wifi buffer to empty before disconnecting
+    server.flush(60);
+    server.disconnect();
+    
+    // change the wificonfiguration and then reconnect
+    imp.setwificonfiguration(ssid, password);
+    server.connect();
+    
+    // log that we're connected to make sure it worked
+    server.log("device reconnected to " + ssid);
+}
+
 
 //======================================================================
 // Class to handle all the connection management and retry mechanisms
@@ -1036,7 +1110,7 @@ class Scanner
 
                     /*log("Code: \"" + scannerOutput + "\" (" + 
                                scannerOutput.len() + " chars)");*/
-                    
+                    //determineSetupBarcode(scannerOutput);
                     if(0!= agent.send("uploadBeep", {
                                               scandata=scannerOutput,
                                               scansize=scannerOutput.len(),
@@ -1046,10 +1120,7 @@ class Scanner
                                               audiodata="",
                                              }))
                     {
-                    	if(!scheme_new)
-                    	{
-                    		hwPiezo.playSound("no-connection");
-                    	}
+
                     }
                     else
                     {
@@ -1209,7 +1280,7 @@ class PushButton
                 
                 if (buttonState == ButtonState.BUTTON_UP)
                 {
-                 	if(scheme_new && !connection)
+                 	if(!connection)
                 	{
                 		// Here we play the no connection sound and return from the state machine
                 		if( !nv.setup_required )
@@ -1234,7 +1305,7 @@ class PushButton
                     buttonState = ButtonState.BUTTON_UP;
                     //log("Button state change: UP");
 						
-					if( scheme_new && !connection )
+					if( !connection )
 					{
 						return;
 					}
@@ -1481,14 +1552,7 @@ function sendLastBuffer()
                                       linkedrecord="",
                                       audiodata="", // to be added by agent
                                       scansize=gAudioChunkCount, 
-                                     }) != 0)
-        {
-        	if(!scheme_new)
-        	{
-        		hwPiezo.playSound("no-connection");
-        	}
-        }
-        else
+                                     }) == 0)
         {
         	hwPiezo.playSound("success-local");
         }
@@ -1911,8 +1975,8 @@ function init()
                                [buf1, buf2, buf3, buf4], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
                        
-    local newsize = imp.setsendbuffersize(sendBufferSize);
-	server.log("Set send buffer size to " + newsize + " bytes.");        
+    local oldsize = imp.setsendbuffersize(sendBufferSize);
+	server.log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
     // Accelerometer config
     hwAccelerometer <- Accelerometer(I2C_89, 0x18, 
                                      0);
@@ -1960,10 +2024,6 @@ function onConnected(status)
 	{
 		imp.enableblinkup(true);
 	}
-	if(!scheme_new)
-	{
-		hwPiezo.playSound("startup");
-	}
 	
     if (status == SERVER_CONNECTED) {
     	connection_available = true;
@@ -2000,10 +2060,6 @@ function onConnected(status)
 	}
     else
     {
-    	if(!scheme_new)
-    	{
-    		hwPiezo.playSound("no-connection");	
-    	}
    		nv.disconnect_reason = status;
     }
 }	
