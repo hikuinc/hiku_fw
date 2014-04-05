@@ -2066,12 +2066,12 @@ function onConnected(status)
 
 // start off here and things should move
 // Piezo config
-hwPiezo <- Piezo(hardware.pin5, hardware.pinC); 
-if (imp.getssid() == "") {
-    hwPiezo.playSound("software-update");
-    return;
+if (imp.getssid() == "" && !("first_boot" in nv)) {
+    nv.first_boot <- 1;
+    server.sleepfor(1);
 }
 init_done();
+hwPiezo <- Piezo(hardware.pin5, hardware.pinC); 
 connMgr <- ConnectionManager();
 connMgr.registerCallback(onConnected.bindenv(this));
 connMgr.init_connections();	
