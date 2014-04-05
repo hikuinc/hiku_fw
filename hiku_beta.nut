@@ -68,7 +68,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.1.1" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.1.2" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -1442,7 +1442,7 @@ class ChargeStatus
     {
     	// the pin is high charger is attached and low is a removal
     	log(format("Charger Detection: %s", ioExpander.getPin(7)? "attached":"removed"));
-	server.log(format("Charger Detection: %s", ioExpander.getPin(7)? "attached":"removed"));
+        server.log(format("Charger Detection: %s", ioExpander.getPin(7)? "attached":"removed"));
     }
 
     //**********************************************************************
@@ -2066,8 +2066,12 @@ function onConnected(status)
 
 // start off here and things should move
 // Piezo config
-init_done();
 hwPiezo <- Piezo(hardware.pin5, hardware.pinC); 
+if (imp.getssid() == "") {
+    hwPiezo.playSound("software-update");
+    return;
+}
+init_done();
 connMgr <- ConnectionManager();
 connMgr.registerCallback(onConnected.bindenv(this));
 connMgr.init_connections();	

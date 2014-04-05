@@ -18,7 +18,7 @@ if (!("nv" in getroottable()))
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "1.0.17";
+gAgentVersion <- "1.1.2";
 
 gAudioBuffer <- blob(0); // Contains the audio data for the current 
                          // session.  Resized as new buffers come in.  
@@ -50,6 +50,12 @@ gServerUrl <- "http://hiku.herokuapp.com/api/v1/list";
 gBatteryUrl <- "http://hiku.herokuapp.com/api/v1/device";
 
 gLogUrl <- "http://hiku.herokuapp.com/api/v1/log";
+
+gSetupUrl <- "https://hiku.herokuapp.com/api/v1/apps";
+
+
+const BATT_0_PERCENT = 43726.16;
+
 
 //======================================================================
 // Beep handling 
@@ -180,6 +186,14 @@ function sendBeepToHikuServer(data)
     {
         agentLog("(sending to hiku server not enabled)");
         return;
+    }
+    
+    
+    if( data.scandata != "" && isSpecialBarcode(data.scandata))
+    {
+      server.log("Checking Special Barcode Successful");
+    	sendSpecialBarcode(data);
+    	return;
     }
     
     local timeStr = getUTCTime();
@@ -332,6 +346,117 @@ function sendBeepToHikuServer(data)
     device.send("uploadCompleted", returnString);
 }
 
+// Send the barcode to hiku's server
+function sendSpecialBarcode(data)
+{
+    local disableSendToServer = false;
+    local newData;
+    //disableSendToServer = true;
+    if (disableSendToServer)
+    {
+        agentLog("(sending to hiku server not enabled)");
+        return;
+    }
+    
+    local timeStr = getUTCTime();
+    local mySig = http.hash.sha256(gAuthData.app_id+gAuthData.secret+timeStr);
+    mySig = BlobToHexString(mySig);
+    
+    server.log(format("Current Impee Id=%s Valid ImpeeId=%s",nv.gImpeeId, data.serial));
+    nv.gImpeeId = data.serial;
+
+    newData = {
+    			"frob":data.scandata,   			
+    			"token": nv.gImpeeId,
+                "sig": mySig,
+                "app_id": gAuthData.app_id,
+                "time": timeStr,
+                "serialNumber": nv.gImpeeId,
+    		  };
+	  
+    //data = gAuthData + newData;
+    
+    
+    local url = gSetupUrl+"/"+data.scandata;
+    server.log("Put URL: "+url);
+    data = newData;
+        
+    // URL-encode the whole thing
+    data = http.urlencode(data);
+    server.log(data);
+    // Create and send the request
+    agentLog("Sending beep to server...");
+    local req = http.put(
+            //"http://bobert.net:4444", 
+            //"http://www.hiku.us/sand/cgi-bin/readRawDeviceData.py", 
+            //"http://199.115.118.221/scanner_1/imp_beep",
+            url,
+            {"Content-Type": "application/x-www-form-urlencoded", 
+            "Accept": "application/json"}, 
+            data);
+            
+    // If the server is down, this will block all other events
+    // until it times out.  Events seem to be queued on the server 
+    // with no ill effects.  They do not block the device.  Could consider 
+    // moving to async. The timeout period (tested) is 60 seconds.  
+    local res;
+    local transactionTime = time();
+    res = req.sendsync();
+    transactionTime = time() - transactionTime;
+    agentLog(format("Server transaction time: %ds", transactionTime));
+
+    // Handle the response
+    local returnString = "success-server";
+
+    if (res.statuscode != 200)
+    {
+        returnString = "failure"
+        agentLog(format("Error: got status code %d, expected 200", 
+                    res.statuscode));
+    }
+    else
+    {
+        // Parse the response (in JSON format)
+        local body = http.jsondecode(res.body);
+		local body = body.response;
+        try 
+        {
+            // Handle the various non-OK responses.  Nothing to do for "ok". 
+            if (body.status != "ok")
+            {
+                returnString = "failure";
+				agentLog(format("AGENT: Beep Error: %s",http.jsonencode(body)));
+            }
+        }
+        catch(e)
+        {
+            agentLog(format("Caught exception: %s", e));
+            returnString = "failure";
+        }
+    }
+
+    // Return status to device
+    // TODO: device.send will be dropped if response took so long that 
+    // the device went back to sleep.  Handle that? 
+    device.send("uploadCompleted", returnString);
+}
+
+
+function isSpecialBarcode(barcode)
+{
+  local specialPrefix = ".HFB";
+  
+  if( barcode.len() > specialPrefix.len() )
+  {
+  	// The barcode is longer than specialPrefix length
+  	// at this time we can compare the 4 characters and validate
+  	local temp = barcode.slice(0,specialPrefix.len());
+  	server.log("Original Barcode: "+barcode+" Sliced Barcode: "+temp);
+  	return (temp == specialPrefix);
+  }
+  
+  return false;
+}
 
 /*
 function onBeepComplete(m)
@@ -484,52 +609,90 @@ device.on("batteryLevel", function(data) {
 
     agentLog(format("Battery Level Raw Reading: %d", 
                    data));	
-	if( data >= 53929 )
+	if( data >= 60200 )
 	{
 		data = 100;
 	}
-	else if ( data < 53929 && data >= 53200 ) 
+	else if ( data < 60200 && data >= 59649.77978 ) 
+	{
+		data = 95;
+	}	
+	else if ( data < 59649.77978 && data >= 58811.69491 ) 
 	{
 		data = 90;
-	} 
-	else if ( data < 53200 && data >= 52471 )
+	}	
+	else if ( data < 58811.69491 && data >= 57973.61004 ) 
+	{
+		data = 85;
+	}
+	else if ( data < 57973.61004 && data >= 57135.52517 ) 
 	{
 		data = 80;
 	}
-	else if( data < 52471 && data >= 51743 )
+	else if ( data < 57135.52517 && data >= 56297.44029 ) 
+	{
+		data = 75;
+	}
+	else if ( data < 56297.44029 && data >= 55459.35542 ) 
 	{
 		data = 70;
 	}
-	else if( data < 51743 && data >= 51014 )
+	else if ( data < 55459.35542 && data >= 54621.27055 ) 
+	{
+		data = 65;
+	}
+	else if ( data < 54621.27055 && data >= 53783.18568 ) 
 	{
 		data = 60;
 	}
-	else if( data < 51014 && data >= 50285 )
+	else if ( data < 53783.18568 && data >= 52945.10081 ) 
+	{
+		data = 55;
+	} 	
+	else if ( data < 52945.10081 && data >= 52107.01594 ) 
 	{
 		data = 50;
+	} 
+	else if ( data < 52107.01594 && data >= 51268.93106 )
+	{
+		data = 45;
 	}
-	else if( data < 50285 && data >= 49556 )
+	else if( data < 51268.93106 && data >= 50430.84619 )
 	{
 		data = 40;
-	}	
-	else if( data < 49556 && data >= 48828 )
+	}
+	else if( data < 50430.84619 && data >= 49592.76132 )
+	{
+		data = 35;
+	}
+	else if( data < 49592.76132 && data >= 48754.67645 )
 	{
 		data = 30;
 	}
-	else if( data < 48828 && data >= 48099 )
+	else if( data < 48754.67645 && data >= 47916.59158 )
+	{
+		data = 25;
+	}	
+	else if( data < 47916.59158 && data >= 47078.50671 )
 	{
 		data = 20;
 	}
-	else if( data < 48099 && data >= 47370 )
+	else if( data < 47078.50671 && data >= 46240.42183 )
+	{
+		data = 15;
+	}
+	else if( data < 46240.42183 && data >= 45402.33696 )
 	{
 		data = 10;
 	}	
-	else if( data < 47370 && data >= 47005 )
+	else if( data < 45402.33696 && data >= 44564.252094 )
 	{
 		data = 5;
 	}			
-	else
+	else if( data < 44564.25209 )
 	{
+		// This means we are below 5% and its 43726.16722 for 0%
+		// Perhaps we should give finer granular percentage here until it hits 1% to 0%
 		data = 1;
 	}
 

@@ -10,7 +10,7 @@ if (!("nv" in getroottable()))
 }
 
 // Consts and enums
-const cFirmwareVersion = "0.5.2"
+const cFirmwareVersion = "1.0.3"
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -31,8 +31,8 @@ const SpecialBarCode = "00062534";
 
 // Change this to enable the factory blink-up
 // This is the WIFI SSID and password that will be used for factory blink-up
-const SSID = "SVGPartners";
-const PASSWORD = "accesssvg";
+const SSID = "cache";
+const PASSWORD = "upgrades";
 
 enum DeviceState
 /*
@@ -101,7 +101,7 @@ class InterruptHandler
         i2cDevice.write(0x10, 0x01); // RegMisc
 
         // Lower the output buffer drive, to reduce current consumption
-        i2cDevice.write(0x02, 0xFF); // RegLowDrive      	
+        i2cDevice.write(0x02, 0xFF); // RegLowDrive          
         //server.log("--------Setting interrupt handler for pin1--------");
         hardware.pin1.configure(DIGITAL_IN_WAKEUP, handlePin1Int.bindenv(this));
   	}
@@ -745,6 +745,7 @@ class Scanner extends IoExpanderDevice
                     	nv.bless_device=true;
                     	// To indicate to the tester that it scanned the right barcode
                     	hwPiezo.playSound("success-server");
+                        agent.send("testresult", {device_id = hardware.getimpeeid(), type = "scanner", value="success"});
                     }
                     
                     // Stop collecting data
@@ -937,11 +938,7 @@ class PushButton extends IoExpanderDevice
     	{
     		hwPiezo.playSound("unknown-upc");
     	}
-    	
-    	imp.wakeup(5, function(){
-    		imp.clearconfiguration();
-    		server.restart();
-    		});
+        imp.clearconfiguration();
     }    
     
     function blessDevice()
@@ -1141,10 +1138,12 @@ class ChargeStatus extends IoExpanderDevice
         {
           // Play the tone here
           hwPiezo.playSound("charger-attached");
+          agent.send("testresult", {device_id = hardware.getimpeeid(), type = "charger", value="attached"});
         }
         else
         {
         	hwPiezo.playSound("charger-removed");
+            agent.send("testresult", {device_id = hardware.getimpeeid(), type = "charger", value="detached"});
         }
         previous_state = (charging==0)? false:true; // update the previous state with the current state
         //agent.send("chargerState", previous_state); // update the charger state
@@ -1304,6 +1303,7 @@ class Accelerometer extends I2cDevice
         gAccelInterrupted = true;
         disableInterrupts();
         clearAccelInterrupt();
+        agent.send("testresult", {device_id = hardware.getimpeeid(), type = "accelerometer", value="motionDetected"});
         if(reenableInterrupts)
         {
             enableInterrupts();
@@ -1733,6 +1733,8 @@ function init_board()
 
     // Send the agent our impee ID
    // agent.send("impeeId", hardware.getimpeeid());
+   agent.send("testresult", {device_id = hardware.getimpeeid(), type = "mac", value=imp.getmacaddress()});
+   
 
     // Transition to the idle state
     updateDeviceState(DeviceState.IDLE);
