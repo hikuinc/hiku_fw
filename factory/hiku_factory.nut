@@ -938,13 +938,14 @@ class PushButton extends IoExpanderDevice
     	{
     		hwPiezo.playSound("unknown-upc");
     	}
+
         imp.clearconfiguration();
     }    
     
     function blessDevice()
     {
     	server.log(format("Blessing MAC=%s.",imp.getmacaddress()));
-    	server.bless(true,blessServerCallback);
+    	server.bless(true, blessServerCallback.bindenv(this));
     }
     
 }
@@ -1732,8 +1733,8 @@ function init_board()
     gAccelHysteresis <- CancellableTimer( cDelayBeforeAccelClear, sleepHandler); 
 
     // Send the agent our impee ID
-   // agent.send("impeeId", hardware.getimpeeid());
-   agent.send("testresult", {device_id = hardware.getimpeeid(), type = "mac", value=imp.getmacaddress()});
+    // agent.send("impeeId", hardware.getimpeeid());
+    agent.send("testresult", {device_id = hardware.getimpeeid(), type = "mac", value=imp.getmacaddress()});
    
 
     // Transition to the idle state
