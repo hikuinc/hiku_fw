@@ -68,7 +68,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.1.2" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.1.5" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -353,6 +353,14 @@ class InterruptHandler
         }
         irqCallbacks[pin] = func;
     }
+	
+	
+    function clearHandlers()
+    {
+        for (local i = 0; i < irqCallbacks.len(); i++) {
+            irqCallbacks[i] = null;
+        }
+    }	
 
     // Handle all expander callbacks
     function handlePin1Int()
@@ -398,7 +406,7 @@ class InterruptHandler
             if(regInterruptSource & (1 << pin)){
                 //log(format("-Calling irq callback for pin %d", pin));
                 nv.boot_up_reason = nv.boot_up_reason | (1 << pin);
-                irqCallbacks[pin]();
+                if (irqCallbacks[pin]) irqCallbacks[pin]();
             }
         }
        // log("handlePin1Int exit time: " + hardware.millis() + "ms");
@@ -2066,12 +2074,13 @@ function onConnected(status)
 
 // start off here and things should move
 // Piezo config
+hwPiezo <- Piezo(hardware.pin5, hardware.pinC); 
 if (imp.getssid() == "" && !("first_boot" in nv)) {
     nv.first_boot <- 1;
-    server.sleepfor(1);
+    imp.deepsleepfor(1);
 }
+
 init_done();
-hwPiezo <- Piezo(hardware.pin5, hardware.pinC); 
 connMgr <- ConnectionManager();
 connMgr.registerCallback(onConnected.bindenv(this));
 connMgr.init_connections();	

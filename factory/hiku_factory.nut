@@ -10,7 +10,7 @@ if (!("nv" in getroottable()))
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.0.3"
+const cFirmwareVersion = "1.0.5"
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -117,6 +117,14 @@ class InterruptHandler
         }
         irqCallbacks[pin] = func;
     }
+    
+    function clearHandlers()
+    {
+        clearAllIrqs();
+        for (local i = 0; i < irqCallbacks.len(); i++) {
+            irqCallbacks[i] = null;
+        }
+    }
 
     // Handle all expander callbacks
     // TODO: if you have multiple IoExpanderDevice's, which instance is called?
@@ -148,7 +156,7 @@ class InterruptHandler
         for(local pin=0; pin < 8; pin++){
             if(regInterruptSource & 1<<pin){
                 //server.log(format("-Calling irq callback for pin %d", pin));
-                irqCallbacks[pin]();
+                if (irqCallbacks[pin]) irqCallbacks[pin]();
             }
         }
     } 
@@ -937,15 +945,17 @@ class PushButton extends IoExpanderDevice
     	else
     	{
     		hwPiezo.playSound("unknown-upc");
+            //server.restart();
     	}
-
         imp.clearconfiguration();
     }    
     
     function blessDevice()
     {
     	server.log(format("Blessing MAC=%s.",imp.getmacaddress()));
-    	server.bless(true, blessServerCallback.bindenv(this));
+        hwAccelerometer.disableInterrupts(); // Just to be safe disable the Accel Interrupts
+        intHandler.clearHandlers();
+        server.bless(true, blessServerCallback.bindenv(this));
     }
     
 }
@@ -1754,6 +1764,7 @@ function init_board()
     // We only wake due to an interrupt or after power loss.  If the 
 	// former, we need to handle any pending interrupts. 
 	intHandler.handlePin1Int();
+    imp.enableblinkup(true);
 }
 
 
