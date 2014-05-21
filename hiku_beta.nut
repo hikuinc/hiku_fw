@@ -68,7 +68,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.1.5" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.1.6" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -1381,16 +1381,17 @@ class ChargeStatus
 {
     pin = null; // IO expander pin assignment
     previous_state = false; // the previous state of the charger
-   
+    pinStatus = null; // IO Expander Pin 7 for Charger Status
 
     constructor(chargePin)
     {
         // Save assignments
         pin = chargePin;
+		pinStatus = 7;
 
         // Set event handler for IRQ
         intHandler.setIrqCallback(pin, chargerCallback.bindenv(this));
-        intHandler.setIrqCallback(7, chargerDetectionCB.bindenv(this));
+        intHandler.setIrqCallback(pinStatus, chargerDetectionCB.bindenv(this));
         
         hardware.pinB.configure(ANALOG_IN);
         imp.wakeup(5, batteryMeasurement.bindenv(this));
@@ -1400,7 +1401,13 @@ class ChargeStatus
         ioExpander.setPullUp(pin, 1); // enable pullup
         ioExpander.setIrqMask(pin, 1); // enable IRQ
         ioExpander.setIrqEdges(pin, 1, 1); // rising and falling
-        previous_state = isCharging();
+        
+		chargerCallback(); // this will update the current state right away
+		
+        ioExpander.setDir(pinStatus, 1); // set as input
+        ioExpander.setPullUp(pinStatus, 1); // enable pullup
+        ioExpander.setIrqMask(pinStatus, 1); // enable IRQ
+        ioExpander.setIrqEdges(pinStatus, 1, 1); // rising and falling
 
 		// Congiure Pin C which is supposed to be the pin indicating whether a charger is
 		// attached or not
@@ -1443,14 +1450,14 @@ class ChargeStatus
     	imp.wakeup(1, function() {
     		agent.send("batteryLevel", nv.voltage_level)
     	});
-    	imp.wakeup(15, batteryMeasurement.bindenv(this));
+    	imp.wakeup(60, batteryMeasurement.bindenv(this));
     }
     
     function chargerDetectionCB()
     {
     	// the pin is high charger is attached and low is a removal
-    	log(format("Charger Detection: %s", ioExpander.getPin(7)? "attached":"removed"));
-        server.log(format("Charger Detection: %s", ioExpander.getPin(7)? "attached":"removed"));
+    	log(format("USB Detection CB: %s", ioExpander.getPin(7)? "disconnected":"connected"));
+        server.log(format("USB Detection CB: %s", ioExpander.getPin(7)? "disconnected":"connected"));
     }
 
     //**********************************************************************
@@ -1468,12 +1475,15 @@ class ChargeStatus
         }
         //log(format("Charger: %s",charging?"charging":"not charging"));
         
-
+		if( previous_state != (charging==0?false:true))
+		{
+            hwPiezo.playSound(previous_state?"charger-attached":"charger-removed");
+        }
+		
         previous_state = (charging==0)? false:true; // update the previous state with the current state
-        hwPiezo.playSound(previous_state?"charger-attached":"charger-removed");
         agent.send("chargerState", previous_state); // update the charger state
-	log(format("Charger Detection: %s", ioExpander.getPin(7)? "attached":"removed"));
-	server.log(format("Charger Detection: %s", ioExpander.getPin(7)? "attached":"removed"));
+        log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
+	    server.log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
     }
 }
 
@@ -1795,7 +1805,7 @@ function init_unused_pins(i2cDev)
 function preSleepHandler() {
 	updateDeviceState( DeviceState.PRE_SLEEP);
 	
-	if( nv.sleep_not_allowed)
+	if( nv.sleep_not_allowed || chargeStatus.previous_state )
 	{
 		//Just for testing but we should remove it later
 		//hwPiezo.playSound("device-page");
