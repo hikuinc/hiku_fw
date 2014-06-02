@@ -68,7 +68,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.1.6" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.1.7" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -1310,6 +1310,7 @@ class PushButton
                 // Button in released state
                 if (buttonState == ButtonState.BUTTON_DOWN)
                 {
+				    server.log("BUTTON RELEASED!");
                     buttonState = ButtonState.BUTTON_UP;
                     //log("Button state change: UP");
 						
@@ -1574,6 +1575,15 @@ function sendLastBuffer()
         {
         	hwPiezo.playSound("success-local");
         }
+    } else {
+        agent.send("abortAudioUpload", {
+                                      scandata="",
+                                      serial=hardware.getimpeeid(),
+                                      fw_version=cFirmwareVersion,
+                                      linkedrecord="",
+                                      audiodata="", // to be added by agent
+                                      scansize=gAudioChunkCount, 
+                                     });
     }
 
     // We have completed the process of stopping the sampler
@@ -1915,7 +1925,7 @@ function init_done()
 		// them here
 		if( nv.setup_required )
 		{
-		hwButton.blinkUpDevice(nv.setup_required);
+		  hwButton.blinkUpDevice(nv.setup_required);
 		}
 	}
 	else

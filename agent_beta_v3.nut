@@ -1,5 +1,14 @@
 // Copyright 2013 Katmandu Technology, Inc. All rights reserved. Confidential.
 
+enum AudioStates {
+  AudioRecording,  // Hiku's button has been pressed and audio is being recorded.
+  AudioFinished,   // The button has been released and the audio has to be interpreted by
+                   // the server. This is the case if only audio was recorded or if the audio
+		   // is to add an entry to an unknown barcode (superscan).
+  AudioFinishedBarcode, // The button has been released and the server can ignore the audio
+  AudioError       // The most recent audio recording encountered an error. This state is also
+                   // used on agent initialization.
+}
 
 if (!("nv" in getroottable()))
 {
@@ -18,16 +27,32 @@ if (!("nv" in getroottable()))
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "1.1.2";
+gAgentVersion <- "1.1.3";
 
-gAudioBuffer <- blob(0); // Contains the audio data for the current 
-                         // session.  Resized as new buffers come in.  
+gAudioState <- AudioStates.AudioError;
+
+// Byte pointer indicating the number of bytes of audio data
+// the server has picked up from the Imp agent with HTTP GETs
+gAudioReadPointer <- 0;
+
+// Audio token issued by the server as an identifier for the 
+// transaction
+gAudioToken <- "";
+
+// Global variable for measuring transaction time of list POSTs 
+gTransactionTime <- 0;
+
+// Byte string containing the audio data for the current session
+gAudioString <- "";
+
 gChunkCount <- 0; // Used to verify that we got the # we expected
 gLinkedRecord <- ""; // Used to link unknown UPCs to audio records. 
                      // We will set this when we get a request to do
                      // so from the server, then clear it after we 
                      // send the next audio beep, after next barcode, 
                      // or after a timeout
+
+gEan <- ""; // stored EAN for a superscan
                      
 local boot_reasons = [
 						"accelerometer", 
@@ -44,15 +69,19 @@ gAuthData <-{
 			    app_id="e3a8ccb635d08ce76b407ec644",
     			secret="c923b1e09386"
 			}
-			
-gServerUrl <- "http://hiku.herokuapp.com/api/v1/list";	
 
-gBatteryUrl <- "http://hiku.herokuapp.com/api/v1/device";
+// Heroku server base URL			
+gBaseUrl <- "https://hiku.herokuapp.com/api/v1";
 
-gLogUrl <- "http://hiku.herokuapp.com/api/v1/log";
+gServerUrl <- gBaseUrl + "/list";	
 
-gSetupUrl <- "https://hiku.herokuapp.com/api/v1/apps";
+gBatteryUrl <- gBaseUrl + "/device";
 
+gLogUrl <- gBaseUrl + "/log";
+
+gSetupUrl <- gBaseUrl + "/apps";
+
+gAudioUrl <- gBaseUrl + "/audio";
 
 const BATT_0_PERCENT = 43726.16;
 
@@ -176,15 +205,19 @@ function onCompleteEvent(m)
 }
 
 //**********************************************************************
-// Send the barcode to hiku's server
+// Send audio and/or barcode to hiku's server
 function sendBeepToHikuServer(data)
 {
+    //server.log(format("AGENT: Audio get at %d", gAudioReadPointer));
+
     local disableSendToServer = false;
     local newData;
+    local is_superscan = false;
     //disableSendToServer = true;
     if (disableSendToServer)
     {
         agentLog("(sending to hiku server not enabled)");
+        gAudioState = AudioStates.AudioError;
         return;
     }
     
@@ -192,6 +225,9 @@ function sendBeepToHikuServer(data)
     if( data.scandata != "" && isSpecialBarcode(data.scandata))
     {
       server.log("Checking Special Barcode Successful");
+      if (gAudioState != AudioStates.AudioError) {
+        gAudioState = AudioStates.AudioFinishedBarcode;
+      }
     	sendSpecialBarcode(data);
     	return;
     }
@@ -206,11 +242,6 @@ function sendBeepToHikuServer(data)
     // Special handling for audio beeps 
     if (data.scandata == "")
     {
-        // Encode the audio data as base64, and store the size. The 
-        // "scansize" parameter is applicable for both audio and barcodes. 
-        data.audiodata = http.base64encode(gAudioBuffer);
-        data.scansize = data.audiodata.len();
-        
         // If not expired, attach the current linkedrecord (usually 
         // blank). Then reset the global. 
         agentLog("checking if linked record");
@@ -218,6 +249,7 @@ function sendBeepToHikuServer(data)
         {
             agentLog("record linked");
             data.scandata = gLinkedRecord;
+	          is_superscan = true;
         }
         gLinkedRecord = ""; 
         nv.gLinkedRecordTimeout = null;
@@ -226,52 +258,48 @@ function sendBeepToHikuServer(data)
     if ( data.scandata == "" )
     {
     	newData = {
-    			"size": data.audiodata.len(),
-    			"audioData": data.audiodata,
-    			"audioType": "alaw",
-    			"token": nv.gImpeeId,
+    		        "audioToken": gAudioToken,
+    			      "audioType": "alaw",
+    			      "token": nv.gImpeeId,
                 "sig": mySig,
                 "app_id": gAuthData.app_id,
                 "time": timeStr,
-    		  };    	
+    		  };  
+    	if (gAudioState != AudioStates.AudioError) {
+        gAudioState = AudioStates.AudioFinished;
+      }
     }
-    else if( data.scandata != "" && data.audiodata != "" )
+    else 
     {
-    	newData = {
-    			"ean":data.scandata,
-    			"size": data.audiodata.len(),
-    			"audioData": data.audiodata,
-    			"audioType": "alaw",    			
-    			"token": nv.gImpeeId,
-                "sig": mySig,
-                "app_id": gAuthData.app_id,
-                "time": timeStr,
-    		  };    
+      if (is_superscan) {
+    	    newData = {
+    			  "ean":data.scandata,
+    			  "audioToken": gAudioToken,
+    			  "audioType": "alaw",    			
+    			  "token": nv.gImpeeId,
+            "sig": mySig,
+            "app_id": gAuthData.app_id,
+            "time": timeStr,
+    		 };   
+    	   if (gAudioState != AudioStates.AudioError) {
+	          gAudioState = AudioStates.AudioFinished;
+	       }
+      } else {
+    	    newData = {
+    			  "ean":data.scandata,
+    			  "audioType": "alaw",    			
+    			  "token": nv.gImpeeId,
+            "sig": mySig,
+            "app_id": gAuthData.app_id,
+            "time": timeStr,
+    	   };   
+    	   if (gAudioState != AudioStates.AudioError) {
+	          gAudioState = AudioStates.AudioFinishedBarcode;
+	       }
+	    }
+      // save EAN in case of a superscan
+      gEan = newData.ean;
     }
-    else
-    {
-    	newData = {
-    			"ean":data.scandata,   			
-    			"token": nv.gImpeeId,
-                "sig": mySig,
-                "app_id": gAuthData.app_id,
-                "time": timeStr,
-    		  };       
-    }
-
-	/*
- 	newData = {
-    			"ean":data.scandata,
-    			"size": data.audiodata.len(),
-    			"audioData": data.audiodata,
-    			"audioType": "alaw",
-    			//"token": nv.gImpeeId,
-                "token": "84701630318",
-                "app_id": "hg11ohtugw",
-                "sig": "b4e89c5d93e30b69d43af5c51ea2cf9c"
-    		  };   
-    */		  
-    //data = gAuthData + newData;
     data = newData;
         
     // URL-encode the whole thing
@@ -293,11 +321,14 @@ function sendBeepToHikuServer(data)
     // until it times out.  Events seem to be queued on the server 
     // with no ill effects.  They do not block the device.  Could consider 
     // moving to async. The timeout period (tested) is 60 seconds.  
-    local res;
-    local transactionTime = time();
-    res = req.sendsync();
-    transactionTime = time() - transactionTime;
-    agentLog(format("Server transaction time: %ds", transactionTime));
+    gTransactionTime = time();
+    req.sendasync(onBeepReturn);
+}
+
+function onBeepReturn(res) {
+
+    gTransactionTime = time() - gTransactionTime;
+    agentLog(format("Server transaction time: %ds", gTransactionTime));
 
     // Handle the response
     local returnString = "success-server";
@@ -305,7 +336,7 @@ function sendBeepToHikuServer(data)
     if (res.statuscode != 200)
     {
         returnString = "failure"
-        agentLog(format("Error: got status code %d, expected 200", 
+        agentLog(format("Beep Error: got status code %d, expected 200", 
                     res.statuscode));
     }
     else
@@ -321,7 +352,7 @@ function sendBeepToHikuServer(data)
                 // Possible causes: speech2text failure, unknown.
                 if (body.errMsg == "EAN_NOT_FOUND")
                 {
-                    gLinkedRecord = newData.ean;
+                    gLinkedRecord = gEan;
                     nv.gLinkedRecordTimeout = time()+10; // in seconds
                     returnString = "unknown-upc";
                     agentLog("Response: unknown UPC code");
@@ -330,12 +361,12 @@ function sendBeepToHikuServer(data)
                 {
                     returnString = "failure";
                 }
-				agentLog(format("AGENT: Beep Error: %s",http.jsonencode(body)));
+				agentLog(format("Beep Error: %s",http.jsonencode(body)));
             }
         }
         catch(e)
         {
-            agentLog(format("Caught exception: %s", e));
+            agentLog(format("Beep Error: Caught exception: %s", e));
             returnString = "failure";
         }
     }
@@ -400,10 +431,13 @@ function sendSpecialBarcode(data)
     // with no ill effects.  They do not block the device.  Could consider 
     // moving to async. The timeout period (tested) is 60 seconds.  
     local res;
-    local transactionTime = time();
-    res = req.sendsync();
-    transactionTime = time() - transactionTime;
-    agentLog(format("Server transaction time: %ds", transactionTime));
+    gTransactionTime = time();
+    req.sendasync(onSpecialBarcodeReturn);
+}
+
+function onSpecialBarcodeReturn(res) {
+    gTransactionTime = time() - gTransactionTime;
+    agentLog(format("Server transaction time: %ds", gTransactionTime));
 
     // Handle the response
     local returnString = "success-server";
@@ -712,9 +746,82 @@ device.on("startAudioUpload", function(data) {
     //agentLog("in startAudioUpload");
 
     // Reset our audio buffer
-    gAudioBuffer.resize(0);
+    // HACK
+    // HACK
+    // HACK
+    // Have to correctly handle the case where the user presses the button
+    // again to submit a second audio recording while the data of the first
+    // recording hasn't yet been sent to the server. This can be the case
+    // if audio data is still on the device or if the final HTTP GET from the server
+    // to pick up the audio data is still in flight.
+    // 
+    // Currently, the audio data for the first recording gets destroyed when the
+    // user presses the button again.
+    gAudioToken = "";
     gChunkCount = 0;
+    gAudioReadPointer = 0;
+    gAudioString = "";
+
+    // POST to the server to indicate that a new audio recording is
+    // starting; receive an audio token in return
+    local newData;
+    local timeStr = getUTCTime();
+    local mySig = http.hash.sha256(gAuthData.app_id+gAuthData.secret+timeStr);
+    mySig = BlobToHexString(mySig);
+    
+    newData = {
+          // FIXME don't send agent URL in the clear over HTTP
+          "agentUrl": http.agenturl(),
+    	  "token": nv.gImpeeId,
+          "sig": mySig,
+          "app_id": gAuthData.app_id,
+          "time": timeStr,
+    };    	
+    
+    data = http.urlencode( newData );
+    
+    server.log("AGENT: Posting audio start to server...");
+    local req = http.post(
+            //"http://199.115.118.221/cgi-bin/addDeviceEvent.py",
+            //"http://srv2.hiku.us/cgi-bin/addDeviceEvent.py",
+            gAudioUrl,
+            {"Content-Type": "application/x-www-form-urlencoded", 
+            "Accept": "application/json"}, 
+            data);
+
+    req.sendasync(onReceiveAudioToken);
 });
+
+function onReceiveAudioToken(m)
+{
+    if (m.statuscode != 200)
+    {
+        agentLog(format("Token POST: Got status code %d, expected 200.", m.statuscode));
+        gAudioState = AudioStates.AudioError;
+    }
+    else
+    {
+      // Parse the response (in JSON format)
+        local body = http.jsondecode(m.body);
+        local body = body.response;
+        try 
+        {
+          if (body.status != "ok") {
+            gAudioState = AudioStates.AudioError;
+            agentLog("Token POST: Received non-ok status");
+          } else {  
+            gAudioToken = body.data.audioToken;
+            agentLog(format("Token POST: AudioToken received: %s", gAudioToken));
+            gAudioState = AudioStates.AudioRecording;
+          }
+        }
+        catch(e)
+        {
+            agentLog(format("Token POST: Caught exception: %s", e));
+            gAudioState = AudioStates.AudioError;
+        }
+    }
+}
 
 device.on("deviceLog", function(str){
 	// this needs to be changed post to an http url
@@ -724,11 +831,18 @@ device.on("deviceLog", function(str){
 
 //**********************************************************************
 // Send complete audio sample to the server
+device.on("abortAudioUpload", function(data) {
+    agentLog("Error: aborting audio upload");
+    gAudioState = AudioStates.AudioError;
+});
+  
+//**********************************************************************
+// Send complete audio sample to the server
 device.on("endAudioUpload", function(data) {
     //agentLog("in endAudioUpload");
 
     // If  no audio data, just exit
-    if (gAudioBuffer.len() == 0)
+    if (gAudioString.len() == 0)
     {
         agentLog("No audio data to send to server.");
         return;
@@ -743,10 +857,17 @@ device.on("endAudioUpload", function(data) {
     if (data.scandata != "")
     {
         agentLog("Error: found barcode when expected only audio data");
+        gAudioState = AudioStates.AudioError;
     }
 
     local sendToDebugServer = false;
     //sendToDebugServer = true;
+    // HACK
+    // HACK 
+    // HACK
+    // needs to be rewritten as gAudioBuffer has been replaced with
+    // gAudioString
+    /*
     if (sendToDebugServer)
     {
         // Send audio to server
@@ -769,7 +890,7 @@ device.on("endAudioUpload", function(data) {
         }
 
         return;
-    }
+    } */
     sendBeepToHikuServer(data);  
 });
 
@@ -783,7 +904,7 @@ device.on("uploadAudioChunk", function(data) {
 
     // Add the new data to the audio buffer, truncating if necessary
     data.buffer.resize(data.length);  // Most efficient way to truncate? 
-    gAudioBuffer.writeblob(data.buffer);
+    gAudioString=gAudioString+data.buffer.tostring();
     gChunkCount++;
 });
 
@@ -800,23 +921,57 @@ device.on("shutdownRequestReason", function(status){
 http.onrequest(function (request, res)
 {
     // Handle supported requests
-    if (request.path == "/getImpeeId") 
-    {
-        res.send(200, nv.gImpeeId);
-    }
-    else if (request.path == "/devicePage") 
-    {
-        //device.send("devicePage",1);
-    	res.send(200, "OK");
-    } 
-    else if( request.path == "/getAgentVersion" )
-    {
-    	res.send(200,gAgentVersion);
-    }
-    else
-    {
-        agentLog(format("AGENT Error: unexpected path %s", request.path));
-        res.send(400, format("unexpected path %s", request.path));
+    try {
+      if ( request.method == "GET") { 
+        if (request.path == "/getImpeeId") 
+        {
+          res.send(200, nv.gImpeeId);
+        }
+        else if (request.path == "/devicePage") 
+        {
+          //device.send("devicePage",1);
+    	    res.send(200, "OK");
+        } 
+        else if( request.path == "/getAgentVersion" )
+        {   
+    	    res.send(200,gAgentVersion);
+        }
+        else if( request.path == "/audio/" + gAudioToken)
+        {
+          local audioLen = gAudioString.len();
+          local audioSubstring;
+
+          if (gAudioReadPointer < audioLen) {
+             audioSubstring = gAudioString.slice(gAudioReadPointer, audioLen);
+             gAudioReadPointer = audioLen;
+          } else {
+             audioSubstring = "";
+          } 
+          //agentLog(format("AUDIOPOINTER %d len %d", gAudioReadPointer, audioLen));
+    
+    	    res.header("Content-Type", "audio/x-wav");
+    	    res.header("audioState", gAudioState);
+
+    	    res.send(200, audioSubstring);
+        } 
+        // for audio debug
+        /*
+        else if( request.path == "/getAudioRecording" )
+        {
+    	    res.send(200, gAudioString);
+        } */
+        else
+        {
+          agentLog(format("HTTP GET: Unexpected path %s", request.path));
+          res.send(404, format("HTTP GET: Unexpected path %s", request.path));
+        }
+      } else {
+        agentLog(format("HTTP method not allowed: %s", request.method));
+        res.send(405, format("HTTP method not allowed: %s", request.method));
+      }
+    } catch (ex) {
+     agentLog("Internal Server Error: " + ex);
+     resp.send(501, "Internal Server Error: " + ex);
   }
 });
 
@@ -1031,4 +1186,3 @@ function dumpBlob(data)
         agentLog(str);
     }
 }
-
