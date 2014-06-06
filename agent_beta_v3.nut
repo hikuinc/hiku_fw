@@ -971,7 +971,7 @@ http.onrequest(function (request, res)
       }
     } catch (ex) {
      agentLog("Internal Server Error: " + ex);
-     resp.send(501, "Internal Server Error: " + ex);
+     res.send(501, "Internal Server Error: " + ex);
   }
 });
 
