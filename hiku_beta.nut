@@ -68,7 +68,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.1.8" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.1.9" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -279,7 +279,7 @@ class ConnectionManager
     	if (!server.isconnected() && !gIsConnecting && !nv.setup_required ) {
     		gIsConnecting = true;
         	server.connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
-        	imp.wakeup(CONNECT_RETRY_TIME+2, tryToConnect);
+        	imp.wakeup(CONNECT_RETRY_TIME+2, tryToConnect.bindenv(this));
     	}
 	}
 
