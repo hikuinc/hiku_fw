@@ -68,7 +68,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.1.7" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.1.8" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -119,7 +119,7 @@ local init_completed = false;
 gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
 const gAudioBufferSize = 2000; // Size of each audio buffer 
-const gAudioSampleRate = 16000; // in Hz
+const gAudioSampleRate = 8000; // in Hz
 local sendBufferSize = 24*1024; // 16K send buffer size
 
 // Workaround to capture last buffer after sampler is stopped

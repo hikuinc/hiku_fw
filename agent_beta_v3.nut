@@ -27,7 +27,7 @@ if (!("nv" in getroottable()))
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "1.1.4";
+gAgentVersion <- "1.1.8";
 
 gAudioState <- AudioStates.AudioError;
 
@@ -772,6 +772,7 @@ device.on("startAudioUpload", function(data) {
     newData = {
           // FIXME don't send agent URL in the clear over HTTP
           "agentUrl": http.agenturl(),
+          "agentAudioRate": 8000,
     	  "token": nv.gImpeeId,
           "sig": mySig,
           "app_id": gAuthData.app_id,
