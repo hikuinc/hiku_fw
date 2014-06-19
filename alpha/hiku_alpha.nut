@@ -4,8 +4,9 @@ server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 
 local entryTime = hardware.millis();
 
+/*
 gInitTime <- { 
-      		overall = 0, 
+        	overall = 0, 
 				piezo = 0, 
 				button = 0, 
 				accel = 0,
@@ -16,14 +17,8 @@ gInitTime <- {
 				init_stage2 = 0,
 				init_unused = 0,
 			}; 
-
-local scheme_new = true;
-
+*/
 local connection_available = false;
-// This is the connection time-out used
-// if the blink-up enabled we increase the timeout to 
-// 4*connection_timeout
-local connection_timeout = 20;
 
 /*
 // BOOT UP REASON MASK
@@ -56,6 +51,16 @@ if (!("nv" in getroottable()))
     	  };
 }
 
+if(!("setup" in getroottable()))
+{
+    setup <- {
+                 ssid="",
+				 pass="",
+				 barcode_scanned=false,
+				 time=0.0,
+             }
+}
+
 // Get the Sleep Duration early on
 if( nv.sleep_count != 0 )
 {
@@ -63,7 +68,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.0.4" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.0.10" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -79,10 +84,15 @@ const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //    We enter sleep
 local cActualDelayBeforeDeepSleep = cDelayBeforeDeepSleep - 2;
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
+const cDeepSleepInSetupMode = 2419180.0; // 28 days - 20seconds
 const BLINK_UP_TIME = 300.0; // in seconds (5M)
 
 // This is the number of button presses required to enter blink up mode
 const BLINK_UP_BUTTON_COUNT = 3;
+
+const CONNECT_RETRY_TIME = 45; // for now 45 seconds retry time
+
+const SETUP_BARCODE_PREFIX = "4H1KU5"
 
 enum DeviceState
 /*
@@ -109,8 +119,8 @@ local init_completed = false;
 gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
 const gAudioBufferSize = 2000; // Size of each audio buffer 
-const gAudioSampleRate = 16000; // in Hz
-local sendBufferSize = 8*1024; // 8K send buffer size
+const gAudioSampleRate = 8000; // in Hz
+local sendBufferSize = 24*1024; // 16K send buffer size
 
 // Workaround to capture last buffer after sampler is stopped
 gSamplerStopping <- false; 
@@ -128,6 +138,71 @@ gIsConnecting <- false;
 buf1 <- blob(gAudioBufferSize);
 buf2 <- blob(gAudioBufferSize);
 buf3 <- blob(gAudioBufferSize);
+buf4 <- blob(gAudioBufferSize);
+
+
+// Device Setup Related functions
+function determineSetupBarcode(barcode)
+{
+   // local patternString = format("\b%s\b",SETUP_BARCODE_PREFIX);
+    local pattern = regexp(@"\b4H1KU");
+    local res = pattern.search(barcode);
+	local tempBarcode = barcode;
+	server.log(format("Barcode to Match: %s",barcode));
+	server.log("result: "+res);
+	// result is null which means its not the setup barcode
+	if( res == null)
+	{
+	   server.log("regex didn't fint a setup barcode");
+	   return false;
+	}
+	
+	// At this time we have a barcode that has either an ssid or a password
+	// decode it by stripping the first character which identifies an ssid if its 5
+	// identifies a password if its a 6
+	
+	local barcodeType = tempBarcode.slice(res.end, res.end+1);
+	local setupCode = tempBarcode.slice(res.end+1, tempBarcode.len());
+	
+	if(barcodeType == "5")
+	{
+        // This is the SSID
+		setup.ssid = setupCode;
+	}
+	else if( barcodeType == "6")
+	{
+        // This is the password
+		setup.pass = setupCode;
+	}
+	
+	
+	server.log(" setupCode: "+setupCode+" type: "+barcodeType);
+	
+	if(setup.ssid !="" && setup.pass !="")
+	{
+       imp.wakeup(0.1 function(){
+	        ChangeWifi(setup.ssid, setup.pass);
+            setup.ssid = setup.pass = "";
+	   });
+	}
+	
+	return true;
+}
+
+function ChangeWifi(ssid, password) {
+    server.log("device disconnecting");
+    // wait for wifi buffer to empty before disconnecting
+    server.flush(60);
+    server.disconnect();
+    
+    // change the wificonfiguration and then reconnect
+    imp.setwificonfiguration(ssid, password);
+    server.connect();
+    
+    // log that we're connected to make sure it worked
+    server.log("device reconnected to " + ssid);
+}
+
 
 //======================================================================
 // Class to handle all the connection management and retry mechanisms
@@ -160,12 +235,13 @@ class ConnectionManager
 		}
 		else
 		{
-			server.connect(onConnectedResume.bindenv(this), connection_timeout);
+			server.connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
 		}
-		
+
     	//hwPiezo.playSound("no-connection");
     	server.onunexpecteddisconnect(onUnexpectedDisconnect.bindenv(this));
 		server.onshutdown(onShutdown.bindenv(this));    	
+    	
 	}
 	
 	function notifyConnectionStatus(status)
@@ -184,10 +260,10 @@ class ConnectionManager
 	// otherwise its going to beep left and right which is nasty!
 	function onConnectedResume(status)
 	{
-		if( status != SERVER_CONNECTED )
+		if( status != SERVER_CONNECTED && !nv.setup_required )
 		{
 			nv.disconnect_reason = status;
-			imp.wakeup(connection_timeout+1, tryToConnect.bindenv(this) );
+			imp.wakeup(2, tryToConnect.bindenv(this) );
 			//hwPiezo.playSound("no-connection");
 			connection_available = false;
 		}
@@ -200,10 +276,10 @@ class ConnectionManager
 
 	function tryToConnect()
 	{
-    	if (!server.isconnected() && !gIsConnecting) {
+    	if (!server.isconnected() && !gIsConnecting && !nv.setup_required ) {
     		gIsConnecting = true;
-        	server.connect(onConnectedResume.bindenv(this), connection_timeout);
-        	imp.wakeup(connection_timeout+1, tryToConnect);
+        	server.connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
+        	imp.wakeup(CONNECT_RETRY_TIME+2, tryToConnect.bindenv(this));
     	}
 	}
 
@@ -277,6 +353,14 @@ class InterruptHandler
         }
         irqCallbacks[pin] = func;
     }
+	
+	
+    function clearHandlers()
+    {
+        for (local i = 0; i < irqCallbacks.len(); i++) {
+            irqCallbacks[i] = null;
+        }
+    }	
 
     // Handle all expander callbacks
     function handlePin1Int()
@@ -322,7 +406,7 @@ class InterruptHandler
             if(regInterruptSource & (1 << pin)){
                 //log(format("-Calling irq callback for pin %d", pin));
                 nv.boot_up_reason = nv.boot_up_reason | (1 << pin);
-                irqCallbacks[pin]();
+                if (irqCallbacks[pin]) irqCallbacks[pin]();
             }
         }
        // log("handlePin1Int exit time: " + hardware.millis() + "ms");
@@ -1034,7 +1118,7 @@ class Scanner
 
                     /*log("Code: \"" + scannerOutput + "\" (" + 
                                scannerOutput.len() + " chars)");*/
-                    
+                    //determineSetupBarcode(scannerOutput);
                     if(0!= agent.send("uploadBeep", {
                                               scandata=scannerOutput,
                                               scansize=scannerOutput.len(),
@@ -1044,10 +1128,7 @@ class Scanner
                                               audiodata="",
                                              }))
                     {
-                    	if(!scheme_new)
-                    	{
-                    		hwPiezo.playSound("no-connection");
-                    	}
+
                     }
                     else
                     {
@@ -1189,7 +1270,7 @@ class PushButton
                 local prv_time = previousTime;
         		previousTime = curr_time;
         		delta = curr_time - prv_time;
-                buttonPressCount = ( delta <= 800 )?++buttonPressCount:0;
+                buttonPressCount = ( delta <= 300 )?++buttonPressCount:0;
                 
                 if ((BLINK_UP_BUTTON_COUNT-1 == buttonPressCount))
                 {
@@ -1198,7 +1279,7 @@ class PushButton
                 	return;
                 }
                 
-                if( delta <= 800 )
+                if( delta <= 300 )
                 {
                 	return;
                 }
@@ -1207,7 +1288,7 @@ class PushButton
                 
                 if (buttonState == ButtonState.BUTTON_UP)
                 {
-                 	if(scheme_new && !connection)
+                 	if(!connection)
                 	{
                 		// Here we play the no connection sound and return from the state machine
                 		if( !nv.setup_required )
@@ -1223,16 +1304,21 @@ class PushButton
 
                     hwScanner.startScanRecord();
                 }
+				else
+				{
+				    buttonState = ButtonState.BUTTON_DOWN;
+				}
                 
                 break;
             case 2:
                 // Button in released state
                 if (buttonState == ButtonState.BUTTON_DOWN)
                 {
+				    server.log("BUTTON RELEASED!");
                     buttonState = ButtonState.BUTTON_UP;
                     //log("Button state change: UP");
 						
-					if( scheme_new && !connection )
+					if( !connection )
 					{
 						return;
 					}
@@ -1269,10 +1355,11 @@ class PushButton
     
     function blinkUpDevice(blink=false)
     {
+    	// Since the blinkup is enabled all the time, lets not enable them
+    	// again, its unnecessary
      	imp.enableblinkup(blink);
     	if( blink )
     	{
-    		connection_timeout = 4* connection_timeout;
     		hwPiezo.playSound("blink-up-enabled");
     		//Enable the 5 minute Timer here
     		// Ensure that we only enable it for the setup_required case
@@ -1282,10 +1369,6 @@ class PushButton
     			nv.sleep_not_allowed = true;
     			blinkTimer.enable();
     		}
-    	}
-    	else
-    	{
-    		connection_timeout = connection_timeout/4;
     	}
     	log(format("Blink-up: %s.",blink?"enabled":"disabled"));
     }
@@ -1303,16 +1386,17 @@ class ChargeStatus
 {
     pin = null; // IO expander pin assignment
     previous_state = false; // the previous state of the charger
-   
+    pinStatus = null; // IO Expander Pin 7 for Charger Status
 
     constructor(chargePin)
     {
         // Save assignments
         pin = chargePin;
+		pinStatus = 7;
 
         // Set event handler for IRQ
         intHandler.setIrqCallback(pin, chargerCallback.bindenv(this));
-        intHandler.setIrqCallback(7, chargerDetectionCB.bindenv(this));
+        intHandler.setIrqCallback(pinStatus, chargerDetectionCB.bindenv(this));
         
         hardware.pinB.configure(ANALOG_IN);
         imp.wakeup(5, batteryMeasurement.bindenv(this));
@@ -1322,7 +1406,13 @@ class ChargeStatus
         ioExpander.setPullUp(pin, 1); // enable pullup
         ioExpander.setIrqMask(pin, 1); // enable IRQ
         ioExpander.setIrqEdges(pin, 1, 1); // rising and falling
-        previous_state = isCharging();
+        
+		chargerCallback(); // this will update the current state right away
+		
+        ioExpander.setDir(pinStatus, 1); // set as input
+        ioExpander.setPullUp(pinStatus, 1); // enable pullup
+        ioExpander.setIrqMask(pinStatus, 1); // enable IRQ
+        ioExpander.setIrqEdges(pinStatus, 1, 1); // rising and falling
 
 		// Congiure Pin C which is supposed to be the pin indicating whether a charger is
 		// attached or not
@@ -1365,13 +1455,14 @@ class ChargeStatus
     	imp.wakeup(1, function() {
     		agent.send("batteryLevel", nv.voltage_level)
     	});
-    	imp.wakeup(15, batteryMeasurement.bindenv(this));
+    	imp.wakeup(60, batteryMeasurement.bindenv(this));
     }
     
     function chargerDetectionCB()
     {
     	// the pin is high charger is attached and low is a removal
-    	log(format("Charger Detection: %s", ioExpander.getPin(7)? "attached":"removed"));
+    	log(format("USB Detection CB: %s", ioExpander.getPin(7)? "disconnected":"connected"));
+        server.log(format("USB Detection CB: %s", ioExpander.getPin(7)? "disconnected":"connected"));
     }
 
     //**********************************************************************
@@ -1389,10 +1480,15 @@ class ChargeStatus
         }
         //log(format("Charger: %s",charging?"charging":"not charging"));
         
-
+		if( previous_state != (charging==0?false:true))
+		{
+            hwPiezo.playSound(previous_state?"charger-attached":"charger-removed");
+        }
+		
         previous_state = (charging==0)? false:true; // update the previous state with the current state
-        hwPiezo.playSound(previous_state?"charger-attached":"charger-removed");
         agent.send("chargerState", previous_state); // update the charger state
+        log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
+	    server.log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
     }
 }
 
@@ -1479,17 +1575,19 @@ function sendLastBuffer()
                                       linkedrecord="",
                                       audiodata="", // to be added by agent
                                       scansize=gAudioChunkCount, 
-                                     }) != 0)
-        {
-        	if(!scheme_new)
-        	{
-        		hwPiezo.playSound("no-connection");
-        	}
-        }
-        else
+                                     }) == 0)
         {
         	hwPiezo.playSound("success-local");
         }
+    } else {
+        agent.send("abortAudioUpload", {
+                                      scandata="",
+                                      serial=hardware.getimpeeid(),
+                                      fw_version=cFirmwareVersion,
+                                      linkedrecord="",
+                                      audiodata="", // to be added by agent
+                                      scansize=gAudioChunkCount, 
+                                     });
     }
 
     // We have completed the process of stopping the sampler
@@ -1519,7 +1617,7 @@ function samplerCallback(buffer, length)
     if (length <= 0)
     {
         gAudioBufferOverran = true;
-        log("Error: audio sampler buffer overrun!!!!!!, last timer="+gAudioTimer+"ms, free-mem:"+imp.getmemoryfree());
+        log("Error: audio sampler buffer overrun!!!!!!, last timer="+gAudioTimer+"ms, free-mem:"+imp.getmemoryfree()+", rssi: "+imp.rssi());
         
     }
     else 
@@ -1721,7 +1819,7 @@ function init_unused_pins(i2cDev)
 function preSleepHandler() {
 	updateDeviceState( DeviceState.PRE_SLEEP);
 	
-	if( nv.sleep_not_allowed)
+	if( nv.sleep_not_allowed || chargeStatus.previous_state )
 	{
 		//Just for testing but we should remove it later
 		//hwPiezo.playSound("device-page");
@@ -1806,12 +1904,13 @@ function sleepHandler()
     
     assert(gDeviceState == DeviceState.PRE_SLEEP);
     log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", hardware.pin1.read()));
+    server.expectonlinein(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);
     nv.sleep_count++;
     nv.boot_up_reason = 0x0;
     nv.sleep_duration = time();
     server.disconnect();
     //server.flush(2);
-    imp.deepsleepfor(cDeepSleepDuration);   
+    imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);   
     //server.sleepfor(cDeepSleepDuration); 
 }
 
@@ -1824,7 +1923,14 @@ function init_done()
 	if( init_completed )
 	{
 		intHandler.handlePin1Int(); 
-		log(format("init_stage1: %d\n", gInitTime.init_stage1));
+		//log(format("init_stage1: %d\n", gInitTime.init_stage1));
+		
+		// Since the blinkup is always enabled, there is no need to enable
+		// them here
+		if( nv.setup_required )
+		{
+		  hwButton.blinkUpDevice(nv.setup_required);
+		}
 	}
 	else
 	{
@@ -1852,7 +1958,7 @@ function init()
     // We will always be in deep sleep unless button pressed, in which
     // case we need to be as responsive as possible. 
     imp.setpowersave(false);
-	gInitTime.init_stage1 = hardware.millis();
+	//gInitTime.init_stage1 = hardware.millis();
     // I2C bus addresses
     //const cAddrAccelerometer = 0x18;
 
@@ -1898,11 +2004,11 @@ function init()
     // Microphone sampler config
     hwMicrophone <- hardware.pin2;
     hardware.sampler.configure(hwMicrophone, gAudioSampleRate, 
-                               [buf1, buf2, buf3], 
+                               [buf1, buf2, buf3, buf4], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
                        
-    //local newsize = imp.setsendbuffersize(sendBufferSize);
-	//server.log("Set send buffer size to " + newsize + " bytes.");        
+    local oldsize = imp.setsendbuffersize(sendBufferSize);
+	server.log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
     // Accelerometer config
     hwAccelerometer <- Accelerometer(I2C_89, 0x18, 
                                      0);
@@ -1937,21 +2043,24 @@ function init()
     // We only wake due to an interrupt or after power loss.  If the 
 	// former, we need to handle any pending interrupts. 
 	//intHandler.handlePin1Int();     
-	gInitTime.init_stage1 = hardware.millis() - gInitTime.init_stage1;
+	//gInitTime.init_stage1 = hardware.millis() - gInitTime.init_stage1;
     init_completed = true;
 }
 
 function onConnected(status)
 {
 	gIsConnecting = false;
-	if(!scheme_new)
+	
+	// always enable the blinkup when a connection call back happens
+	if( !nv.setup_required)
 	{
-		hwPiezo.playSound("startup");
+		imp.enableblinkup(true);
 	}
 	
     if (status == SERVER_CONNECTED) {
+        local timeToConnect = hardware.millis() - entryTime;
     	connection_available = true;
-        imp.configure("hiku", [], []);    
+        //imp.configure("hiku", [], []);   // this is depcrecated  
 		log(format("Reconnected after unexpected disconnect: %d ",nv.disconnect_reason));
 		init_nv_items();
 		 							             
@@ -1963,6 +2072,8 @@ function onConnected(status)
         				disconnect_reason = nv.disconnect_reason,
         				rssi = imp.rssi(),
         				sleep_duration = nv.sleep_duration,
+        				osVersion = imp.getsoftwareversion(),
+						time_to_connect = timeToConnect,
         			};
         agent.send("init_status", data);
         
@@ -1974,32 +2085,28 @@ function onConnected(status)
         }
         nv.disconnect_reason = 0;
         
-
+/*
     	log(format("total_init:%d, init_stage1: %d, init_stage2: %d, init_unused: %d\n",
     		(hardware.millis() - entryTime), gInitTime.init_stage1, gInitTime.init_stage2, gInitTime.init_unused));
     	log(format("scanner:%d, button: %d, charger: %d, accel: %d, int handler: %d\n",
-    		gInitTime.scanner, gInitTime.button, gInitTime.charger, gInitTime.accel, gInitTime.inthandler));     		      
+    		gInitTime.scanner, gInitTime.button, gInitTime.charger, gInitTime.accel, gInitTime.inthandler));  */    		      
         
 	}
     else
     {
-    	if(!scheme_new)
-    	{
-    		hwPiezo.playSound("no-connection");	
-    	}
    		nv.disconnect_reason = status;
-    }
-    
-    if( nv.setup_required )
-    {
-    	hwButton.blinkUpDevice(nv.setup_required);
     }
 }	
 
 // start off here and things should move
 // Piezo config
-init_done();
 hwPiezo <- Piezo(hardware.pin5, hardware.pinC); 
+if (imp.getssid() == "" && !("first_boot" in nv)) {
+    nv.first_boot <- 1;
+    imp.deepsleepfor(1);
+}
+
+init_done();
 connMgr <- ConnectionManager();
 connMgr.registerCallback(onConnected.bindenv(this));
 connMgr.init_connections();	
