@@ -68,7 +68,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.1.9" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.1.10" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -1270,7 +1270,7 @@ class PushButton
                 local prv_time = previousTime;
         		previousTime = curr_time;
         		delta = curr_time - prv_time;
-                buttonPressCount = ( delta <= 800 )?++buttonPressCount:0;
+                buttonPressCount = ( delta <= 300 )?++buttonPressCount:0;
                 
                 if ((BLINK_UP_BUTTON_COUNT-1 == buttonPressCount))
                 {
@@ -1279,7 +1279,7 @@ class PushButton
                 	return;
                 }
                 
-                if( delta <= 800 )
+                if( delta <= 300 )
                 {
                 	return;
                 }
@@ -1304,6 +1304,10 @@ class PushButton
 
                     hwScanner.startScanRecord();
                 }
+				else
+				{
+				    buttonState = ButtonState.BUTTON_DOWN;
+				}
                 
                 break;
             case 2:
@@ -2054,6 +2058,7 @@ function onConnected(status)
 	}
 	
     if (status == SERVER_CONNECTED) {
+        local timeToConnect = hardware.millis() - entryTime;
     	connection_available = true;
         //imp.configure("hiku", [], []);   // this is depcrecated  
 		log(format("Reconnected after unexpected disconnect: %d ",nv.disconnect_reason));
@@ -2068,6 +2073,7 @@ function onConnected(status)
         				rssi = imp.rssi(),
         				sleep_duration = nv.sleep_duration,
         				osVersion = imp.getsoftwareversion(),
+						time_to_connect = timeToConnect,
         			};
         agent.send("init_status", data);
         

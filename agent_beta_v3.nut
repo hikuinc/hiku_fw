@@ -27,7 +27,7 @@ if (!("nv" in getroottable()))
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "1.1.8";
+gAgentVersion <- "1.1.10";
 
 gAudioState <- AudioStates.AudioError;
 
@@ -1052,7 +1052,8 @@ device.on("init_status", function(data) {
     						  sleep_duration = nv.gSleepDuration,
     						  rssi = data.rssi,
     						  dc_reason = getDisconnectReason(data.disconnect_reason),
-    						  os_version = data.osVersion
+    						  os_version = data.osVersion,
+							  connectTime = data.time_to_connect
     					}
     				);
 });
