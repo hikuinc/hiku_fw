@@ -68,7 +68,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.1.10" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.1.11" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 //const cDelayBeforeDeepSleep = 3600.0;  // in seconds
@@ -290,7 +290,7 @@ class ConnectionManager
     	notifyConnectionStatus(status);
     	if( !gIsConnecting )
     	{
-   			imp.wakeup(2, tryToConnect.bindenv(this));
+   			imp.wakeup(0.5, tryToConnect.bindenv(this));
    		}
 	}
 	
@@ -672,59 +672,72 @@ class Piezo
 
 //======================================================================
 // Timer that can be canceled and executes a function when expiring
-// 
-// Example usage: set up a timer to call dosomething() in 10 minutes
-//   doSomethingTimer = CancellableTimer(60*10, function(){dosomething();});
-//   doSomethingTimer.enable()
-//   doSomethingTimer.disable()
+// Now that Electric Imp provides a timer handle each time you set a
+// Timer, the CancellableTimer is now constructed to wake up for the set
+// timer value instead of doing 0.5 seconds wakeup and checking for elapsed time
+// This method significantly reduces the amount of timer interrupts fired
+//
+// New Method:
+// If a timer object is created and enabled then it would use the duration to set the timer
+// and retain the handle for it.  When the timer fires, it would call the action function
+// if a timer needs to be cancelled, just call the disable function and it would disable the
+// timer and set the handle to null.
+
 class CancellableTimer
 {
-    enabled = null;
-    startTime = null; // Timer starting time, in milliseconds
-    duration = null; // How long the timer should run before doing the action
     actionFn = null; // Function to call when timer expires
-    static _frequency = 0.5; // How often to check on timer, in seconds
-    _callbackActive = false; // Used to ensure that only one callback
-                             // is active at a time. 
+    _timerHandle = null;
+	duration = 0.0;
 
     //**********************************************************
     // Duration in seconds, and function to execute
     constructor(secs, func)
     {
-        duration = secs*1000;
+        duration = secs;
         actionFn = func;
     }
 
     //**********************************************************
     // Start the timer
+	// If the _timerHandle is null then no timer pending for this object
+	// just create a timer and set it
     function enable() 
     {
-        enabled = true;
-        startTime = hardware.millis();
-        if (!_callbackActive)
-        {
-            imp.wakeup(_frequency, _timerCallback.bindenv(this));
-            _callbackActive = true;
-        }
+        server.log("Timer enable called");
+		
+		if(_timerHandle)
+		{
+		  disable();
+		}
+		_timerHandle = imp.wakeup(duration,_timerCallback.bindenv(this));
     }
 
     //**********************************************************
     // Stop the timer
+	// If the timer handle is not null then we have a pending timer, just cancel it
+	// and set the handle to null
     function disable() 
     {
-        if(enabled)
-        {
-            enabled = false;
-            startTime = null;
-        }
+        server.log("Timer disable called!");
+        // if the timerHandle is not null, then the timer is enabled and active
+		if(_timerHandle)
+		{
+		  //just cancel the wakeup timer and set the handle to null
+		  imp.cancelwakeup(_timerHandle);
+		  _timerHandle = null;
+		  server.log("Timer canceled wakeup!");
+		}
     }
     
     //**********************************************************
     // Set new time for the timer
+	// Expectation is that if an existing timer is pending
+	// then the it needs to be disabled prior to setting the duration
+	// Pre-Condition: timer is not running
+	// Post-Condition: Timer is enabled
     function setDuration(secs) 
     {
-		//assert(this.enable==false);
-		duration = secs*1000;
+		duration = secs;
     }
         
 
@@ -732,23 +745,9 @@ class CancellableTimer
     // Internal function to manage cancelation and expiration
     function _timerCallback()
     {
-        _callbackActive = false;
-        if (enabled)
-        {
-            local elapsedTime = hardware.millis() - startTime;
-            //log(format("%d/%d to sleep", elapsedTime, duration));
-            if (elapsedTime > duration)
-            {
-                enabled = false;
-                startTime = null;
-                actionFn();
-            }
-            else
-            {
-                imp.wakeup(_frequency, _timerCallback.bindenv(this));
-                _callbackActive = true;
-            }
-        }
+        server.log("timer fired!");
+		actionFn();
+		_timerHandle = null;
     }
 }
 
@@ -1367,6 +1366,7 @@ class PushButton
     		{
     			nv.setup_required = true;
     			nv.sleep_not_allowed = true;
+				blinkTimer.disable();
     			blinkTimer.enable();
     		}
     	}
@@ -1639,7 +1639,8 @@ function samplerCallback(buffer, length)
         }
         else
         {
-            agent.send("uploadAudioChunk", {buffer=buffer, length=length});
+            server.log(format("About to send an audio chunck of size: %d",length));
+            server.log(format("Agent Send Response: %d", agent.send("uploadAudioChunk", {buffer=buffer, length=length})));
         }
 
         // Finish timing the send.  See function comments for more info. 
