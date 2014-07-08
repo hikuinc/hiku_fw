@@ -1819,6 +1819,9 @@ function init_unused_pins(i2cDev)
 // Do pre-sleep configuration and initiate deep sleep
 function preSleepHandler() {
 	updateDeviceState( DeviceState.PRE_SLEEP);
+
+	// Resample the ~CHG charge signal and update chargeStatus.previous_state before going to sleep 
+	chargeStatus.chargerCallback()
 	
 	if( nv.sleep_not_allowed || chargeStatus.previous_state )
 	{
