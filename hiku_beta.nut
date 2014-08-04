@@ -473,7 +473,7 @@ class Piezo
         pin_aux.configure(DIGITAL_OUT);
         pin.write(0); // Turn off piezo by default
         pin_aux.write(0);
-		
+
 		disable();
 
         tonesParamsList = {
@@ -1954,14 +1954,14 @@ function log(str)
 }
 
 function agentSend(key, value)
-{
+	{
   if(server.isconnected())
   {
     if(agent.send(key,value) != 0)
     {
 	  server.log(format("agentSend: failed for %s",key));
 	}
-  }
+}
 }
 
 
