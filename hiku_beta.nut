@@ -297,7 +297,7 @@ class ConnectionManager
 
 	function onShutdown(status)
 	{
-		agent.send("shutdownRequestReason", status);
+		agentSend("shutdownRequestReason", status);
 		if((status == SHUTDOWN_NEWSQUIRREL) || (status == SHUTDOWN_NEWFIRMWARE))
 		{
 			hwPiezo.playSound("software-update");
@@ -473,6 +473,8 @@ class Piezo
         pin_aux.configure(DIGITAL_OUT);
         pin.write(0); // Turn off piezo by default
         pin_aux.write(0);
+		
+		disable();
 
         tonesParamsList = {
             // [[period, duty cycle, duration], ...]
@@ -570,6 +572,7 @@ class Piezo
     {
         // Turn off the previous note
         pin.write(0);
+		pin_aux.write(0);
         
         if( !page_device )
         {
@@ -628,6 +631,7 @@ class Piezo
                 imp.sleep(params[2]);
             }
             pin.write(0);
+			pin_aux.write(0);
         }
     }
         
@@ -1294,7 +1298,7 @@ class PushButton
                 		{
                 			hwPiezo.playSound("no-connection");
                 		}
-                		buttonState = ButtonState.BUTTON_DOWN;
+                		//buttonState = ButtonState.BUTTON_DOWN;
                 		return;
                 	}               
                     updateDeviceState(DeviceState.SCAN_RECORD);
@@ -1316,12 +1320,12 @@ class PushButton
 				    server.log("BUTTON RELEASED!");
                     buttonState = ButtonState.BUTTON_UP;
                     //log("Button state change: UP");
-						
+				    /*
 					if( !connection )
 					{
 						return;
 					}
-
+				    */
                     local oldState = gDeviceState;
                     updateDeviceState(DeviceState.BUTTON_RELEASED);
 
@@ -1453,7 +1457,7 @@ class ChargeStatus
     	// battery
     	//log(format("Battery Level: %d, Input Voltage: %.2f", nv.voltage_level, hardware.voltage()));
     	imp.wakeup(1, function() {
-    		agent.send("batteryLevel", nv.voltage_level)
+    		agentSend("batteryLevel", nv.voltage_level)
     	});
     	imp.wakeup(60, batteryMeasurement.bindenv(this));
     }
@@ -1486,7 +1490,7 @@ class ChargeStatus
         }
 		
         previous_state = (charging==0)? false:true; // update the previous state with the current state
-        agent.send("chargerState", previous_state); // update the charger state
+        agentSend("chargerState", previous_state); // update the charger state
         log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
 	    server.log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
     }
@@ -1819,6 +1823,10 @@ function init_unused_pins(i2cDev)
 // Do pre-sleep configuration and initiate deep sleep
 function preSleepHandler() {
 	updateDeviceState( DeviceState.PRE_SLEEP);
+
+    // Resample the ~CHG charge signal and update chargeStatus.
+	// previous_state before going to sleep 
+	chargeStatus.chargerCallback();
 	
 	if( nv.sleep_not_allowed || chargeStatus.previous_state )
 	{
@@ -1910,9 +1918,7 @@ function sleepHandler()
     nv.boot_up_reason = 0x0;
     nv.sleep_duration = time();
     server.disconnect();
-    //server.flush(2);
     imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);   
-    //server.sleepfor(cDeepSleepDuration); 
 }
 
 
@@ -1944,12 +1950,19 @@ function init_done()
 function log(str)
 {
 	//server.log(str);
-	if( !gIsConnecting )
-	{
-		agent.send("deviceLog", str);
-	}
+    agentSend("deviceLog", str);
 }
 
+function agentSend(key, value)
+{
+  if(server.isconnected())
+  {
+    if(agent.send(key,value) != 0)
+    {
+	  server.log(format("agentSend: failed for %s",key));
+	}
+  }
+}
 
 
 
@@ -2076,7 +2089,7 @@ function onConnected(status)
         				osVersion = imp.getsoftwareversion(),
 						time_to_connect = timeToConnect,
         			};
-        agent.send("init_status", data);
+        agentSend("init_status", data);
         
         if( nv.setup_required )
         {
