@@ -148,12 +148,12 @@ function determineSetupBarcode(barcode)
     local pattern = regexp(@"\b4H1KU");
     local res = pattern.search(barcode);
 	local tempBarcode = barcode;
-	server.log(format("Barcode to Match: %s",barcode));
-	server.log("result: "+res);
+	//server.log(format("Barcode to Match: %s",barcode));
+	//server.log("result: "+res);
 	// result is null which means its not the setup barcode
 	if( res == null)
 	{
-	   server.log("regex didn't fint a setup barcode");
+	   //server.log("regex didn't fint a setup barcode");
 	   return false;
 	}
 	
@@ -176,7 +176,7 @@ function determineSetupBarcode(barcode)
 	}
 	
 	
-	server.log(" setupCode: "+setupCode+" type: "+barcodeType);
+	//server.log(" setupCode: "+setupCode+" type: "+barcodeType);
 	
 	if(setup.ssid !="" && setup.pass !="")
 	{
@@ -190,7 +190,7 @@ function determineSetupBarcode(barcode)
 }
 
 function ChangeWifi(ssid, password) {
-    server.log("device disconnecting");
+    //server.log("device disconnecting");
     // wait for wifi buffer to empty before disconnecting
     server.flush(60);
     server.disconnect();
@@ -200,7 +200,7 @@ function ChangeWifi(ssid, password) {
     server.connect();
     
     // log that we're connected to make sure it worked
-    server.log("device reconnected to " + ssid);
+    //server.log("device reconnected to " + ssid);
 }
 
 
@@ -297,7 +297,7 @@ class ConnectionManager
 
 	function onShutdown(status)
 	{
-		agentSend("shutdownRequestReason", status);
+		//agentSend("shutdownRequestReason", status);
 		if((status == SHUTDOWN_NEWSQUIRREL) || (status == SHUTDOWN_NEWFIRMWARE))
 		{
 			hwPiezo.playSound("software-update");
@@ -707,7 +707,7 @@ class CancellableTimer
 	// just create a timer and set it
     function enable() 
     {
-        server.log("Timer enable called");
+        //server.log("Timer enable called");
 		
 		if(_timerHandle)
 		{
@@ -722,14 +722,14 @@ class CancellableTimer
 	// and set the handle to null
     function disable() 
     {
-        server.log("Timer disable called!");
+        //server.log("Timer disable called!");
         // if the timerHandle is not null, then the timer is enabled and active
 		if(_timerHandle)
 		{
 		  //just cancel the wakeup timer and set the handle to null
 		  imp.cancelwakeup(_timerHandle);
 		  _timerHandle = null;
-		  server.log("Timer canceled wakeup!");
+		  //server.log("Timer canceled wakeup!");
 		}
     }
     
@@ -749,7 +749,7 @@ class CancellableTimer
     // Internal function to manage cancelation and expiration
     function _timerCallback()
     {
-        server.log("timer fired!");
+        //server.log("timer fired!");
 		actionFn();
 		_timerHandle = null;
     }
@@ -1317,7 +1317,7 @@ class PushButton
                 // Button in released state
                 if (buttonState == ButtonState.BUTTON_DOWN)
                 {
-				    server.log("BUTTON RELEASED!");
+				    //server.log("BUTTON RELEASED!");
                     buttonState = ButtonState.BUTTON_UP;
                     //log("Button state change: UP");
 				    /*
@@ -1457,7 +1457,7 @@ class ChargeStatus
     	// battery
     	//log(format("Battery Level: %d, Input Voltage: %.2f", nv.voltage_level, hardware.voltage()));
     	imp.wakeup(1, function() {
-    		agentSend("batteryLevel", nv.voltage_level)
+    		//agentSend("batteryLevel", nv.voltage_level)
     	});
     	imp.wakeup(60, batteryMeasurement.bindenv(this));
     }
@@ -1466,7 +1466,7 @@ class ChargeStatus
     {
     	// the pin is high charger is attached and low is a removal
     	log(format("USB Detection CB: %s", ioExpander.getPin(7)? "disconnected":"connected"));
-        server.log(format("USB Detection CB: %s", ioExpander.getPin(7)? "disconnected":"connected"));
+        //server.log(format("USB Detection CB: %s", ioExpander.getPin(7)? "disconnected":"connected"));
     }
 
     //**********************************************************************
@@ -1490,9 +1490,9 @@ class ChargeStatus
         }
 		
         previous_state = (charging==0)? false:true; // update the previous state with the current state
-        agentSend("chargerState", previous_state); // update the charger state
+        //agentSend("chargerState", previous_state); // update the charger state
         log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
-	    server.log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
+	    //server.log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
     }
 }
 
@@ -1643,8 +1643,8 @@ function samplerCallback(buffer, length)
         }
         else
         {
-            server.log(format("About to send an audio chunck of size: %d",length));
-            server.log(format("Agent Send Response: %d", agent.send("uploadAudioChunk", {buffer=buffer, length=length})));
+            //server.log(format("About to send an audio chunck of size: %d",length));
+            //server.log(format("Agent Send Response: %d", agent.send("uploadAudioChunk", {buffer=buffer, length=length})));
         }
 
         // Finish timing the send.  See function comments for more info. 
@@ -1950,7 +1950,7 @@ function init_done()
 function log(str)
 {
 	//server.log(str);
-    agentSend("deviceLog", str);
+    //agentSend("deviceLog", str);
 }
 
 function agentSend(key, value)
@@ -1959,7 +1959,7 @@ function agentSend(key, value)
   {
     if(agent.send(key,value) != 0)
     {
-	  server.log(format("agentSend: failed for %s",key));
+	  //server.log(format("agentSend: failed for %s",key));
 	}
 }
 }
@@ -2022,7 +2022,7 @@ function init()
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
                        
     local oldsize = imp.setsendbuffersize(sendBufferSize);
-	server.log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
+	//server.log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
     // Accelerometer config
     hwAccelerometer <- Accelerometer(I2C_89, 0x18, 
                                      0);
