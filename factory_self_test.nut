@@ -58,22 +58,49 @@ local sx1505reg = {RegMisc = null,
 					RegInterruptMask = 0x05,
 					RegSenseLow = 0x07};
 
-// test messages					
-const TEST_SUCCESS = 1
-const TEST_INFO = 2
+//
+// Test message types
+//	
+	
+// Informational message only		
+const TEST_INFO = 1
+// Test step succeeded
+const TEST_SUCCESS = 2
+// Test step failed, but the test was not essential to provide full
+// user-level functionality. For example, an unconnected pin on the Imp that is
+// shorted provides an indication of manufacturing problems, but would not impact
+// user-level functionality.
 const TEST_WARNING = 3
+// Test step failed, continue testing. An essential test failed, end result will be FAIL.
 const TEST_ERROR = 4
+// Test step failed, abort test. An essential test failed and does not allow for
+// further testing. For example, if the I2C bus is shorted, all other tests would
+// fail, and the Imp could be damaged by continuing the test.
 const TEST_FATAL = 5
+// Test is complete, test report is final.
 const TEST_FINAL = 6
 
+//
+// Pin drive types
+//
+const DRIVE_TYPE_FLOAT = 0
+const DRIVE_TYPE_PD    = 1
+const DRIVE_TYPE_PU    = 2
+const DRIVE_TYPE_LO    = 3
+const DRIVE_TYPE_HI    = 4
+
+//
+// Component classes to be tested
+//
 const TEST_CLASS_NONE    = 0
 const TEST_CLASS_IMP_PIN = 1
 const TEST_CLASS_IO_EXP  = 2
 const TEST_CLASS_ACCEL   = 3
-const TEST_CLASS_MIC     = 4
-const TEST_CLASS_BUZZER  = 5
-const TEST_CLASS_POWER   = 6
-const TEST_CLASS_BUTTON  = 7
+const TEST_CLASS_SCANNER = 4
+const TEST_CLASS_MIC     = 5
+const TEST_CLASS_BUZZER  = 6
+const TEST_CLASS_CHARGER = 7
+const TEST_CLASS_BUTTON  = 8
 
 // set test_ok to false if any one test fails
 test_ok <- true;
@@ -2207,6 +2234,11 @@ class TestInterruptHandler
 
 
 function test_log(test_class, test_result, log_string) {
+
+    // Create one file with sequence of test messages
+    // and individual files for each category.
+    // Allows for comparing files for "ERROR" and "SUCCESS"
+    // against a known good to determine test PASS or FAIL.
     local msg_str;
     local log_str;
     switch (test_result) 
@@ -2240,22 +2272,14 @@ function test_log(test_class, test_result, log_string) {
 	msg_str = "FATAL:";
 	log_string = "Invalid test_result value";
     }
+    // create a test report in 
     server.log(format("%d %s %s", test_class, msg_str, log_string));
-    if (test_result == TEST_FINAL) {
-	//button_wait();
-	/*
-	intHandler.handlePin1Int();
-	intHandler.clearAllIrqs();
-	i2cDev.disable();
-	
-	log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", hardware.pin1.read()));
-	server.expectonlinein(cDeepSleepDuration);
-	nv.boot_up_reason = 0x0;
-	server.disconnect();
-	imp.deepsleepfor(cDeepSleepDuration);   
-*/
+
+    if (test_result == TEST_FATAL) {
+	server.sleepfor(1);
+    } else {
+	return true;
     }
-    return true;
 }
 
 function pin_validate(pin, expect, name, failure_mode=TEST_ERROR) {
@@ -2264,6 +2288,30 @@ function pin_validate(pin, expect, name, failure_mode=TEST_ERROR) {
 	test_log(TEST_CLASS_IMP_PIN, failure_mode, format("Read pin %s, expected %d, actual %d.", name, expect, actual));
     else
 	test_log(TEST_CLASS_IMP_PIN, TEST_SUCCESS, format("Read pin %s as %d.", name, expect));
+}
+
+// Configure a pin, drive it as indicated by drive_type, read back the actual value, 
+// quickly re-configure as input (to avoid possible damage to the pin), compare
+// actual vs. expected value.
+function pin_fast_probe(pin, expect, drive_type, name, failure_mode=TEST_ERROR) {
+    switch (drive_type) 
+    {
+    case DRIVE_TYPE_FLOAT: pin.configure(DIGITAL_IN); break;
+    case DRIVE_TYPE_PU: pin.configure(DIGITAL_IN_PULLUP); break;
+    case DRIVE_TYPE_PD: pin.configure(DIGITAL_IN_PULLDOWN); break;
+    case DRIVE_TYPE_LO: pin.configure(DIGITAL_OUT); pin.write(0); break;
+    case DRIVE_TYPE_HI: pin.configure(DIGITAL_OUT); pin.write(1); break;
+    default:
+	test_log(TEST_CLASS_NONE, TEST_FATAL, "Invalid signal drive type.");
+    }
+    local actual = pin.read();
+    // Quickly turn off the pin driver after reading as driving the pin may
+    // create a short in case of a PCB failure.
+    pin.configure(DIGITAL_IN);
+    if (actual != expect)
+	test_log(TEST_CLASS_IMP_PIN, failure_mode, format("Probed %s, expected %d, actual %d.", name, expect, actual));
+    else
+	test_log(TEST_CLASS_IMP_PIN, TEST_SUCCESS, format("Probed %s. Value %d.", name, expect));
 }
 
 function button_wait(status) {
@@ -2293,15 +2341,45 @@ function button_wait(status) {
 	factory_test();
     } else {
 	imp.onidle(function() {
+		//
+		// count number of WiFi reconnects here in nv ram, fail tests if more 
+		// than a max number of reconnects
+		//
 		server.log("No WiFi connection, going to sleep again.");
 		server.sleepfor(1);
 	    });
     }
 }
 
+function scannerCallback()
+{
+    server.log("scanner callback ***");
+    // Read the first byte
+    local data = hardware.uart57.read();
+    while (data != -1)  
+        {
+        switch (data) 
+        {
+        case '\n':
+	    scan_done = true;
+            break;
+
+        case '\r':
+            // Discard line endings
+            break;
+
+        default:
+            // Store the character
+            scannerOutput = scannerOutput + data.tochar();
+            break;
+        }
+        // Read the next byte
+        data = hardware.uart57.read();
+    } 
+}
+
 function factory_test()
 {
-
     //
     // HACK verify that all devices are reset or reconfigured at the start of the test
     // as they may hold residual state from a previous test
@@ -2313,8 +2391,9 @@ function factory_test()
     imp.setpowersave(false);
 
     //hwPiezo.playSound("one-khz");
+    test_log(TEST_CLASS_NONE, TEST_INFO, "**** TESTS STARTING ****");
 
-    server.log("**** TESTS STARTING ****");
+    test_log(TEST_CLASS_IMP_PIN, TEST_INFO, "**** IMP PIN TESTS STARTING ****");
 
     local pin1 = hardware.pin1;
     local pin2 = hardware.pin2;
@@ -2329,78 +2408,50 @@ function factory_test()
     local pinD = hardware.pinD;
     local pinE = hardware.pinE;
 
-    // Drive I2C SCL/SDA pins low and check outputs
-    pin8.configure(DIGITAL_OUT);
-    pin9.configure(DIGITAL_OUT);
-    pin8.write(0);
-    pin9.write(0);
-    pin_validate(pin8, 0, "pin8");
-    pin_validate(pin9, 0, "pin9");
+    // Drive I2C SCL and SDA pins low and check outputs
+    // If they cannot be driven low, the I2C is defective and no further
+    // tests are possible.
+    pin_fast_probe(pin8, 0, DRIVE_TYPE_LO, "pin8 Testing I2C SCL for short to VCC", TEST_FATAL);
+    pin_fast_probe(pin9, 0, DRIVE_TYPE_LO, "pin9 Testing I2C SDA for short to VCC", TEST_FATAL);
+    // Test external PU resistors on I2C SCL and SDA. If they are not present, the I2C is defective
+    // and no further tests are possible.
+    pin_fast_probe(pin8, 1, DRIVE_TYPE_FLOAT, "pin8 Testing I2C SCL for presence of PU resistor", TEST_FATAL);
+    pin_fast_probe(pin9, 1, DRIVE_TYPE_FLOAT, "pin9 Testing I2C SDA for presence of PU resistor", TEST_FATAL);
 
     // Drive buzzer pin EIMP-AUDIO_OUT high and check output
-    pin5.configure(DIGITAL_OUT);
-    pin5.write(1);
-    pin_validate(pin5, 1, "pin5");
+    pin_fast_probe(pin5, 1, DRIVE_TYPE_HI, "pin5 Testing EIMP-AUDIO_OUT for short to GND");
 
-    // Configure all digital pins on the Imp to floating input
-    // that have external pull-downs, pull-ups, or external drivers.
+    // Configure all digital pins on the Imp that have external drivers to floating input.
     pin1.configure(DIGITAL_IN);
-    pin5.configure(DIGITAL_IN);
     pin7.configure(DIGITAL_IN);
-    pin8.configure(DIGITAL_IN);
-    pin9.configure(DIGITAL_IN);
 
     // Configure audio and battery voltage inputs as analog
     pin2.configure(ANALOG_IN);
     pinB.configure(ANALOG_IN);
 
-    // Configure unconnected pins with a pull-up
-    pin6.configure(DIGITAL_IN_PULLUP);
-    pinA.configure(DIGITAL_IN_PULLUP);
-    pinC.configure(DIGITAL_IN_PULLUP);
-    pinD.configure(DIGITAL_IN_PULLUP);
-    pinE.configure(DIGITAL_IN_PULLUP);
-
     // Check pin values
     // pin1 can only be checked once I2C IO expander has been configured
     // pin2 can only be checked with analog signal from audio amplifier
-    pin_validate(pin5, 0, "pin5");
-    pin_validate(pin6, 1, "pin6", TEST_WARNING);
+    pin_fast_probe(pin5, 0, DRIVE_TYPE_FLOAT, "pin5 Testing EIMP-AUDIO_OUT for presence of PD resistor");
+    pin_fast_probe(pin6, 0, DRIVE_TYPE_PD, "pin6 Testing open pin for floating with PD resistor", TEST_WARNING);
+    pin_fast_probe(pin6, 1, DRIVE_TYPE_PU, "pin6 Testing open pin for floating with PU resistor", TEST_WARNING);
     // pin7 can only be checked when driven by scanner serial output
-    pin_validate(pin8, 1, "pin8");
-    pin_validate(pin9, 1, "pin9");
-    pin_validate(pinA, 1, "pinA", TEST_WARNING);
-    pin_validate(pinC, 1, "pinC", TEST_WARNING);
-    pin_validate(pinD, 1, "pinD", TEST_WARNING);
-    pin_validate(pinE, 1, "pinE", TEST_WARNING);
+    pin_fast_probe(pinA, 0, DRIVE_TYPE_PD, "pinA Testing open pin for floating with PD resistor", TEST_WARNING);
+    pin_fast_probe(pinA, 1, DRIVE_TYPE_PU, "pinA Testing open pin for floating with PU resistor", TEST_WARNING);
+    pin_fast_probe(pinC, 0, DRIVE_TYPE_PD, "pinC Testing CHARGE_DISABLE_H for floating with PD resistor");
+    pin_fast_probe(pinC, 1, DRIVE_TYPE_PU, "pinC Testing CHARGE_DISABLE_H for floating with PU resistor");
+    pin_fast_probe(pinD, 0, DRIVE_TYPE_PD, "pinD Testing open pin for floating with PD resistor", TEST_WARNING);
+    pin_fast_probe(pinD, 1, DRIVE_TYPE_PU, "pinD Testing open pin for floating with PU resistor", TEST_WARNING);
+    pin_fast_probe(pinE, 0, DRIVE_TYPE_PD, "pinE Testing open pin for floating with PD resistor", TEST_WARNING);
+    pin_fast_probe(pinE, 1, DRIVE_TYPE_PU, "pinE Testing open pin for floating with PU resistor", TEST_WARNING);
     
-    // Configure unconnected pins with a pull-down
-    pin6.configure(DIGITAL_IN_PULLDOWN);
-    pinA.configure(DIGITAL_IN_PULLDOWN);
-    pinC.configure(DIGITAL_IN_PULLDOWN);
-    pinD.configure(DIGITAL_IN_PULLDOWN);
-    pinE.configure(DIGITAL_IN_PULLDOWN);
-    
-    pin_validate(pin6, 0, "pin6", TEST_WARNING);
-    pin_validate(pinA, 0, "pinA", TEST_WARNING);
-    pin_validate(pinC, 0, "pinC", TEST_WARNING);
-    pin_validate(pinD, 0, "pinD", TEST_WARNING);
-    pin_validate(pinE, 0, "pinE", TEST_WARNING);
-    
-    // Configure unconnected pins as floating inputs
-    // Note that the device may work even if unconnected pins are shorted to 
-    // neighboring pins, but only if the unconnected pins are not driven.
-    pin6.configure(DIGITAL_IN);
-    pinA.configure(DIGITAL_IN);
-    pinC.configure(DIGITAL_IN);
-    pinD.configure(DIGITAL_IN);
-    pinE.configure(DIGITAL_IN);
-
     // Test neighboring pin pairs for shorts by using a pull-up/pull-down on one
     // and a hard GND/VCC on the other. Check for pin with pull-up/pull-down
     // to not be impacted by neighboring pin.
 
-    server.log("finished pin tests");
+    test_log(TEST_CLASS_IMP_PIN, TEST_INFO, "**** IMP PIN TESTS DONE ****");
+
+    test_log(TEST_CLASS_IO_EXP, TEST_INFO, "**** I/O EXPANDER TESTS STARTING ****");
 
     // Test for presence of either SX1508 or SX1505/2 IO expander
     hardware.configure(I2C_89);
@@ -2448,19 +2499,55 @@ function factory_test()
     i2cIOExp.write_verify(i2cReg.RegPullUp, 0x00);
     i2cIOExp.write_verify(i2cReg.RegPullDown, 0x00);
 
-    // create an I2C device for the accelerometer
-    i2cAccel <- I2cDevice(I2C_89, ACCELADDR, TEST_CLASS_ACCEL);
-
-    // test presence of the accelerometer
-    //i2cAccel.
-
     // pin1/CPU_INT should be low with default config of SX1508/5/2,
     // i.e. no interrupt sources and all interrupts cleared
     pin_validate(pin1, 0, "pin1");
 
+    test_log(TEST_CLASS_IO_EXP, TEST_INFO, "**** I/O EXPANDER TESTS DONE ****");
+    test_log(TEST_CLASS_ACCEL, TEST_INFO, "**** ACCELEROMETER TESTS STARTING ****");
+
+    // create an I2C device for the LIS3DH accelerometer
+    i2cAccel <- I2cDevice(I2C_89, ACCELADDR, TEST_CLASS_ACCEL);
+
+    // test presence of the accelerometer by reading the WHO_AM_I register
+    i2cAccel.verify(0x0F, 0x33);
+
     // set interrupt mask to sense accelerometor interrupts
-    i2cIOExp.write_verify(i2cReg.RegInterruptMask, 0xFE);
-  
+    //i2cIOExp.write_verify(i2cReg.RegInterruptMask, 0xFE);
+
+    test_log(TEST_CLASS_ACCEL, TEST_INFO, "**** ACCELEROMETER TESTS DONE ****");
+
+    /*
+    test_log(TEST_CLASS_SCANNER, TEST_INFO, "**** SCANNER TESTS STARTING ****");
+
+    // configure the UART
+    hardware.configure(UART_57); 
+    hardware.uart57.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
+        function(){test_log(TEST_CLASS_SCANNER, TEST_SUCCESS, "UART working");});
+    // turn on power to the scanner and reset it
+    i2cIOExp.write(i2cReg.RegDir, i2cIOExp.read(i2cReg.RegDir) & 0x8F);
+    i2cIOExp.write(i2cReg.RegData, i2cIOExp.read(i2cReg.RegData) | 0x20);
+    i2cIOExp.write(i2cReg.RegData, i2cIOExp.read(i2cReg.RegData) & 0xAF);
+    // take the scanner out of reset
+    i2cIOExp.write(i2cReg.RegData, i2cIOExp.read(i2cReg.RegData) | 0x40);
+    // turn the scanner on
+    i2cIOExp.write(i2cReg.RegData, i2cIOExp.read(i2cReg.RegData) & 0xCF);
+    scan_done <- false;
+    scannerOutput <- "";
+    local scanWaitCount = 0;
+    while ((!scan_done) && (scanWaitCount < 50)) {
+	scanWaitCount = scanWaitCount + 1;
+	imp.sleep(0.1);
+    }
+    if (scan_done)
+	test_log(TEST_CLASS_SCANNER, TEST_SUCCESS, format("Scanned %s", scannerOutput));
+    // turn UART and scanner off
+    hardware.uart57.disable();
+    i2cIOExp.write(i2cReg.RegDir, i2cIOExp.read(i2cReg.RegDir) | 0x70);
+
+    test_log(TEST_CLASS_SCANNER, TEST_INFO, "**** SCANNER TESTS DONE ****");
+*/
+    
     // We will always be in deep sleep unless button pressed, in which
     // case we need to be as responsive as possible. 
     
@@ -2481,9 +2568,8 @@ function factory_test()
     //const cIoPinScannerTrigger =  5;
     //const cIoPinScannerReset =  6;
 
-    test_log(TEST_CLASS_NONE, TEST_FINAL, "");
+    test_log(TEST_CLASS_NONE, TEST_FINAL, "**** TESTS DONE ****");
     imp.onidle(function() {
-	    server.log("tests done, going to sleep");
 	    server.sleepfor(1);
 	});
     return;
