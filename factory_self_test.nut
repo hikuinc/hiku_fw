@@ -39,68 +39,71 @@ const ACCELADDR  = 0x18;
 
 // 0x0D is used for misc instead of the 0x10
 local sx1508reg = {RegMisc = 0x10,
-				    RegLowDrive = 0x02,
-					RegInterruptSource = 0x0C,
-					RegData = 0x08,
-					RegDir = 0x07,
-					RegPullUp = 0x03,
-					RegPullDown = 0x04,
-					RegInterruptMask = 0x09,
-					RegSenseLow = 0x0B};
+    RegLowDrive = 0x02,
+    RegInterruptSource = 0x0C,
+    RegData = 0x08,
+    RegDir = 0x07,
+    RegPullUp = 0x03,
+    RegPullDown = 0x04,
+    //RegOpenDrain = 0x05,
+    RegInterruptMask = 0x09,
+    RegSenseLow = 0x0B};
 
 local sx1505reg = {RegMisc = null,
-				    RegLowDrive = null,
-					RegInterruptSource = 0x08,
-					RegData = 0x00,
-					RegDir = 0x01,
-					RegPullUp = 0x02,
-					RegPullDown = 0x03,
-					RegInterruptMask = 0x05,
-					RegSenseLow = 0x07};
+    RegLowDrive = null,
+    RegInterruptSource = 0x08,
+    RegData = 0x00,
+    RegDir = 0x01,
+    RegPullUp = 0x02,
+    RegPullDown = 0x03,
+    RegInterruptMask = 0x05,
+    RegSenseLow = 0x07};
 
 //
 // Test message types
 //	
 	
 // Informational message only		
-const TEST_INFO = 1
+const TEST_INFO = 1;
 // Test step succeeded
-const TEST_SUCCESS = 2
+const TEST_SUCCESS = 2;
 // Test step failed, but the test was not essential to provide full
 // user-level functionality. For example, an unconnected pin on the Imp that is
 // shorted provides an indication of manufacturing problems, but would not impact
 // user-level functionality.
-const TEST_WARNING = 3
+const TEST_WARNING = 3;
 // Test step failed, continue testing. An essential test failed, end result will be FAIL.
-const TEST_ERROR = 4
+const TEST_ERROR = 4;
 // Test step failed, abort test. An essential test failed and does not allow for
 // further testing. For example, if the I2C bus is shorted, all other tests would
 // fail, and the Imp could be damaged by continuing the test.
-const TEST_FATAL = 5
+const TEST_FATAL = 5;
 // Test is complete, test report is final.
-const TEST_FINAL = 6
+const TEST_FINAL = 6;
 
 //
 // Pin drive types
 //
-const DRIVE_TYPE_FLOAT = 0
-const DRIVE_TYPE_PD    = 1
-const DRIVE_TYPE_PU    = 2
-const DRIVE_TYPE_LO    = 3
-const DRIVE_TYPE_HI    = 4
+const DRIVE_TYPE_FLOAT = 0;
+const DRIVE_TYPE_PD    = 1;
+const DRIVE_TYPE_PU    = 2;
+const DRIVE_TYPE_LO    = 3;
+const DRIVE_TYPE_HI    = 4;
 
 //
 // Component classes to be tested
 //
-const TEST_CLASS_NONE    = 0
-const TEST_CLASS_IMP_PIN = 1
-const TEST_CLASS_IO_EXP  = 2
-const TEST_CLASS_ACCEL   = 3
-const TEST_CLASS_SCANNER = 4
-const TEST_CLASS_MIC     = 5
-const TEST_CLASS_BUZZER  = 6
-const TEST_CLASS_CHARGER = 7
-const TEST_CLASS_BUTTON  = 8
+const TEST_CLASS_NONE    = 0;
+const TEST_CLASS_IMP_PIN = 1;
+const TEST_CLASS_IO_EXP  = 2;
+const TEST_CLASS_ACCEL   = 3;
+const TEST_CLASS_SCANNER = 4;
+const TEST_CLASS_MIC     = 5;
+const TEST_CLASS_BUZZER  = 6;
+const TEST_CLASS_CHARGER = 7;
+const TEST_CLASS_BUTTON  = 8;
+
+const TEST_REFERENCE_BARCODE = "079340264410\r\n";
 
 // set test_ok to false if any one test fails
 test_ok <- true;
@@ -2351,38 +2354,15 @@ function button_wait(status) {
     }
 }
 
-function scannerCallback()
-{
-    server.log("scanner callback ***");
-    // Read the first byte
-    local data = hardware.uart57.read();
-    while (data != -1)  
-        {
-        switch (data) 
-        {
-        case '\n':
-	    scan_done = true;
-            break;
-
-        case '\r':
-            // Discard line endings
-            break;
-
-        default:
-            // Store the character
-            scannerOutput = scannerOutput + data.tochar();
-            break;
-        }
-        // Read the next byte
-        data = hardware.uart57.read();
-    } 
-}
-
 function factory_test()
 {
     //
     // HACK verify that all devices are reset or reconfigured at the start of the test
     // as they may hold residual state from a previous test
+    //
+
+    //
+    // schedule a watchdog/timeout task that signals test failure should main process get stuck
     //
 
     // sleep time between I2C reconfiguration attempts
@@ -2495,7 +2475,7 @@ function factory_test()
     i2cIOExp.write(i2cReg.RegInterruptSource, 0xFF);
     i2cIOExp.write_verify(i2cReg.RegSenseLow, 0x00);
     i2cIOExp.write_verify(i2cReg.RegDir, 0xFF);
-    //i2cIOExp.write(i2cReg.RegData, 0xFF);
+    i2cIOExp.write(i2cReg.RegData, 0xFF);
     i2cIOExp.write_verify(i2cReg.RegPullUp, 0x00);
     i2cIOExp.write_verify(i2cReg.RegPullDown, 0x00);
 
@@ -2517,36 +2497,56 @@ function factory_test()
 
     test_log(TEST_CLASS_ACCEL, TEST_INFO, "**** ACCELEROMETER TESTS DONE ****");
 
-    /*
     test_log(TEST_CLASS_SCANNER, TEST_INFO, "**** SCANNER TESTS STARTING ****");
 
-    // configure the UART
-    hardware.configure(UART_57); 
-    hardware.uart57.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
-        function(){test_log(TEST_CLASS_SCANNER, TEST_SUCCESS, "UART working");});
+    // Scanner UART RXD requires a pull-up
+    //pin7.configure(DIGITAL_IN_PULLUP);
+
     // turn on power to the scanner and reset it
+    local regData = i2cIOExp.read(i2cReg.RegData);
     i2cIOExp.write(i2cReg.RegDir, i2cIOExp.read(i2cReg.RegDir) & 0x8F);
-    i2cIOExp.write(i2cReg.RegData, i2cIOExp.read(i2cReg.RegData) | 0x20);
-    i2cIOExp.write(i2cReg.RegData, i2cIOExp.read(i2cReg.RegData) & 0xAF);
-    // take the scanner out of reset
-    i2cIOExp.write(i2cReg.RegData, i2cIOExp.read(i2cReg.RegData) | 0x40);
-    // turn the scanner on
-    i2cIOExp.write(i2cReg.RegData, i2cIOExp.read(i2cReg.RegData) & 0xCF);
+    regData = (regData & 0x8F) | 0x20;
+    // set SW_VCC_EN_OUT_L (0x10) low to turn on power to scanner
+    // set SCANNER_TRIGGER_OUT_L (0x20) high (scanner needs a falling edge to trigger scanning)
+    // set SCANNER_RESET_L (0x40) low to reset scanner
+    i2cIOExp.write(i2cReg.RegData, regData);
+    // set SCANNER_RESET_L (0x40) high to take the scanner out of reset
+    regData = regData | 0x40;
+    i2cIOExp.write(i2cReg.RegData, regData);
+    // configure the UART
+    //
+    // HACK 
+    // uart callback doesn't seem to work
+    hardware.uart57.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX); //, function() {server.log(hardware.uart57.readstring());});
+    // set SCANNER_TRIGGER_OUT_L (0x20) low to turn the scanner on
+    regData = regData & 0xDF;
+    i2cIOExp.write(i2cReg.RegData, regData);
+/*
     scan_done <- false;
     scannerOutput <- "";
     local scanWaitCount = 0;
-    while ((!scan_done) && (scanWaitCount < 50)) {
+    while ((!scan_done) && (scanWaitCount < 20)) {
 	scanWaitCount = scanWaitCount + 1;
-	imp.sleep(0.1);
+	imp.sleep(1);
     }
-    if (scan_done)
-	test_log(TEST_CLASS_SCANNER, TEST_SUCCESS, format("Scanned %s", scannerOutput));
-    // turn UART and scanner off
+*/
+    //
+    // HACK
+    //
+    // use UART callback to optimize performance
+    imp.sleep(1);
+    local scan_string = hardware.uart57.readstring();
+
+    // turn UART and scanner off, set SW_VCC_EN_OUT_L, SCANNER_TRIGGER_OUT_L, SCANNER_RESET_L to inputs
     hardware.uart57.disable();
     i2cIOExp.write(i2cReg.RegDir, i2cIOExp.read(i2cReg.RegDir) | 0x70);
 
+    if (scan_string == TEST_REFERENCE_BARCODE) 
+	test_log(TEST_CLASS_SCANNER, TEST_SUCCESS, format("Scanned %s", scan_string));
+    else
+	test_log(TEST_CLASS_SCANNER, TEST_ERROR, format("Scanned %s, expected %s", scan_string, TEST_REFERENCE_BARCODE));
+    
     test_log(TEST_CLASS_SCANNER, TEST_INFO, "**** SCANNER TESTS DONE ****");
-*/
     
     // We will always be in deep sleep unless button pressed, in which
     // case we need to be as responsive as possible. 
