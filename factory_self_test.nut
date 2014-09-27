@@ -105,6 +105,8 @@ const TEST_CLASS_BUTTON  = 8;
 
 const TEST_REFERENCE_BARCODE = "079340264410\r\n";
 
+scannerUart <- hardware.uart57;
+
 // set test_ok to false if any one test fails
 test_ok <- true;
 
@@ -2517,28 +2519,37 @@ function factory_test()
     //
     // HACK 
     // uart callback doesn't seem to work
-    hardware.uart57.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX); //, function() {server.log(hardware.uart57.readstring());});
+    scannerUart.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX); //, function() {server.log(hardware.uart57.readstring());});
     // set SCANNER_TRIGGER_OUT_L (0x20) low to turn the scanner on
     regData = regData & 0xDF;
     i2cIOExp.write(i2cReg.RegData, regData);
-/*
-    scan_done <- false;
-    scannerOutput <- "";
+
+    local uart_flags = scannerUart.flags();
     local scanWaitCount = 0;
-    while ((!scan_done) && (scanWaitCount < 20)) {
+    // try scanning for up to 2s
+    while (((uart_flags & READ_READY)==0) && (scanWaitCount < 40)) {
 	scanWaitCount = scanWaitCount + 1;
-	imp.sleep(1);
+	imp.sleep(0.05);
+	uart_flags = scannerUart.flags();
     }
-*/
-    //
-    // HACK
-    //
-    // use UART callback to optimize performance
-    imp.sleep(1);
-    local scan_string = hardware.uart57.readstring();
+    if (uart_flags & NOISE_ERROR)
+	test_log(TEST_CLASS_SCANNER, TEST_ERROR, "NOISE_ERROR bit set on UART");
+    if (uart_flags & FRAME_ERROR)
+	test_log(TEST_CLASS_SCANNER, TEST_ERROR, "FRAME_ERROR bit set on UART");
+    if (uart_flags & PARITY_ERROR)
+	test_log(TEST_CLASS_SCANNER, TEST_ERROR, "PARITY_ERROR bit set on UART");
+    if (uart_flags & OVERRUN_ERROR)
+	test_log(TEST_CLASS_SCANNER, TEST_ERROR, "OVERRUN_ERROR bit set on UART");
+    if (uart_flags & LINE_IDLE)
+	test_log(TEST_CLASS_SCANNER, TEST_INFO, "LINE_IDLE bit set on UART");
+
+    // after 20ms sleep (from the while loop) the full string should be available at
+    // both 9600 and 38400 UART bit rates
+    imp.sleep(0.02);	
+    local scan_string = scannerUart.readstring();
 
     // turn UART and scanner off, set SW_VCC_EN_OUT_L, SCANNER_TRIGGER_OUT_L, SCANNER_RESET_L to inputs
-    hardware.uart57.disable();
+    scannerUart.disable();
     i2cIOExp.write(i2cReg.RegDir, i2cIOExp.read(i2cReg.RegDir) | 0x70);
 
     if (scan_string == TEST_REFERENCE_BARCODE) 
