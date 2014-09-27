@@ -3,35 +3,7 @@
 server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 
 local entryTime = hardware.millis();
-
-/*
-gInitTime <- { 
-        	overall = 0, 
-				piezo = 0, 
-				button = 0, 
-				accel = 0,
-				scanner = 0,
-				charger = 0,
-				inthandler = 0,
-				init_stage1 = 0,
-				init_stage2 = 0,
-				init_unused = 0,
-			}; 
-*/
 local connection_available = false;
-
-/*
-// BOOT UP REASON MASK
-const BOOT_UP_REASON_COLD_BOOT= 0x0000h;
-const BOOT_UP_REASON_ACCEL    =    1 << 0; // 0x0001h
-const BOOT_UP_REASON_CHRG_ST  =    1 << 1; // 0x0002h
-const BOOT_UP_REASON_BTUTTON  =    1 << 2; // 0x0004h
-const BOOT_UP_REASON_TOUCH	  =    1 << 3; // 0x0008h
-const BOOT_UP_REASON_SW_VCC   =    1 << 4; // 0x0010h
-const BOOT_UP_REASON_SCAN_TRIG=    1 << 5; // 0x0020h
-const BOOT_UP_REASON_SCAN_RST =    1 << 6; // 0x0040h
-const BOOT_UP_REASON_CHRG_DET =    1 << 7; // 0x0080h
-*/
 
 const SX1508ADDR = 0x23;
 const SX1505ADDR = 0x21;
@@ -104,6 +76,30 @@ const TEST_CLASS_CHARGER = 7;
 const TEST_CLASS_BUTTON  = 8;
 
 const TEST_REFERENCE_BARCODE = "079340264410\r\n";
+
+//
+// Pin assignment on the Imp
+//
+CPU_INT             <- hardware.pin1;
+EIMP_AUDIO_IN       <- hardware.pin2; // "EIMP-AUDIO_IN" in schematics
+EIMP_AUDIO_OUT      <- hardware.pin5; // "EIMP-AUDIO_OUT" in schematics
+RXD_IN_FROM_SCANNER <- hardware.pin7;
+SCL_OUT             <- hardware.pin8;
+SDA_OUT             <- hardware.pin9;
+BATT_VOLT_MEASURE   <- hardware.pinB;
+CHARGE_DISABLE_H    <- hardware.pinC;
+
+//
+// Pin assignment on the I2C I/O expander
+//
+const ACCELEROMETER_INT  = 0;
+const CHARGE_STATUS_L    = 1;
+const BUTTON_L           = 2;
+const IO_EXP3_UNUSED     = 3;
+const SW_VCC_EN_L        = 4;
+const SCAN_TRIGGER_OUT_L = 5;
+const SCANNER_RESET_L    = 6;
+const CHARGE_PGOOD_L     = 7;
 
 scannerUart <- hardware.uart57;
 
@@ -845,8 +841,12 @@ class I2cDevice
     i2cAddress = null;
     i2cAddress8B = null;
     test_class = null;
+    i2cReg = null;
 
-    constructor(port, address, test_cls)
+    // HACK set i2cReg in IoExpander class only,
+    // figure out how to do this properly by invoking
+    // the super class' constructor
+    constructor(port, address, test_cls, i2c_reg = null)
     {
         if(port == I2C_12)
         {
@@ -873,6 +873,7 @@ class I2cDevice
 	i2cAddress8B = address;
 
 	test_class = test_cls;
+	i2cReg = i2c_reg;
     }
 
     // Read a byte address
@@ -930,716 +931,94 @@ class I2cDevice
 
 }
 
-
-//======================================================================
-// Handles the SX1508 GPIO expander
-class IoExpanderDevice
+class IoExpander extends I2cDevice
 {
-
-    intHandler = null;
-
-    constructor(intHandler)
-    {
-        //base.constructor(port, address);
-		this.intHandler = intHandler;
-
+    function pin_configure(pin_num, drive_type) {
+	if ((pin_num < 0) || (pin_num > 7))
+	    test_log(TEST_CLASS_NONE, TEST_FATAL, "Invalid pin number on I2C IO expander.");
+	local pin_mask = 1 << pin_num;
+	local pin_mask_inv = (~pin_mask) & 0xFF;
+	switch (drive_type) 
+	{
+	    //
+	    // NOTE: Different orders of I2C write commands may lead to different
+	    //       signal edges when pins are reconfigured.
+	    //
+	case DRIVE_TYPE_FLOAT: 
+	    write(i2cReg.RegPullUp, read(i2cReg.RegPullUp) & pin_mask_inv);
+	    write(i2cReg.RegPullDown, read(i2cReg.RegPullDown) & pin_mask_inv);
+	    write(i2cReg.RegDir, read(i2cReg.RegDir) | pin_mask); 
+	    break;
+	case DRIVE_TYPE_PU: 
+	    write(i2cReg.RegPullDown, read(i2cReg.RegPullDown) & pin_mask_inv);
+	    write(i2cReg.RegPullUp, read(i2cReg.RegPullUp) | pin_mask);
+	    write(i2cReg.RegDir, read(i2cReg.RegDir) | pin_mask); 
+	    break;
+	case DRIVE_TYPE_PD: 
+	    write(i2cReg.RegPullUp, read(i2cReg.RegPullUp) & pin_mask_inv);
+	    write(i2cReg.RegPullDown, read(i2cReg.RegPullDown) | pin_mask);
+	    write(i2cReg.RegDir, read(i2cReg.RegDir) | pin_mask); 
+	    break;
+	case DRIVE_TYPE_LO: 
+	    write(i2cReg.RegData, read(i2cReg.RegData) & pin_mask_inv); 
+	    write(i2cReg.RegDir, read(i2cReg.RegDir) & pin_mask_inv); 
+	    write(i2cReg.RegPullUp, read(i2cReg.RegPullUp) & pin_mask_inv);
+	    write(i2cReg.RegPullDown, read(i2cReg.RegPullDown) & pin_mask_inv);
+	    break;
+	case DRIVE_TYPE_HI: 
+	    write(i2cReg.RegData, read(i2cReg.RegData) | pin_mask); 
+	    write(i2cReg.RegDir, read(i2cReg.RegDir) & pin_mask_inv); 
+	    write(i2cReg.RegPullUp, read(i2cReg.RegPullUp) & pin_mask_inv);
+	    write(i2cReg.RegPullDown, read(i2cReg.RegPullDown) & pin_mask_inv);
+	    break;
+	default:
+	    test_log(TEST_CLASS_NONE, TEST_FATAL, "Invalid signal drive type.");
+	}	
     }
     
-    function getIntHandler()
-    {
-    	return this.intHandler;
+    // Writes data to pin only. Assumes that pin is already configured as an output.
+    function pin_write(pin_num, value) {
+	if ((pin_num < 0) || (pin_num > 7) || (value < 0) || (value > 1))
+	    test_log(TEST_CLASS_NONE, TEST_FATAL, "Invalid pin number or signal value on I2C IO expander.");
+	local read_data = read(i2cReg.RegData);
+	local pin_mask = 1 << pin_num;
+	local pin_mask_inv = (~pin_mask) & 0xFF;
+	if (value == 0) {
+	    write(i2cReg.RegData, read(i2cReg.RegData) & pin_mask_inv); 
+	} else {
+	    write(i2cReg.RegData, read(i2cReg.RegData) & pin_mask_inv); 	    
+	}
+	if (read_data == -1)
+	    return read_data;
+	else
+	    return ((read_data >> pin_num) & 0x01)
     }
 
-    // Write a bit to a register
-    function writeBit(register, bitn, level)
-    {
-        local value = intHandler.getI2CDevice().read(register);
-        value = (level == 0)?(value & ~(1<<bitn)):(value | (1<<bitn));
-        intHandler.getI2CDevice().write(register, value);
+    function pin_read(pin_num) {
+	if ((pin_num < 0) || (pin_num > 7))
+	    test_log(TEST_CLASS_NONE, TEST_FATAL, "Invalid pin number on I2C IO expander.");
+	local read_data = read(i2cReg.RegData);
+	if (read_data == -1)
+	    return read_data;
+	else
+	    return ((read_data >> pin_num) & 0x01)
     }
 
-    // Write a masked bit pattern
-    function writeMasked(register, data, mask)
-    {
-        local value = intHandler.getI2CDevice().read(register);
-        value = (value & ~mask) | (data & mask);
-        intHandler.getI2CDevice().write(register, value);
-    }
-
-    // Get a GPIO input pin level
-    function getPin(gpio)
-    {
-        return (intHandler.getI2CDevice().read(0x08)&(1<<(gpio&7)))?1:0;
-    }
-
-    // Set a GPIO level
-    function setPin(gpio, level)
-    {
-        writeBit(0x08, gpio&7, level?1:0);
-    }
-
-    // Set a GPIO direction
-    function setDir(gpio, input)
-    {
-        writeBit(0x07, gpio&7, input?1:0);
-    }
-
-    // Set a GPIO internal pull up
-    function setPullUp(gpio, enable)
-    {
-        writeBit(0x03, gpio&7, enable);
-    }
-
-    // Set a GPIO internal pull down
-    function setPullDown(gpio, enable)
-    {
-        writeBit(0x04, gpio&7, enable);
-    }
-
-    // Set GPIO interrupt mask
-    // "0" means disable interrupt, "1" means enable (opposite of datasheet)
-    function setIrqMask(gpio, enable)
-    {
-        writeBit(0x09, gpio&7, enable?0:1); 
-    }
-
-    // Set GPIO interrupt edges
-    function setIrqEdges(gpio, rising, falling)
-    {
-        local addr = 0x0B - (gpio>>2);
-        local mask = 0x03 << ((gpio&3)<<1);
-        local data = (2*falling + rising) << ((gpio&3)<<1);
-        writeMasked(addr, data, mask);
+    // Configure a pin, drive it as indicated by drive_type, read back the actual value, 
+    // quickly re-configure as input (to avoid possible damage to the pin), compare
+    // actual vs. expected value.
+    function pin_fast_probe(pin_num, expect, drive_type, name, failure_mode=TEST_ERROR) {
+	pin_configure(pin_num, drive_type);
+	local actual = pin_read(pin_num);
+	// Quickly turn off the pin driver after reading as driving the pin may
+	// create a short in case of a PCB failure.
+	pin_configure(pin_num, DRIVE_TYPE_FLOAT);
+	if (actual != expect)
+	    test_log(TEST_CLASS_IMP_PIN, failure_mode, format("%s, expected %d, actual %d.", name, expect, actual));
+	else
+	    test_log(TEST_CLASS_IMP_PIN, TEST_SUCCESS, format("%s. Value %d.", name, expect));
     }
 }
-
-
-//======================================================================
-// Device state machine 
-
-//**********************************************************************
-function updateDeviceState(newState)
-{
-    // Update the state 
-    local oldState = gDeviceState;
-    gDeviceState = newState;
-
-    // If we are transitioning to idle, start the sleep timer. 
-    // If transitioning out of idle, clear it.
-    if (newState == DeviceState.IDLE)
-    {
-        if (oldState != DeviceState.IDLE)
-        {
-            gDeepSleepTimer.enable();
-        }
-    }
-    else
-    {
-        // Disable deep sleep timer
-        gDeepSleepTimer.disable();
-        gAccelHysteresis.disable();
-    }
-
-    // If we are transitioning to SCAN_RECORD, start the button timer. 
-    // If transitioning out of SCAN_RECORD, clear it. The reason 
-    // we don't time the actual button press is that, if we have 
-    // captured a scan, we don't want to abort.
-    if (newState == DeviceState.SCAN_RECORD)
-    {
-        if (oldState != DeviceState.SCAN_RECORD)
-        {
-            // Start timing button press
-            gButtonTimer.enable();
-        }
-    }
-    else
-    {
-        // Stop timing button press
-        gButtonTimer.disable();
-    }
-
-    // Log the state change, for debugging
-    /*
-    local os = (oldState==null) ? "null" : oldState.tostring();
-    local ns = (newState==null) ? "null" : newState.tostring();
-    log(format("State change: %s -> %s", os, ns));
-    */
-    // Verify state machine is in order 
-    switch (newState) 
-    {
-        case DeviceState.IDLE:
-            assert(oldState == DeviceState.BUTTON_RELEASED ||
-            	   oldState == DeviceState.PRE_SLEEP ||
-                   oldState == DeviceState.IDLE ||
-                   oldState == null);
-            break;
-        case DeviceState.SCAN_RECORD:
-            assert(oldState == DeviceState.IDLE ||
-                   oldState == DeviceState.PRE_SLEEP );
-            break;
-        case DeviceState.SCAN_CAPTURED:
-            assert(oldState == DeviceState.SCAN_RECORD);
-            break;
-        case DeviceState.BUTTON_TIMEOUT:
-            assert(oldState == DeviceState.SCAN_RECORD);
-            break;
-        case DeviceState.BUTTON_RELEASED:
-            assert(oldState == DeviceState.SCAN_RECORD ||
-                   oldState == DeviceState.SCAN_CAPTURED ||
-                   oldState == DeviceState.BUTTON_TIMEOUT);
-            break;
-        case DeviceState.PRE_SLEEP:
-        	assert( oldState == DeviceState.IDLE ||
-                    oldState == DeviceState.PRE_SLEEP);
-        	break;
-        default:
-            assert(false);
-            break;
-    }
-}
-
-
-//======================================================================
-// Scanner
-class Scanner
-{
-    pin = null; // IO expander pin assignment (trigger)
-    reset = null; // IO expander pin assignment (reset)
-    scannerOutput = "";  // Stores the current barcode characters
-    
-
-    constructor(triggerPin, resetPin)
-    {   
-        //gInitTime.scanner = hardware.millis();
-
-        // Save assignments
-        pin = triggerPin;
-        reset = resetPin;
-
-        // Reset the scanner at each boot, just to be safe
-        ioExpander.setDir(reset, 0); // set as output
-        ioExpander.setPullUp(reset, 0); // disable pullup
-        ioExpander.setPin(reset, 0); // pull low to reset
-        imp.sleep(0.001); // wait for x seconds
-        ioExpander.setPin(reset, 1); // pull high to boot
-        imp.sleep(0.001);
-
-        // Configure trigger pin as output
-        ioExpander.setDir(pin, 0); // set as output
-        ioExpander.setPullUp(pin, 0); // disable pullup
-        ioExpander.setPin(pin, 1); // pull high to disable trigger
-
-        // Configure scanner UART (for RX only)
-        hardware.configure(UART_57); 
-        hardware.uart57.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
-                                 scannerCallback.bindenv(this));
-        //gInitTime.scanner = hardware.millis() - gInitTime.scanner;
-    }
-
-    // Disable for low power sleep mode
-    function disable()
-    {
-        ioExpander.setPin(reset, 0); // pull reset low 
-        ioExpander.setPin(pin, 0); // pull trigger low 
-        hardware.uart57.disable();
-        hardware.pin5.configure(DIGITAL_IN_PULLUP);
-        hardware.pin7.configure(DIGITAL_IN_PULLUP);
-        hardware.pin2.configure(DIGITAL_IN_PULLUP);
-        
-    }
-
-    function readTriggerState()
-    {
-        return ioExpander.getPin(pin);
-    }
-
-    function trigger(on)
-    {
-        if (on)
-        {
-            ioExpander.setPin(pin, 0);
-        }
-        else
-        {
-            ioExpander.setPin(pin, 1);
-        }
-    }
-
-    //**********************************************************************
-    // Start the scanner and sampler
-    function startScanRecord() 
-    {
-        // Trigger the scanner
-        hwScanner.trigger(true);
-
-        // Trigger the mic recording
-        gAudioBufferOverran = false;
-        gAudioChunkCount = 0;
-        gLastSamplerBuffer = null; 
-        gLastSamplerBufLen = 0; 
-        agent.send("startAudioUpload", "");
-        hardware.sampler.start();
-    }
-
-    //**********************************************************************
-    // Stop the scanner and sampler
-    // Note: this function may be called multiple times in a row, so
-    // it must support that. 
-    function stopScanRecord()
-    {
-        // Stop mic recording
-        hardware.sampler.stop();
-
-        // Release scanner trigger
-        hwScanner.trigger(false);
-
-        // Reset for next scan
-        scannerOutput = "";
-    }
-
-    //**********************************************************************
-    // Scanner data ready callback, called whenever there is data from scanner.
-    // Reads the bytes, and detects and handles a full barcode string.
-    function scannerCallback()
-    {
-        // Read the first byte
-        local data = hardware.uart57.read();
-        while (data != -1)  
-        {
-            //log("char " + data + " \"" + data.tochar() + "\"");
-
-            // Handle the data
-            switch (data) 
-            {
-                case '\n':
-                    // Scan complete. Discard the line ending,
-                    // upload the beep, and reset state.
-
-                    // If the scan came in late (e.g. after button up), 
-                    // discard it, to maintain the state machine. 
-                    if (gDeviceState != DeviceState.SCAN_RECORD)
-                    {
-                    	/*
-                        log(format(
-                                   "Got capture too late. Dropping scan %d",
-                                   gDeviceState)); */
-                        scannerOutput = "";
-                        return;
-                    }
-                    updateDeviceState(DeviceState.SCAN_CAPTURED);
-
-                    /*log("Code: \"" + scannerOutput + "\" (" + 
-                               scannerOutput.len() + " chars)");*/
-                    //determineSetupBarcode(scannerOutput);
-                    if(0!= agent.send("uploadBeep", {
-                                              scandata=scannerOutput,
-                                              scansize=scannerOutput.len(),
-                                              serial=hardware.getimpeeid(),
-                                              fw_version=cFirmwareVersion,
-                                              linkedrecord="",
-                                              audiodata="",
-                                             }))
-                    {
-
-                    }
-                    else
-                    {
-                    	hwPiezo.playSound("success-local");
-                    }
-                    
-                    // Stop collecting data
-                    stopScanRecord();
-                    break;
-
-                case '\r':
-                    // Discard line endings
-                    break;
-
-                default:
-                    // Store the character
-                    scannerOutput = scannerOutput + data.tochar();
-                    break;
-            }
-
-            // Read the next byte
-            data = hardware.uart57.read();
-        } 
-    }
-}
-
-
-//======================================================================
-// Button
-enum ButtonState
-{
-    BUTTON_UP,
-    BUTTON_DOWN,
-}
-
-class PushButton
-{
-    pin = null; // IO expander pin assignment
-    buttonState = ButtonState.BUTTON_UP; // Button current state
-    
-    buttonPressCount = 0;
-    previousTime = 0;
-    blinkTimer = null;
-    
-    connection = false;
-
-    // WARNING: increasing these can cause buffer overruns during 
-    // audio recording, because this the button debouncing on "up"
-    // happens before the audio sampler buffer is serviced. 
-    //static numSamples = 5; // For debouncing
-   // static sleepSecs = 0.004;  // For debouncing
-
-    constructor(btnPin)
-    {   
-		//gInitTime.button = hardware.millis();
-		
-        // Save assignments
-        pin = btnPin;
-
-        // Set event handler for IRQ
-        intHandler.setIrqCallback(btnPin, buttonCallback.bindenv(this));
-        connMgr.registerCallback(connectionStatusCb.bindenv(this));
-
-        // Configure pin as input, IRQ on both edges
-        ioExpander.setDir(pin, 1); // set as input
-        ioExpander.setPullUp(pin, 1); // enable pullup
-        ioExpander.setIrqMask(pin, 1); // enable IRQ
-        ioExpander.setIrqEdges(pin, 1, 1); // rising and falling
-        
-        blinkTimer = CancellableTimer(BLINK_UP_TIME, this.cancelBlinkUpTimer.bindenv(this));
-        
-        connection = connection_available;
-        
-        //gInitTime.button = hardware.millis() - gInitTime.button;
-    }
-    
-    function connectionStatusCb(status)
-    {
-		connection = (status == SERVER_CONNECTED);
-    	if((connection) && ( buttonState == ButtonState.BUTTON_DOWN ) )
-    	{
-            updateDeviceState(DeviceState.SCAN_RECORD);
-            buttonState = ButtonState.BUTTON_DOWN;
-            //log("Button state change: DOWN");
-            hwScanner.startScanRecord();    		
-    	}
-    }
-
-    function readState()
-    {
-        return ioExpander.getPin(pin);
-    }
-
-    //**********************************************************************
-    // If we are gathering data and the button has been held down 
-    // too long, we abort recording and scanning.
-    function handleButtonTimeout()
-    {
-        updateDeviceState(DeviceState.BUTTON_TIMEOUT);
-        hwScanner.stopScanRecord();
-        hwPiezo.playSound("timeout");
-        log("Timeout reached. Aborting scan and record.");
-    }
-
-    //**********************************************************************
-    // Button handler callback 
-    // Not a true interrupt handler, this cannot interrupt other Squirrel 
-    // code. The event is queued and the callback is called next time the 
-    // Imp is idle.
-    function buttonCallback()
-    {
-        // Sample the button multiple times to debounce. Total time 
-        // taken is (numSamples-1)*sleepSecs
-        local state = readState();
-        local curr_time, delta;
-        
-
-		imp.sleep(0.020);
-        state += readState();
-
-		//log("buttonCallBack entry time: " + hardware.millis() + "ms");
-
-        // Handle the button state transition
-        switch(state) 
-        {
-            case 0:
-            	/*
-                // Button in held state
-                if( hwPiezo.isPaging() )
-                {
-                	hwPiezo.stopPageTone();
-                }
-                */
-                
-                // The logic below is to ensure
-                // that we are able to enter
-                // blink-up state with BLINK_UP_BUTTON_COUNT quick button presses
-                curr_time = hardware.millis();
-                local prv_time = previousTime;
-        		previousTime = curr_time;
-        		delta = curr_time - prv_time;
-                buttonPressCount = ( delta <= 300 )?++buttonPressCount:0;
-                
-                if ((BLINK_UP_BUTTON_COUNT-1 == buttonPressCount))
-                {
-                	blinkUpDevice(true);
-                	buttonPressCount = 0;
-                	return;
-                }
-                
-                if( delta <= 300 )
-                {
-                	return;
-                }
-                
-                //log(format("buttonPressCount=%d",buttonPressCount));                
-                
-                if (buttonState == ButtonState.BUTTON_UP)
-                {
-                 	if(!connection)
-                	{
-                		// Here we play the no connection sound and return from the state machine
-                		if( !nv.setup_required )
-                		{
-                			hwPiezo.playSound("no-connection");
-                		}
-                		//buttonState = ButtonState.BUTTON_DOWN;
-                		return;
-                	}               
-                    updateDeviceState(DeviceState.SCAN_RECORD);
-                    buttonState = ButtonState.BUTTON_DOWN;
-                    //log("Button state change: DOWN");
-
-                    hwScanner.startScanRecord();
-                }
-				else
-				{
-				    buttonState = ButtonState.BUTTON_DOWN;
-				}
-                
-                break;
-            case 2:
-                // Button in released state
-                if (buttonState == ButtonState.BUTTON_DOWN)
-                {
-				    server.log("BUTTON RELEASED!");
-                    buttonState = ButtonState.BUTTON_UP;
-                    //log("Button state change: UP");
-				    /*
-					if( !connection )
-					{
-						return;
-					}
-				    */
-                    local oldState = gDeviceState;
-                    updateDeviceState(DeviceState.BUTTON_RELEASED);
-
-                    if (oldState == DeviceState.SCAN_RECORD)
-                    {
-                        // Audio captured. Stop sampling and send it. 
-                        // Note that we only call sendLastBuffer in
-                        // the case that we want to capture the audio, 
-                        // so it cannot be inside stopScanRecord, which 
-                        // is called in multiple places. 
-                        // We have two uses of imp.onidle(), one during 
-                        // the IDLE state and one when not idle.  They 
-                        // must be kept separate, as only one onidle 
-                        // callback is supported at a time. 
-                        gSamplerStopping = true;
-                        imp.onidle(sendLastBuffer); 
-                        hwScanner.stopScanRecord();
-                    }
-                    // No more work to do, so go to idle
-                    updateDeviceState(DeviceState.IDLE);
-                }
-                break;
-            default:
-                // Button is in transition (not settled)
-                //log("Bouncing! " + buttonState);
-                break;
-        }
-        //log("buttonCallBack exit time: " + hardware.millis() + "ms");
-    }
-    
-    function blinkUpDevice(blink=false)
-    {
-    	// Since the blinkup is enabled all the time, lets not enable them
-    	// again, its unnecessary
-     	imp.enableblinkup(blink);
-    	if( blink )
-    	{
-    		hwPiezo.playSound("blink-up-enabled");
-    		//Enable the 5 minute Timer here
-    		// Ensure that we only enable it for the setup_required case
-    		if( !server.isconnected())
-    		{
-    			nv.setup_required = true;
-    			nv.sleep_not_allowed = true;
-				blinkTimer.disable();
-    			blinkTimer.enable();
-    		}
-    	}
-    	log(format("Blink-up: %s.",blink?"enabled":"disabled"));
-    }
-    
-    function cancelBlinkUpTimer()
-    {
-    	nv.sleep_not_allowed = false;
-    }
-}
-
-
-//======================================================================
-// Charge status pin
-class ChargeStatus
-{
-    pin = null; // IO expander pin assignment
-    previous_state = false; // the previous state of the charger
-    pinStatus = null; // IO Expander Pin 7 for Charger Status
-
-    constructor(chargePin)
-    {
-        // Save assignments
-        pin = chargePin;
-		pinStatus = 7;
-
-        // Set event handler for IRQ
-        intHandler.setIrqCallback(pin, chargerCallback.bindenv(this));
-        intHandler.setIrqCallback(pinStatus, chargerDetectionCB.bindenv(this));
-        
-        hardware.pinB.configure(ANALOG_IN);
-        imp.wakeup(5, batteryMeasurement.bindenv(this));
-
-        // Configure pin as input, IRQ on both edges
-        ioExpander.setDir(pin, 1); // set as input
-        ioExpander.setPullUp(pin, 1); // enable pullup
-        ioExpander.setIrqMask(pin, 1); // enable IRQ
-        ioExpander.setIrqEdges(pin, 1, 1); // rising and falling
-        
-		chargerCallback(); // this will update the current state right away
-		
-        ioExpander.setDir(pinStatus, 1); // set as input
-        ioExpander.setPullUp(pinStatus, 1); // enable pullup
-        ioExpander.setIrqMask(pinStatus, 1); // enable IRQ
-        ioExpander.setIrqEdges(pinStatus, 1, 1); // rising and falling
-
-		// Congiure Pin C which is supposed to be the pin indicating whether a charger is
-		// attached or not
-		//hardware.pinC.configure(DIGITAL_IN_PULLUP);
-        //agent.send("chargerState", previous_state); // update the charger state
-        //gInitTime.charger = hardware.millis() - gInitTime.charger;
-    }
-    
-
-    function readState()
-    {
-        return ioExpander.getPin(pin);
-    }
-
-    function isCharging()
-    {
-        if(ioExpander.getPin(pin))
-        {
-            return false;
-        }
-        return true;
-    }
-    
-    function batteryMeasurement()
-    {
-    	local raw_read = 0.0;
-    	
-    	for(local i = 0; i < 10; i++)
-    	{
-    	  raw_read += hardware.pinB.read();
-    	}
-    	
-    	raw_read = (raw_read / 10.0);
-    	nv.voltage_level = raw_read;
-    	
-    	// every 15 seconds wake up and read the battery level
-    	// TODO: change the period of measurement so that it doesn’t drain the
-    	// battery
-    	//log(format("Battery Level: %d, Input Voltage: %.2f", nv.voltage_level, hardware.voltage()));
-    	imp.wakeup(1, function() {
-    		agentSend("batteryLevel", nv.voltage_level)
-    	});
-    	imp.wakeup(60, batteryMeasurement.bindenv(this));
-    }
-    
-    function chargerDetectionCB()
-    {
-    	// the pin is high charger is attached and low is a removal
-    	log(format("USB Detection CB: %s", ioExpander.getPin(7)? "disconnected":"connected"));
-        server.log(format("USB Detection CB: %s", ioExpander.getPin(7)? "disconnected":"connected"));
-    }
-
-    //**********************************************************************
-    // Charge status interrupt handler callback 
-    function chargerCallback()
-    {
-        local charging = 0;
-        
-        charging = isCharging()?1:0;
-        
-        //Total time taken is (numSamples-1)*sleepSecs
-        for (local i=1; i<5; i++)
-        {
-            charging += isCharging()?1:0;
-        }
-        //log(format("Charger: %s",charging?"charging":"not charging"));
-        
-		if( previous_state != (charging==0?false:true))
-		{
-            hwPiezo.playSound(previous_state?"charger-attached":"charger-removed");
-        }
-		
-        previous_state = (charging==0)? false:true; // update the previous state with the current state
-        agentSend("chargerState", previous_state); // update the charger state
-        log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
-	    server.log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
-    }
-}
-
-//======================================================================
-// 3.3 volt switch pin for powering most peripherals
-/*
-class Switch3v3Accessory
-{
-    pin = null; // IO expander pin assignment
-
-    constructor(switchPin)
-    {
-
-        // Save assignments
-        pin = switchPin;
-
-        // Configure pin 
-        ioExpander.setDir(pin, 0); // set as output
-        ioExpander.setPullUp(pin, 0); // disable pullup
-        ioExpander.setPin(pin, 0); // pull low to turn switch on
-    }
-
-    function readState()
-    {
-        return ioExpander.getPin(pin);
-    }
-
-    function enable()
-    {
-        ioExpander.setPin(pin, 0);
-    }
-
-    function disable()
-    {
-        ioExpander.setPin(pin, 1);
-    }
-}
-*/
 
 //======================================================================
 // Sampler/Audio In
@@ -1900,136 +1279,6 @@ function init_nv_items()
 					nv.sleep_count, (nv.setup_required?"yes":"no")));
 	//server.log(format("Bootup Reason: %xh", nv.boot_up_reason));
 }
-
-function init_unused_pins(i2cDev)
-{
-	//gInitTime.init_unused = hardware.millis();
-	local value = 0;
-	
-	//1. Set Direction to Input for PIN 3 and 7
-	value = i2cDev.read(0x07);
-	i2cDev.write(0x07, (value | (1 << (3 & 7)) | (1 << ( 7 & 7))));
-	
-	//2. Set Pull up for PIN 3 and 7
-	value = i2cDev.read( 0x03 );
-	i2cDev.write(0x03, (value | (1 << (3 & 7)) | (1 << ( 7 & 7))));
-	
-	//3. setIRQ Mask to disable interrupts on 3 and 7
-	value = i2cDev.read( 0x09 );
-	i2cDev.write(0x09, value | ( 0xF8 ));
-	
-	hardware.pinA.configure(DIGITAL_IN_PULLUP);
-	hardware.pin6.configure(DIGITAL_IN_PULLUP);
-	hardware.pinB.configure(DIGITAL_IN_PULLUP);
-	hardware.pinC.configure(DIGITAL_IN_PULLUP);
-	hardware.pinD.configure(DIGITAL_IN_PULLUP);
-	hardware.pinE.configure(DIGITAL_IN_PULLUP);
-	
-	//gInitTime.init_unused = hardware.millis() - gInitTime.init_unused;
-}
-
-//**********************************************************************
-// Do pre-sleep configuration and initiate deep sleep
-function preSleepHandler() {
-	updateDeviceState( DeviceState.PRE_SLEEP);
-
-    // Resample the ~CHG charge signal and update chargeStatus.
-	// previous_state before going to sleep 
-	chargeStatus.chargerCallback();
-	
-	if( nv.sleep_not_allowed || chargeStatus.previous_state )
-	{
-		//Just for testing but we should remove it later
-		//hwPiezo.playSound("device-page");
-		updateDeviceState( DeviceState.IDLE );
-		return;
-	}
-	
-	if( !nv.setup_required )
-	{
-    	// Re-enable accelerometer interrupts
-    	log("preSleepHandler: about to re-enable accel Intterupts");
-    	hwAccelerometer.reenableInterrupts = true;
-    	hwAccelerometer.enableInterrupts();
-
-    	// Handle any last interrupts before we clear them all and go to sleep
-    	log("preSleepHandler: handle any pending interrupts");
-    	intHandler.handlePin1Int(); 
-		log("preSleepHandler: handled pending interrupts");
-    	// Clear any accelerometer interrupts, then clear the IO expander. 
-    	// We found this to be necessary to not hang on sleep, as we were
-    	// getting spurious interrupts from the accelerometer when re-enabling,
-    	// that were not caught by handlePin1Int. Race condition? 
-    	log("preSleepHandler: clear out all the pending accel interrupts");
-    	hwAccelerometer.clearAccelInterruptUntilCleared();
-    	log("preSleepHandler: clear out all the IOExpander Interrupts");
-    	intHandler.clearAllIrqs(); 
-    
-    	// When the timer below expires we will hit the sleepHandler function below
-    	// only enter into the delay wait if the current state is either IDLE or PRE_SLEEP
-    	// otherwise just get out of this because it would just go into sleep even though
-    	// someone pushed the button
-    	if( (gDeviceState == DeviceState.IDLE) || (gDeviceState == DeviceState.PRE_SLEEP) )
-    	{
-    		gAccelInterrupted = false;
-    		log("preSleepHandler: enabled the hysteresis timer");
-    		gAccelHysteresis.enable();
-    	}
-    }
-    else
-    {
-    	// If the setup is required and we timed out for
-    	// the 5 minute timer then we just enter sleep right away
-    	// only thing that would wake up the device is the button press
-    	gAccelInterrupted = false;
-    	sleepHandler();
-    }
-}
-
-//**********************************************************************
-// This is where we want to actually enter sleep if there aren’t any 
-// further accelerometer interrupts
-function sleepHandler()
-{
- 	log("sleepHandler: enter");   
-    if( gAccelInterrupted )
-    {
-		log("sleepHandler: aborting sleep due to Accelerometer Interrupt");
-		// Transition to the idle state
-		hwAccelerometer.reenableInterrupts = false;
-		hwAccelerometer.disableInterrupts();
-		updateDeviceState(DeviceState.IDLE);
-		return;
-    }
-    
-	// free memory
-    log(format("Free memory: %d bytes", imp.getmemoryfree()));
-    
-    // Disable the scanner and its UART
-    //log("sleepHandler: about to disable the HW Scanner");
-    hwScanner.disable();
-    // Disable the SW 3.3v switch, to save power during deep sleep
-    //log("sleepHandler: about to disable the 3v3");
-    //sw3v3.disable();   
-    ioExpander.setPin(4, 1);
-    
-    hwPiezo.disable();
-     
-    // Force the imp to sleep immediately, to avoid catching more interrupts
-    intHandler.handlePin1Int();
-    intHandler.clearAllIrqs();
-    i2cDev.disable();
-    
-    assert(gDeviceState == DeviceState.PRE_SLEEP);
-    log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", hardware.pin1.read()));
-    server.expectonlinein(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);
-    nv.sleep_count++;
-    nv.boot_up_reason = 0x0;
-    nv.sleep_duration = time();
-    server.disconnect();
-    imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);   
-}
-
 
 //**********************************************************************
 // main
@@ -2314,9 +1563,9 @@ function pin_fast_probe(pin, expect, drive_type, name, failure_mode=TEST_ERROR) 
     // create a short in case of a PCB failure.
     pin.configure(DIGITAL_IN);
     if (actual != expect)
-	test_log(TEST_CLASS_IMP_PIN, failure_mode, format("Probed %s, expected %d, actual %d.", name, expect, actual));
+	test_log(TEST_CLASS_IMP_PIN, failure_mode, format("%s, expected %d, actual %d.", name, expect, actual));
     else
-	test_log(TEST_CLASS_IMP_PIN, TEST_SUCCESS, format("Probed %s. Value %d.", name, expect));
+	test_log(TEST_CLASS_IMP_PIN, TEST_SUCCESS, format("%s. Value %d.", name, expect));
 }
 
 function button_wait(status) {
@@ -2364,7 +1613,9 @@ function factory_test()
     //
 
     //
-    // schedule a watchdog/timeout task that signals test failure should main process get stuck
+    // - schedule a watchdog/timeout task that signals test failure should main process get stuck
+    // - log test iteration in nv ram such that it can be retrieved on reboot if the device crashes
+    // - could run 2 or 3 test iterations
     //
 
     // sleep time between I2C reconfiguration attempts
@@ -2377,55 +1628,48 @@ function factory_test()
 
     test_log(TEST_CLASS_IMP_PIN, TEST_INFO, "**** IMP PIN TESTS STARTING ****");
 
-    local pin1 = hardware.pin1;
-    local pin2 = hardware.pin2;
-    local pin5 = hardware.pin5;
+    // currently unused pins on the Imp
     local pin6 = hardware.pin6;
-    local pin7 = hardware.pin7;
-    local pin8 = hardware.pin8;
-    local pin9 = hardware.pin9;
     local pinA = hardware.pinA;
-    local pinB = hardware.pinB;
-    local pinC = hardware.pinC;
     local pinD = hardware.pinD;
     local pinE = hardware.pinE;
 
     // Drive I2C SCL and SDA pins low and check outputs
     // If they cannot be driven low, the I2C is defective and no further
     // tests are possible.
-    pin_fast_probe(pin8, 0, DRIVE_TYPE_LO, "pin8 Testing I2C SCL for short to VCC", TEST_FATAL);
-    pin_fast_probe(pin9, 0, DRIVE_TYPE_LO, "pin9 Testing I2C SDA for short to VCC", TEST_FATAL);
+    pin_fast_probe(SCL_OUT, 0, DRIVE_TYPE_LO, "Testing I2C SCL_OUT for short to VCC", TEST_FATAL);
+    pin_fast_probe(SDA_OUT, 0, DRIVE_TYPE_LO, "Testing I2C SDA_OUT for short to VCC", TEST_FATAL);
     // Test external PU resistors on I2C SCL and SDA. If they are not present, the I2C is defective
     // and no further tests are possible.
-    pin_fast_probe(pin8, 1, DRIVE_TYPE_FLOAT, "pin8 Testing I2C SCL for presence of PU resistor", TEST_FATAL);
-    pin_fast_probe(pin9, 1, DRIVE_TYPE_FLOAT, "pin9 Testing I2C SDA for presence of PU resistor", TEST_FATAL);
+    pin_fast_probe(SCL_OUT, 1, DRIVE_TYPE_FLOAT, "Testing I2C SCL_OUT for presence of PU resistor", TEST_FATAL);
+    pin_fast_probe(SDA_OUT, 1, DRIVE_TYPE_FLOAT, "Testing I2C SDA_OUT for presence of PU resistor", TEST_FATAL);
 
     // Drive buzzer pin EIMP-AUDIO_OUT high and check output
-    pin_fast_probe(pin5, 1, DRIVE_TYPE_HI, "pin5 Testing EIMP-AUDIO_OUT for short to GND");
+    pin_fast_probe(EIMP_AUDIO_OUT, 1, DRIVE_TYPE_HI, "Testing EIMP-AUDIO_OUT for short to GND");
 
     // Configure all digital pins on the Imp that have external drivers to floating input.
-    pin1.configure(DIGITAL_IN);
-    pin7.configure(DIGITAL_IN);
+    CPU_INT.configure(DIGITAL_IN);
+    RXD_IN_FROM_SCANNER.configure(DIGITAL_IN);
 
     // Configure audio and battery voltage inputs as analog
-    pin2.configure(ANALOG_IN);
-    pinB.configure(ANALOG_IN);
+    EIMP_AUDIO_IN.configure(ANALOG_IN);
+    BATT_VOLT_MEASURE.configure(ANALOG_IN);
 
     // Check pin values
-    // pin1 can only be checked once I2C IO expander has been configured
-    // pin2 can only be checked with analog signal from audio amplifier
-    pin_fast_probe(pin5, 0, DRIVE_TYPE_FLOAT, "pin5 Testing EIMP-AUDIO_OUT for presence of PD resistor");
-    pin_fast_probe(pin6, 0, DRIVE_TYPE_PD, "pin6 Testing open pin for floating with PD resistor", TEST_WARNING);
-    pin_fast_probe(pin6, 1, DRIVE_TYPE_PU, "pin6 Testing open pin for floating with PU resistor", TEST_WARNING);
-    // pin7 can only be checked when driven by scanner serial output
-    pin_fast_probe(pinA, 0, DRIVE_TYPE_PD, "pinA Testing open pin for floating with PD resistor", TEST_WARNING);
-    pin_fast_probe(pinA, 1, DRIVE_TYPE_PU, "pinA Testing open pin for floating with PU resistor", TEST_WARNING);
-    pin_fast_probe(pinC, 0, DRIVE_TYPE_PD, "pinC Testing CHARGE_DISABLE_H for floating with PD resistor");
-    pin_fast_probe(pinC, 1, DRIVE_TYPE_PU, "pinC Testing CHARGE_DISABLE_H for floating with PU resistor");
-    pin_fast_probe(pinD, 0, DRIVE_TYPE_PD, "pinD Testing open pin for floating with PD resistor", TEST_WARNING);
-    pin_fast_probe(pinD, 1, DRIVE_TYPE_PU, "pinD Testing open pin for floating with PU resistor", TEST_WARNING);
-    pin_fast_probe(pinE, 0, DRIVE_TYPE_PD, "pinE Testing open pin for floating with PD resistor", TEST_WARNING);
-    pin_fast_probe(pinE, 1, DRIVE_TYPE_PU, "pinE Testing open pin for floating with PU resistor", TEST_WARNING);
+    // CPU_INT can only be checked once I2C IO expander has been configured
+    // EIMP_AUDIO_IN can only be checked with analog signal from audio amplifier
+    pin_fast_probe(EIMP_AUDIO_OUT, 0, DRIVE_TYPE_FLOAT, "Testing EIMP-AUDIO_OUT for presence of PD resistor");
+    pin_fast_probe(pin6, 0, DRIVE_TYPE_PD, "Testing open pin6 for floating with PD resistor", TEST_WARNING);
+    pin_fast_probe(pin6, 1, DRIVE_TYPE_PU, "Testing open pin6 for floating with PU resistor", TEST_WARNING);
+    // RXD_IN_FROM_SCANNER can only be checked when driven by scanner serial output
+    pin_fast_probe(pinA, 0, DRIVE_TYPE_PD, "Testing open pinA for floating with PD resistor", TEST_WARNING);
+    pin_fast_probe(pinA, 1, DRIVE_TYPE_PU, "Testing open pinA for floating with PU resistor", TEST_WARNING);
+    pin_fast_probe(CHARGE_DISABLE_H, 0, DRIVE_TYPE_PD, "Testing CHARGE_DISABLE_H for floating with PD resistor");
+    pin_fast_probe(CHARGE_DISABLE_H, 1, DRIVE_TYPE_PU, "Testing CHARGE_DISABLE_H for floating with PU resistor");
+    pin_fast_probe(pinD, 0, DRIVE_TYPE_PD, "Testing open pinD for floating with PD resistor", TEST_WARNING);
+    pin_fast_probe(pinD, 1, DRIVE_TYPE_PU, "Testing open pinD for floating with PU resistor", TEST_WARNING);
+    pin_fast_probe(pinE, 0, DRIVE_TYPE_PD, "Testing open pinE for floating with PD resistor", TEST_WARNING);
+    pin_fast_probe(pinE, 1, DRIVE_TYPE_PU, "Testing open pinE for floating with PU resistor", TEST_WARNING);
     
     // Test neighboring pin pairs for shorts by using a pull-up/pull-down on one
     // and a hard GND/VCC on the other. Check for pin with pull-up/pull-down
@@ -2469,7 +1713,7 @@ function factory_test()
 
     // at this stage if the ioexpaddr is not chosen, then default to SX1508ADDR
     local i2cReg = (nv.ioexpaddr == SX1505ADDR) ? sx1505reg:sx1508reg;
-    i2cIOExp <- I2cDevice(I2C_89, nv.ioexpaddr, TEST_CLASS_IO_EXP);
+    i2cIOExp <- IoExpander(I2C_89, nv.ioexpaddr, TEST_CLASS_IO_EXP, i2cReg);
 
     // Set SX1508/5/2 to default configuration
     // clear all interrupts
@@ -2481,9 +1725,31 @@ function factory_test()
     i2cIOExp.write_verify(i2cReg.RegPullUp, 0x00);
     i2cIOExp.write_verify(i2cReg.RegPullDown, 0x00);
 
-    // pin1/CPU_INT should be low with default config of SX1508/5/2,
+    // Imp CPU_INT should be low with default config of SX1508/5/2,
     // i.e. no interrupt sources and all interrupts cleared
-    pin_validate(pin1, 0, "pin1");
+    pin_validate(CPU_INT, 0, "CPU_INT");
+
+    // CHARGE_STATUS_L, CHARGE_PGOOD_L, SW_VCC_EN_OUT_L should be pulled high through
+    // external pull-ups when not in use
+    i2cIOExp.pin_fast_probe(CHARGE_STATUS_L, 1, DRIVE_TYPE_FLOAT, "Testing CHARGE_STATUS_L for presence of PU resistor");
+    i2cIOExp.pin_fast_probe(SW_VCC_EN_L, 1, DRIVE_TYPE_FLOAT, "Testing SW_VCC_EN_L/SW_VCC_EN_OUT_L for presence of PU resistor");
+    i2cIOExp.pin_fast_probe(CHARGE_PGOOD_L, 1, DRIVE_TYPE_FLOAT, "Testing CHARGE_PGOOD_L for presence of PU resistor");
+
+    // CHARGE_STATUS_L and CHARGE_PGOOD_L are open-drain on the BQ24072; should be 
+    // able to pull them low from the I/O expander
+    i2cIOExp.pin_fast_probe(CHARGE_STATUS_L, 0, DRIVE_TYPE_LO, "Testing CHARGE_STATUS_L for short to VCC");
+    i2cIOExp.pin_fast_probe(CHARGE_PGOOD_L, 0, DRIVE_TYPE_LO, "Testing CHARGE_PGOOD_L for short to VCC");
+
+    // BUTTON_L floats when the button is not pressed; should be able to pull it high
+    // or low with a pull-up/pull-down
+    i2cIOExp.pin_fast_probe(BUTTON_L, 1, DRIVE_TYPE_PU, "Testing BUTTON_L if it can be pulled up");
+    i2cIOExp.pin_fast_probe(BUTTON_L, 0, DRIVE_TYPE_PD, "Testing BUTTON_L if it can be pulled down");
+    // SCANNER_RESET_L floats; should be able to pull it low with a pull-down
+    i2cIOExp.pin_fast_probe(SCANNER_RESET_L, 0, DRIVE_TYPE_PD, "Testing SCANNER_RESET_L if it can be pulled down");
+    // should be able to pull it high with a pull-up when the scanner is powered
+    i2cIOExp.pin_configure(SW_VCC_EN_L, DRIVE_TYPE_LO);
+    i2cIOExp.pin_fast_probe(SCANNER_RESET_L, 1, DRIVE_TYPE_PU, "Testing SCANNER_RESET_L if it can be pulled up");
+    i2cIOExp.pin_configure(SW_VCC_EN_L, DRIVE_TYPE_FLOAT);
 
     test_log(TEST_CLASS_IO_EXP, TEST_INFO, "**** I/O EXPANDER TESTS DONE ****");
     test_log(TEST_CLASS_ACCEL, TEST_INFO, "**** ACCELEROMETER TESTS STARTING ****");
@@ -2500,9 +1766,6 @@ function factory_test()
     test_log(TEST_CLASS_ACCEL, TEST_INFO, "**** ACCELEROMETER TESTS DONE ****");
 
     test_log(TEST_CLASS_SCANNER, TEST_INFO, "**** SCANNER TESTS STARTING ****");
-
-    // Scanner UART RXD requires a pull-up
-    //pin7.configure(DIGITAL_IN_PULLUP);
 
     // turn on power to the scanner and reset it
     local regData = i2cIOExp.read(i2cReg.RegData);
@@ -2558,6 +1821,12 @@ function factory_test()
 	test_log(TEST_CLASS_SCANNER, TEST_ERROR, format("Scanned %s, expected %s", scan_string, TEST_REFERENCE_BARCODE));
     
     test_log(TEST_CLASS_SCANNER, TEST_INFO, "**** SCANNER TESTS DONE ****");
+
+    test_log(TEST_CLASS_CHARGER, TEST_INFO, "**** CHARGER TESTS STARTING ****");
+
+    
+    test_log(TEST_CLASS_CHARGER, TEST_INFO, "**** CHARGER TESTS DONE ****");
+
     
     // We will always be in deep sleep unless button pressed, in which
     // case we need to be as responsive as possible. 
