@@ -66,14 +66,15 @@ const DRIVE_TYPE_HI    = 4;
 // Component classes to be tested
 //
 const TEST_CLASS_NONE    = 0;
-const TEST_CLASS_IMP_PIN = 1;
-const TEST_CLASS_IO_EXP  = 2;
-const TEST_CLASS_ACCEL   = 3;
-const TEST_CLASS_SCANNER = 4;
-const TEST_CLASS_MIC     = 5;
-const TEST_CLASS_BUZZER  = 6;
-const TEST_CLASS_CHARGER = 7;
-const TEST_CLASS_BUTTON  = 8;
+const TEST_CLASS_DEV_ID  = 1
+const TEST_CLASS_IMP_PIN = 2;
+const TEST_CLASS_IO_EXP  = 3;
+const TEST_CLASS_ACCEL   = 4;
+const TEST_CLASS_SCANNER = 5;
+const TEST_CLASS_MIC     = 6;
+const TEST_CLASS_BUZZER  = 7;
+const TEST_CLASS_CHARGER = 8;
+const TEST_CLASS_BUTTON  = 9;
 
 const TEST_REFERENCE_BARCODE = "079340264410\r\n";
 
@@ -100,6 +101,33 @@ const SW_VCC_EN_L        = 4;
 const SCAN_TRIGGER_OUT_L = 5;
 const SCANNER_RESET_L    = 6;
 const CHARGE_PGOOD_L     = 7;
+
+//
+// Battery and charger constants
+//
+// maximal and minimal battery voltages acceptable during assembly/test
+//
+const BATT_MAX_VOLTAGE      = 4.1;
+// Battery voltage needs to be at least above V_LOWV=3.1V of BQ24072
+// (3.2V with margin for error ) such that charging in testing is done
+// in fast-charge mode.
+const BATT_MIN_VOLTAGE      = 3.2;
+// Issue a battery warning if below 3.5V as we wouldn't want to ship
+// devices with empty batteries.
+const BATT_MIN_WARN_VOLTAGE = 3.5;
+// minimal voltage increase when charger is plugged in
+const CHARGE_MIN_INCREASE = 0.05;
+// ADC resolution is 12 bits; 2^12=4096
+// Resistor divider R4/R9 is 40.2k/80.6k
+// VREF = 3V
+const BATT_ADC_RDIV    = 0.001097724100496; // =  3*(40.2+80.6)/(80.6 * 4096)
+// number of ADC samples to average over
+const BATT_ADC_SAMPLES  = 20
+
+// minimum and maximum ADC values to check for 
+//batteryHigh  <- BATT_MIN_VOLTAGE * BATT_ADC_RDIV;
+//batteryLow   <- BATT_MIN_VOLTAGE * BATT_ADC_RDIV;
+//chargeMinInc <- CHARGE_MIN_INCREASE * BATT_ADC_RDIV;
 
 scannerUart <- hardware.uart57;
 
@@ -559,6 +587,8 @@ class Piezo
             //"success-server": [[noteE6, 0.85, shortTone]],
             // 1kHz for 1s
             "one-khz": [[0.001, 0.15, 1]],
+            "test-fail": [[noteB4, 0.85, 0.5]],
+            "test-pass": [[noteE6, 0.85, 0.5]],
             "failure-long": [[noteB4, 0.85, 1]],
             "success": [[noteE5, 0.15, longTone], [noteE6, 0.85, shortTone]],
             "success-local": [[noteE5, dc, longTone]],
@@ -1014,9 +1044,9 @@ class IoExpander extends I2cDevice
 	// create a short in case of a PCB failure.
 	pin_configure(pin_num, DRIVE_TYPE_FLOAT);
 	if (actual != expect)
-	    test_log(TEST_CLASS_IMP_PIN, failure_mode, format("%s, expected %d, actual %d.", name, expect, actual));
+	    test_log(TEST_CLASS_IO_EXP, failure_mode, format("%s, expected %d, actual %d.", name, expect, actual));
 	else
-	    test_log(TEST_CLASS_IMP_PIN, TEST_SUCCESS, format("%s. Value %d.", name, expect));
+	    test_log(TEST_CLASS_IO_EXP, TEST_SUCCESS, format("%s. Value %d.", name, expect));
     }
 }
 
@@ -1510,14 +1540,14 @@ function test_log(test_class, test_result, log_string) {
 	break;
     case TEST_FINAL:
 	if (test_ok) {
-	    msg_str = "PASSED:";
+	    msg_str = "PASS:";
 	    log_str = "All tests passed.";
-	    hwPiezo.playSound("success-server", false);
+	    hwPiezo.playSound("test-pass", false);
 	}
 	else {
-	    msg_str = "FAILED:";
+	    msg_str = "FAIL:";
 	    log_str = "Test failed.";
-	    hwPiezo.playSound("failure", false);
+	    hwPiezo.playSound("test-fail", false);
 	    // report what failed
 	}
 	break;
@@ -1568,30 +1598,9 @@ function pin_fast_probe(pin, expect, drive_type, name, failure_mode=TEST_ERROR) 
 	test_log(TEST_CLASS_IMP_PIN, TEST_SUCCESS, format("%s. Value %d.", name, expect));
 }
 
-function button_wait(status) {
+function wait_for_wifi(status) {
     if (status == SERVER_CONNECTED) {
-	// HACK
-	// only works for SX1508
-	local i2cReg = sx1508reg;
-	i2cDev <- I2cDevice(I2C_89, SX1508ADDR, TEST_CLASS_IO_EXP);
-	
-	// Set SX1508/5/2 to 
-	i2cDev.write(i2cReg.RegInterruptMask, 0xFF);
-	i2cDev.write(i2cReg.RegInterruptSource, 0xFF);
-	i2cDev.write(i2cReg.RegSenseLow, 0x00);
-	i2cDev.write(i2cReg.RegDir, 0xFF);
-	i2cDev.write(i2cReg.RegData, 0xFF);
-	i2cDev.write(i2cReg.RegPullUp, 0x04);
-	i2cDev.write(i2cReg.RegPullDown, 0x00);
-	server.log("waiting for button");
 	hwPiezo.playSound("charger-attached", false);
-	// wait for button press and release
-	while ((i2cDev.read(i2cReg.RegData) & 0x4) != 0)
-	    imp.sleep(0.1);
-	while ((i2cDev.read(i2cReg.RegData) & 0x4) != 0x4);
-	hwPiezo.playSound("charger-removed", false);
-	server.log("button pressed and released");
-	i2cDev.write(i2cReg.RegPullUp, 0x00);
 	factory_test();
     } else {
 	imp.onidle(function() {
@@ -1616,7 +1625,10 @@ function factory_test()
     // - schedule a watchdog/timeout task that signals test failure should main process get stuck
     // - log test iteration in nv ram such that it can be retrieved on reboot if the device crashes
     // - could run 2 or 3 test iterations
-    //
+    // - When done with test software, consider translating test report to Chinese such that the factory can
+    //   read and interpret. Alternatively, uniquely enumerate error messages.
+    // - Write a document explaining how each enumerated error message relates to a component failure on the PCB.
+    //   Could translate to Chinese here or ask Flex to do it.
 
     // sleep time between I2C reconfiguration attempts
     local i2c_sleep_time = 0.2;
@@ -1625,6 +1637,7 @@ function factory_test()
 
     //hwPiezo.playSound("one-khz");
     test_log(TEST_CLASS_NONE, TEST_INFO, "**** TESTS STARTING ****");
+    test_log(TEST_CLASS_DEV_ID, TEST_SUCCESS, format("Serial number/MAC: %s",imp.getmacaddress()));
 
     test_log(TEST_CLASS_IMP_PIN, TEST_INFO, "**** IMP PIN TESTS STARTING ****");
 
@@ -1683,13 +1696,13 @@ function factory_test()
     hardware.configure(I2C_89);
     imp.sleep(i2c_sleep_time);
     hardware.i2c89.configure(CLOCK_SPEED_400_KHZ); // use fastest clock rate
-    // lets read on SX1508 address to see if the device is there
+    // Probe SX1508
     local i2cAddress = SX1508ADDR << 1;	
     local data = hardware.i2c89.read(i2cAddress, format("%c", 0x08), 1);
     if (data == null) { 
-	test_log(TEST_CLASS_IO_EXP, TEST_INFO, format("SX1508 IO expander not found, trying SX1505, Error = %d", hardware.i2c89.readerror()));
+	test_log(TEST_CLASS_IO_EXP, TEST_INFO, format("SX1508 IO expander not found, I2C error code %d. Trying SX1505/2.", hardware.i2c89.readerror()));
 	hardware.i2c89.disable();
-	// try SX1505
+	// Probe SX1505/2
 	imp.sleep(i2c_sleep_time);
 	i2cAddress = SX1505ADDR << 1;
 	hardware.configure(I2C_89);
@@ -1697,7 +1710,7 @@ function factory_test()
 	hardware.i2c89.configure(CLOCK_SPEED_400_KHZ); // use fastest clock rate			
 	data = hardware.i2c89.read(i2cAddress, format("%c", 0x00), 1);
 	if(data == null) {
-	    test_log(TEST_CLASS_IO_EXP, TEST_FATAL, format("SX1505/2 IO expander not found (in addition to SX1508), Error = %d", hardware.i2c89.readerror()));
+	    test_log(TEST_CLASS_IO_EXP, TEST_FATAL, format("SX1505/2 IO expander not found (in addition to SX1508), I2C error code %d", hardware.i2c89.readerror()));
 	}
 	else {
 	    test_log(TEST_CLASS_IO_EXP, TEST_SUCCESS, "Found SX1505/2 IO expander");
@@ -1736,7 +1749,7 @@ function factory_test()
     i2cIOExp.pin_fast_probe(CHARGE_PGOOD_L, 1, DRIVE_TYPE_FLOAT, "Testing CHARGE_PGOOD_L for presence of PU resistor");
 
     // CHARGE_STATUS_L and CHARGE_PGOOD_L are open-drain on the BQ24072; should be 
-    // able to pull them low from the I/O expander
+    // able to pull them low from the I/O expander    
     i2cIOExp.pin_fast_probe(CHARGE_STATUS_L, 0, DRIVE_TYPE_LO, "Testing CHARGE_STATUS_L for short to VCC");
     i2cIOExp.pin_fast_probe(CHARGE_PGOOD_L, 0, DRIVE_TYPE_LO, "Testing CHARGE_PGOOD_L for short to VCC");
 
@@ -1824,175 +1837,107 @@ function factory_test()
 
     test_log(TEST_CLASS_CHARGER, TEST_INFO, "**** CHARGER TESTS STARTING ****");
 
-    
+    local bat_acc = 0;
+    for (local i = 0; i < BATT_ADC_SAMPLES; i++)
+    	bat_acc += (BATT_VOLT_MEASURE.read() >> 4) & 0xFFF;
+
+    local batt_voltage = (bat_acc/BATT_ADC_SAMPLES) * BATT_ADC_RDIV;
+
+    // check battery voltage to be in allowable range
+    if (batt_voltage > BATT_MIN_VOLTAGE) {
+	if (batt_voltage < BATT_MAX_VOLTAGE)
+	    test_log(TEST_CLASS_CHARGER, TEST_SUCCESS, format("Battery voltage %fV.", batt_voltage));
+	else
+	    test_log(TEST_CLASS_CHARGER, TEST_ERROR, format("Battery voltage %fV higher than allowed %fV.", batt_voltage, BATT_MAX_VOLTAGE));
+    } else 
+	test_log(TEST_CLASS_CHARGER, TEST_ERROR, format("Battery voltage %fV lower than allowed %fV.", batt_voltage, BATT_MIN_VOLTAGE));
+
+    // check battery voltage to be in desirable range for shipment to customers
+    if (batt_voltage < BATT_MIN_WARN_VOLTAGE)
+	test_log(TEST_CLASS_CHARGER, TEST_WARNING, format("Battery voltage %fV below desired %fV.", batt_voltage, BATT_MIN_WARN_VOLTAGE));
+
+    server.log("waiting for charger");
+
+    local charge_pgood = i2cIOExp.pin_read(CHARGE_PGOOD_L);
+    local charge_status = i2cIOExp.pin_read(CHARGE_STATUS_L);
+    local chargeWaitCount = 0;
+    //
+    // HACK
+    //
+    // Full test suite would have to check for CHARGE_PGOOD_L flashing at 2Hz
+    // for safety timer expiration. See http://www.ti.com/lit/ds/symlink/bq24072t.pdf page 23.
+    while ((charge_pgood || charge_status) && (chargeWaitCount < 100)) {
+	chargeWaitCount += 1;
+	imp.sleep(0.1);
+	charge_pgood = i2cIOExp.pin_read(CHARGE_PGOOD_L);
+	charge_status = i2cIOExp.pin_read(CHARGE_STATUS_L);
+    }
+
+    if (charge_status)
+	test_log(TEST_CLASS_CHARGER, TEST_ERROR, "CHARGE_STATUS_L not low when USB charging.");
+    if (charge_pgood)
+	test_log(TEST_CLASS_CHARGER, TEST_ERROR, "CHARGE_PGOOD_L not low when USB charging.");
+
+    // wait for the battery voltage to stabilize with charger switched on
+    imp.sleep(0.1);
+
+    bat_acc = 0;
+    for (local i = 0; i < BATT_ADC_SAMPLES; i++)
+    	bat_acc += (BATT_VOLT_MEASURE.read() >> 4) & 0xFFF;
+
+    local charge_voltage = (bat_acc/BATT_ADC_SAMPLES) * BATT_ADC_RDIV;
+    local volt_diff = charge_voltage - batt_voltage;
+
+    if (volt_diff > CHARGE_MIN_INCREASE)
+	test_log(TEST_CLASS_CHARGER, TEST_SUCCESS, format("Battery voltage when charging %fV greater than before charging.", volt_diff));
+    else
+	test_log(TEST_CLASS_CHARGER, TEST_ERROR, format("Battery voltage difference %fV to before charging, requiring greater %fV.", volt_diff, CHARGE_MIN_INCREASE));
+	
     test_log(TEST_CLASS_CHARGER, TEST_INFO, "**** CHARGER TESTS DONE ****");
 
-    
-    // We will always be in deep sleep unless button pressed, in which
-    // case we need to be as responsive as possible. 
-    
-    // test connectivity to I2C IO expander pin assignments
-    
-    // Create an I2cDevice for IO expander
+    test_log(TEST_CLASS_BUTTON, TEST_INFO, "**** BUTTON TEST STARTING ****");
 
-    //i2cIOExp <- I2cDevice(I2C_89, nv.ioexpaddr);
+    // Prepare I/O pin expander for button press
+    i2cIOExp.write(i2cReg.RegInterruptMask, 0xFF);
+    i2cIOExp.write(i2cReg.RegInterruptSource, 0xFF);
+    i2cIOExp.write(i2cReg.RegSenseLow, 0x00);
+    i2cIOExp.write(i2cReg.RegDir, 0xFF);
+    i2cIOExp.write(i2cReg.RegData, 0xFF);
+    i2cIOExp.write(i2cReg.RegPullUp, 0x04);
+    i2cIOExp.write(i2cReg.RegPullDown, 0x00);
 
-    // set all pins to inputs
-    //i2cIOExp.write(RegDir, 0xFF)
-    //i2cIOExp.write(RegData, 0xFF)
+    test_log(TEST_CLASS_BUTTON, TEST_INFO, "Waiting for button press.");
+    while ((i2cIOExp.read(i2cReg.RegData) & 0x4) != 0)
+	imp.sleep(0.02);
+    test_log(TEST_CLASS_BUTTON, TEST_INFO, "Waiting for button release.");
+    while ((i2cIOExp.read(i2cReg.RegData) & 0x4) != 0x4);
 
-    //const cIoPinAccelerometerInt = 0;
-    //const cIoPinChargeStatus = 1;
-    //const cIoPinButton =  2;
-    //const cIoPin3v3Switch =  4;
-    //const cIoPinScannerTrigger =  5;
-    //const cIoPinScannerReset =  6;
+    // The operator needs to listen to the buzzer sound after pressing and
+    // releasing the button, which indicates test pass or fail.
+    //
+    // HACK ensure test report is submitted even if the button is not functional.
+    //
+    test_log(TEST_CLASS_BUTTON, TEST_SUCCESS, "Button pressed and released.");
+    i2cIOExp.write(i2cReg.RegPullUp, 0x00);
+
+    test_log(TEST_CLASS_BUTTON, TEST_INFO, "**** BUTTON TEST DONE ****");
 
     test_log(TEST_CLASS_NONE, TEST_FINAL, "**** TESTS DONE ****");
+
     imp.onidle(function() {
 	    server.sleepfor(1);
 	});
-    return;
 
-    //button_wait();
-
-    intHandler <- TestInterruptHandler(8, i2cDev, i2cReg);	
-    ioExpander <- IoExpanderDevice(intHandler, i2cReg);
- 
-    intHandler.handlePin1Int(); 
-
-
-    //hwPiezo.playSound("success");
-    imp.sleep(80000);
-    
-	intHandler <- InterruptHandler(8, i2cDev);	
-	ioExpander <- IoExpanderDevice(intHandler);
-	
-    // This is to default unused pins so that we consume less current
-    init_unused_pins(i2cDev);
-    
-    // 3v3 accessory switch config
-    // we don’t need a class for this:
-    
-    // Configure pin 
-    ioExpander.setDir(4, 0); // set as output
-    ioExpander.setPullUp(4, 0); // disable pullup
-    ioExpander.setPin(4, 0); // pull low to turn switch on
-    ioExpander.setPin(4, 0); // enable the Switcher3v3
-    //sw3v3 <- Switch3v3Accessory(4);
-    //sw3v3.enable();
- 
-    // Charge status detect config
-    chargeStatus <- ChargeStatus(1);
-
-    // Button config
-    hwButton <- PushButton(2);
-
-    // Piezo config
-    //hwPiezo <- Piezo(hardware.pin5);
-
-    // Scanner config
-    hwScanner <-Scanner(5,6);
-
+    /*
     // Microphone sampler config
     hwMicrophone <- hardware.pin2;
     hardware.sampler.configure(hwMicrophone, gAudioSampleRate, 
                                [buf1, buf2, buf3, buf4], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
+*/
                        
-    local oldsize = imp.setsendbuffersize(sendBufferSize);
-	server.log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
-    // Accelerometer config
-    hwAccelerometer <- Accelerometer(I2C_89, ACCELADDR, 
-                                     0);
-
-    // Create our timers
-    gButtonTimer <- CancellableTimer(cButtonTimeout, 
-                                     hwButton.handleButtonTimeout.bindenv(
-                                         hwButton)
-                                    );
-    gDeepSleepTimer <- CancellableTimer(cActualDelayBeforeDeepSleep, preSleepHandler);
-    
-    gAccelHysteresis <- CancellableTimer( 2, sleepHandler); 
-    
-    
-    // Transition to the idle state
-    updateDeviceState(DeviceState.IDLE);
-    // Print debug info
-    // WARNING: for some reason, if this is uncommented, the device
-    // will not wake up if there is motion while the device goes 
-    // to sleep!
-    //printStartupDebugInfo();
-	// free memory
-    //log(format("Free memory: %d bytes", imp.getmemoryfree()));
-    // Initialization complete notification
-    // TODO remove startup tone for final product
-    // initialize the nv items on a cold boot
-
-    // This means we had already went to sleep with the button presses
-    // to get the device back into blink up mode after the blink-up mode times out
-    // the user needs to manually enable it the next time it wakes up
-    //imp.enableblinkup(false); 
-    // We only wake due to an interrupt or after power loss.  If the 
-	// former, we need to handle any pending interrupts. 
-	//intHandler.handlePin1Int();     
-	//gInitTime.init_stage1 = hardware.millis() - gInitTime.init_stage1;
-    init_completed = true;
 }
 
-
-function onConnected(status)
-{
-	gIsConnecting = false;
-	
-	// always enable the blinkup when a connection call back happens
-	if( !nv.setup_required)
-	{
-		imp.enableblinkup(true);
-	}
-	
-    if (status == SERVER_CONNECTED) {
-        local timeToConnect = hardware.millis() - entryTime;
-    	connection_available = true;
-        //imp.configure("hiku", [], []);   // this is depcrecated  
-		log(format("Reconnected after unexpected disconnect: %d ",nv.disconnect_reason));
-		init_nv_items();
-		 							             
-        	// Send the agent our impee ID
-        local data = { 
-        				impeeId = hardware.getimpeeid(), 
-        				fw_version = cFirmwareVersion,
-        				bootup_reason = nv.boot_up_reason,
-        				disconnect_reason = nv.disconnect_reason,
-        				rssi = imp.rssi(),
-        				sleep_duration = nv.sleep_duration,
-        				osVersion = imp.getsoftwareversion(),
-						time_to_connect = timeToConnect,
-        			};
-        agentSend("init_status", data);
-        
-        if( nv.setup_required )
-        {
-        	nv.setup_required = false;
-        	nv.setup_count++;
-        	log("Setup Completed!");
-        }
-        nv.disconnect_reason = 0;
-        
-/*
-    	log(format("total_init:%d, init_stage1: %d, init_stage2: %d, init_unused: %d\n",
-    		(hardware.millis() - entryTime), gInitTime.init_stage1, gInitTime.init_stage2, gInitTime.init_unused));
-    	log(format("scanner:%d, button: %d, charger: %d, accel: %d, int handler: %d\n",
-    		gInitTime.scanner, gInitTime.button, gInitTime.charger, gInitTime.accel, gInitTime.inthandler));  */    		      
-        
-	}
-    else
-    {
-   		nv.disconnect_reason = status;
-    }
-}	
-
-// start off here and things should move
 // Piezo config
 hwPiezo <- Piezo(hardware.pin5, hardware.pinC); 
 if (imp.getssid() == "" && !("first_boot" in nv)) {
@@ -2003,5 +1948,9 @@ if (imp.getssid() == "" && !("first_boot" in nv)) {
 init_done();
 connMgr <- ConnectionManager();
 // wait for button press (and release) and start test right after
-connMgr.registerCallback(button_wait.bindenv(this));
-connMgr.init_connections();	
+connMgr.registerCallback(wait_for_wifi.bindenv(this));
+connMgr.init_connections();
+	
+// HACK 
+// Ensure the test can be repeated if it fails somewhere, i.e. ensure
+// that blink-up can be redone.
