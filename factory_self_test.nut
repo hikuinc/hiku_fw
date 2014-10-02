@@ -1,6 +1,6 @@
 // Copyright 2014 hiku labs inc. All rights reserved. Confidential.
 // Setup the server to behave when we have the no-wifi condition
-server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
+// server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 
 local connection_available = false;
 
@@ -12,6 +12,12 @@ local connection_available = false;
 // Board is populated with either SX1508, SX1505, or SX1502.
 const SX1508ADDR = 0x23;
 const SX1505ADDR = 0x21;
+
+// Change this to enable the factory blink-up
+// This is the WIFI SSID and password that will be used for factory blink-up
+const SSID = "SVGPartners";
+const PASSWORD = "accesssvg";
+
 
 // 0x0D is used for misc instead of the 0x10
 local sx1508reg = {RegMisc = 0x10,
@@ -141,18 +147,6 @@ const TEST_CLASS_CHARGER = 8;
 const TEST_CLASS_BUTTON  = 9;
 
 //
-// Pin assignment on the Imp
-//
-CPU_INT             <- hardware.pin1;
-EIMP_AUDIO_IN       <- hardware.pin2; // "EIMP-AUDIO_IN" in schematics
-EIMP_AUDIO_OUT      <- hardware.pin5; // "EIMP-AUDIO_OUT" in schematics
-RXD_IN_FROM_SCANNER <- hardware.pin7;
-SCL_OUT             <- hardware.pin8;
-SDA_OUT             <- hardware.pin9;
-BATT_VOLT_MEASURE   <- hardware.pinB;
-CHARGE_DISABLE_H    <- hardware.pinC;
-
-//
 // Pin assignment on the I2C I/O expander
 //
 const ACCELEROMETER_INT  = 0;
@@ -194,7 +188,6 @@ const BATT_ADC_SAMPLES  = 20
 //
 
 const TEST_REFERENCE_BARCODE = "123456789012\r\n";
-scannerUart <- hardware.uart57;
 
 // set test_ok to false if any one test fails
 test_ok <- true;
@@ -1049,18 +1042,18 @@ class FactoryTester {
 	//
 	// HACK 
 	// uart callback doesn't seem to work
-	scannerUart.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX); //, function() {server.log(hardware.uart57.readstring());});
+	SCANNER_UART.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX); //, function() {server.log(hardware.uart57.readstring());});
 	// set SCANNER_TRIGGER_OUT_L (0x20) low to turn the scanner on
 	regData = regData & 0xDF;
 	i2cIOExp.write(i2cReg.RegData, regData);
 
-	local uart_flags = scannerUart.flags();
+	local uart_flags = SCANNER_UART.flags();
 	local scanWaitCount = 0;
 	// try scanning for up to 2s
 	while (((uart_flags & READ_READY)==0) && (scanWaitCount < 40)) {
 	    scanWaitCount = scanWaitCount + 1;
 	    imp.sleep(0.05);
-	    uart_flags = scannerUart.flags();
+	    uart_flags = SCANNER_UART.flags();
 	}
 	if (uart_flags & NOISE_ERROR)
 	    test_log(TEST_CLASS_SCANNER, TEST_ERROR, "NOISE_ERROR bit set on UART");
@@ -1076,10 +1069,10 @@ class FactoryTester {
 	// after 20ms sleep (from the while loop) the full string should be available at
 	// both 9600 and 38400 UART bit rates
 	imp.sleep(0.02);	
-	local scan_string = scannerUart.readstring();
+	local scan_string = SCANNER_UART.readstring();
 
 	// turn UART and scanner off, set SW_VCC_EN_OUT_L, SCANNER_TRIGGER_OUT_L, SCANNER_RESET_L to inputs
-	scannerUart.disable();
+	SCANNER_UART.disable();
 	i2cIOExp.write(i2cReg.RegDir, i2cIOExp.read(i2cReg.RegDir) | 0x70);
 
 	if (scan_string == TEST_REFERENCE_BARCODE) 
@@ -1351,8 +1344,6 @@ class FactoryTester {
 	    
 	    factoryTester.test_start_time = hardware.millis();
 
-	    imp.setpowersave(false);
-
 	    test_log(TEST_CLASS_NONE, TEST_INFO, "**** TESTS STARTING ****");
 	    test_log(TEST_CLASS_DEV_ID, TEST_SUCCESS, format("Serial number/MAC: %s",imp.getmacaddress()));	
 	    test_log(TEST_CLASS_NONE, TEST_INFO, format("Software version: %s",imp.getsoftwareversion()));
@@ -1377,14 +1368,72 @@ class FactoryTester {
     }	
 }
 
-// Piezo config
-hwPiezo <- Piezo(hardware.pin5);
- 
-factoryTester <- FactoryTester();
-connMgr <- ConnectionManager();
-connMgr.registerCallback(factoryTester.testStart);
-connMgr.init_connections();
+function factoryOnIdle() {
+    imp.onidle(function(){
+	    BLINKUP_BUTTON.configure(DIGITAL_IN_WAKEUP, buttonCallback);
+	    BLINKUP_LED.configure(DIGITAL_IN_PULLDOWN);
+	});
+}
+
+function buttonCallback()
+{
+    // Disable any further callbacks until blink-up is done
+    BLINKUP_BUTTON.configure(DIGITAL_IN);
+    // Check if button is pressed
+    if (BLINKUP_BUTTON.read() == 1) {
+    	BLINKUP_LED.configure(DIGITAL_OUT);
+    	server.log("Factory Blink-up Started!!");
+    	server.factoryblinkup(SSID,PASSWORD, BLINKUP_LED, BLINKUP_ACTIVEHIGH /*| BLINKUP_FAST */);
+    	server.log("Factory Blink-up Ended!!");
+    }
+    factoryOnIdle();
+}
+
+
+function init()
+{
+    imp.setpowersave(false);
+    local board_type = imp.environment();
+    if (ENVIRONMENT_CARD == board_type ) {
+	//
+	// Pin assignment on the factory Imp
+	//
+	BLINKUP_BUTTON      <- hardware.pin1;
+	BLINKUP_LED         <- hardware.pin5;
 	
+	factoryOnIdle();
+    } else if (ENVIRONMENT_MODULE == board_type) {
+	//
+	// Pin assignment on the hiku DUT Imp
+	//
+	CPU_INT             <- hardware.pin1;
+	EIMP_AUDIO_IN       <- hardware.pin2; // "EIMP-AUDIO_IN" in schematics
+	EIMP_AUDIO_OUT      <- hardware.pin5; // "EIMP-AUDIO_OUT" in schematics
+	RXD_IN_FROM_SCANNER <- hardware.pin7;
+	SCL_OUT             <- hardware.pin8;
+	SDA_OUT             <- hardware.pin9;
+	BATT_VOLT_MEASURE   <- hardware.pinB;
+	CHARGE_DISABLE_H    <- hardware.pinC;
+	SCANNER_UART        <- hardware.uart57;
+	
+	// Piezo config
+	hwPiezo <- Piezo(EIMP_AUDIO_OUT);
+	factoryTester <- FactoryTester();
+	//connMgr <- ConnectionManager();
+	//connMgr.registerCallback(factoryTester.testStart);
+	//connMgr.init_connections();
+	factoryTester.testStart(SERVER_CONNECTED);
+    }
+}
+
+//**********************************************************************
+// main
+// Only run in the factory with a specified SSID
+if (imp.getssid() == SSID)
+    init();
+else
+    server.log("ERROR: SSID does not match pre-configured factory SSID");
+
 // HACK 
 // Ensure the test can be repeated if it fails somewhere, i.e. ensure
 // that blink-up can be redone.
