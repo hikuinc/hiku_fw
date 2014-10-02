@@ -1,5 +1,4 @@
 // Copyright 2014 hiku labs inc. All rights reserved. Confidential.
-
 // Setup the server to behave when we have the no-wifi condition
 server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 
@@ -132,13 +131,14 @@ const DRIVE_TYPE_HI    = 4;
 //
 const TEST_CLASS_NONE    = 0;
 const TEST_CLASS_DEV_ID  = 1
-const TEST_CLASS_IMP_PIN = 2;
-const TEST_CLASS_IO_EXP  = 3;
-const TEST_CLASS_ACCEL   = 4;
-const TEST_CLASS_SCANNER = 5;
-const TEST_CLASS_AUDIO   = 6;
-const TEST_CLASS_CHARGER = 7;
-const TEST_CLASS_BUTTON  = 8;
+const TEST_CLASS_LED     = 2;
+const TEST_CLASS_IMP_PIN = 3;
+const TEST_CLASS_IO_EXP  = 4;
+const TEST_CLASS_ACCEL   = 5;
+const TEST_CLASS_SCANNER = 6;
+const TEST_CLASS_AUDIO   = 7;
+const TEST_CLASS_CHARGER = 8;
+const TEST_CLASS_BUTTON  = 9;
 
 //
 // Pin assignment on the Imp
@@ -177,6 +177,9 @@ const BATT_MIN_VOLTAGE      = 3.2;
 // Issue a battery warning if below 3.5V as we wouldn't want to ship
 // devices with empty batteries.
 const BATT_MIN_WARN_VOLTAGE = 3.5;
+// Reference voltage VREF, min and max.
+const VREF_MIN = 2.9;
+const VREF_MAX = 3.1;
 // minimal voltage increase when charger is plugged in
 const CHARGE_MIN_INCREASE = 0.03;
 // ADC resolution is 12 bits; 2^12=4096
@@ -762,7 +765,7 @@ function test_log(test_class, test_result, log_string) {
 	}
 	else {
 	    msg_str = "FAIL:";
-	    log_str = "Test failed.";
+	    log_str = "Test(s) failed.";
 	    hwPiezo.playSound("test-fail", false);
 	    // report what failed
 	}
@@ -772,14 +775,15 @@ function test_log(test_class, test_result, log_string) {
 	msg_str = "FATAL:";
 	log_string = "Invalid test_result value";
     }
+    // HACK
+    // change test report format
     // create a test report 
     server.log(format("%d %s %s", test_class, msg_str, log_string));
 
-    if (test_result == TEST_FATAL) {
-	server.sleepfor(1);
-    } else {
+    if (test_result == TEST_FATAL)
+	factoryTester.testFinish();
+    else 
 	return true;
-    }
 }
 
 class FactoryTester {
@@ -875,6 +879,21 @@ class FactoryTester {
 	// to not be impacted by neighboring pin.
 
 	test_log(TEST_CLASS_IMP_PIN, TEST_INFO, "**** IMP PIN TESTS DONE ****");
+	ioExpanderTest();
+    }
+
+    function ledTest() {
+	// HACK
+	// Automated LED test TBD
+	// Tri-color LED is too far from the photo sensor to sense the
+	// emitted light for automated testing.
+	test_log(TEST_CLASS_LED, TEST_INFO, "**** LED TEST STARTING ****");
+	local lightarray = array(0);
+	for (local i=0; i<50; i++) {
+	    lightarray.push(hardware.lightlevel());
+	    imp.sleep(0.2);
+	}
+	test_log(TEST_CLASS_LED, TEST_INFO, "**** LET TEST DONE ****");
 	ioExpanderTest();
     }
 
@@ -1206,6 +1225,12 @@ class FactoryTester {
 	
 	test_log(TEST_CLASS_CHARGER, TEST_INFO, "**** CHARGER TESTS STARTING ****");
 
+	local vref_voltage = hardware.voltage();
+	if ((vref_voltage > VREF_MIN) && (vref_voltage < VREF_MAX))
+	    test_log(TEST_CLASS_CHARGER, TEST_SUCCESS, format("Reference voltage VREF %fV.", vref_voltage));
+	else
+	    test_log(TEST_CLASS_CHARGER, TEST_ERROR, format("Reference voltage VREF %fV out of range, required %fV<VREF<%fV.", vref_voltage, VREF_MIN, VREF_MAX));
+	    
 	local bat_acc = 0;
 	for (local i = 0; i < BATT_ADC_SAMPLES; i++)
     	    bat_acc += (BATT_VOLT_MEASURE.read() >> 4) & 0xFFF;
@@ -1235,14 +1260,13 @@ class FactoryTester {
 	//
 	// Full test suite would have to check for CHARGE_PGOOD_L flashing at 2Hz
 	// for safety timer expiration. See http://www.ti.com/lit/ds/symlink/bq24072t.pdf page 23.
-	/*
-    while ((charge_pgood || charge_status) && (chargeWaitCount < 100)) {
-	chargeWaitCount += 1;
-	imp.sleep(0.1);
-	charge_pgood = i2cIOExp.pin_read(CHARGE_PGOOD_L);
-	charge_status = i2cIOExp.pin_read(CHARGE_STATUS_L);
-    }
-*/
+	while ((charge_pgood || charge_status) && (chargeWaitCount < 100)) {
+	    chargeWaitCount += 1;
+	    imp.sleep(0.1);
+	    charge_pgood = i2cIOExp.pin_read(CHARGE_PGOOD_L);
+	    charge_status = i2cIOExp.pin_read(CHARGE_STATUS_L);
+	}
+
 	if (charge_status)
 	    test_log(TEST_CLASS_CHARGER, TEST_ERROR, "CHARGE_STATUS_L not low when USB charging.");
 	if (charge_pgood)
@@ -1302,9 +1326,9 @@ class FactoryTester {
 
 	test_log(TEST_CLASS_NONE, TEST_FINAL, "**** TESTS DONE ****");
 	
-	imp.onidle(function() {
-		server.sleepfor(1);
-	    });                       
+	// enable blink-up in case of a test failure for retesting
+	if (!test_ok)
+	    imp.enableblinkup(true);
     }
 
     function testStart(status)
@@ -1331,16 +1355,23 @@ class FactoryTester {
 
 	    test_log(TEST_CLASS_NONE, TEST_INFO, "**** TESTS STARTING ****");
 	    test_log(TEST_CLASS_DEV_ID, TEST_SUCCESS, format("Serial number/MAC: %s",imp.getmacaddress()));	
+	    test_log(TEST_CLASS_NONE, TEST_INFO, format("Software version: %s",imp.getsoftwareversion()));
+	    test_log(TEST_CLASS_NONE, TEST_INFO, format("WiFi network: %s",imp.getssid()));
+	    test_log(TEST_CLASS_NONE, TEST_INFO, format("WiFi signal strength (RSSI): %d",imp.rssi()));
 	    factoryTester.impPinTest();
 	} else {
+	    imp.enableblinkup(true);
+	    /*
 	    imp.onidle(function() {
 		    //
 		    // count number of WiFi reconnects here in nv ram, fail tests if more 
 		    // than a max number of reconnects
 		    //
-		    server.log("No WiFi connection, going to sleep again.");
-		    server.sleepfor(1);
+		    //server.log("No WiFi connection, going to sleep again.");
+		    //server.sleepfor(1);
+		    imp.enableblinkup(true);
 		});
+*/
 	}
 	
     }	
@@ -1351,7 +1382,6 @@ hwPiezo <- Piezo(hardware.pin5);
  
 factoryTester <- FactoryTester();
 connMgr <- ConnectionManager();
-// wait for button press (and release) and start test right after
 connMgr.registerCallback(factoryTester.testStart);
 connMgr.init_connections();
 	
