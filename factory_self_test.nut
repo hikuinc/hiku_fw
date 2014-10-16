@@ -15,8 +15,8 @@ const SX1505ADDR = 0x21;
 
 // Change this to enable the factory blink-up
 // This is the WIFI SSID and password that will be used for factory blink-up
-const SSID = "SVGPartners";
-const PASSWORD = "accesssvg";
+const SSID = "hiku-hq";
+const PASSWORD = "broadwayVeer";
 
 
 // 0x0D is used for misc instead of the 0x10
@@ -1243,8 +1243,6 @@ class FactoryTester {
 	if (batt_voltage < BATT_MIN_WARN_VOLTAGE)
 	    test_log(TEST_CLASS_CHARGER, TEST_WARNING, format("Battery voltage %fV below desired %fV.", batt_voltage, BATT_MIN_WARN_VOLTAGE));
 
-	server.log("waiting for charger");
-
 	local charge_pgood = i2cIOExp.pin_read(CHARGE_PGOOD_L);
 	local charge_status = i2cIOExp.pin_read(CHARGE_STATUS_L);
 	local chargeWaitCount = 0;
@@ -1381,12 +1379,43 @@ function buttonCallback()
     BLINKUP_BUTTON.configure(DIGITAL_IN);
     // Check if button is pressed
     if (BLINKUP_BUTTON.read() == 1) {
-    	BLINKUP_LED.configure(DIGITAL_OUT);
-    	server.log("Factory Blink-up Started!!");
-    	server.factoryblinkup(SSID,PASSWORD, BLINKUP_LED, BLINKUP_ACTIVEHIGH /*| BLINKUP_FAST */);
-    	server.log("Factory Blink-up Ended!!");
-    }
-    factoryOnIdle();
+	BLINKUP_LED.configure(DIGITAL_OUT);
+    	BLINKUP_LED.write(0);
+	// turn of red LED if it was on from a previous test failure
+	FAILURE_LED_RED.write(0);
+	// briefly blink green LED to indicate start of test
+	SUCCESS_LED_GREEN.write(0);
+	imp.sleep(0.1);
+	SUCCESS_LED_GREEN.write(1);
+	imp.sleep(0.1);
+	SUCCESS_LED_GREEN.write(0);
+    	server.log("Factory blink-up started");
+    	server.factoryblinkup(SSID,PASSWORD, BLINKUP_LED, BLINKUP_ACTIVEHIGH | BLINKUP_FAST);
+	imp.wakeup(20, function() {
+		local charging_ok = false;
+    		server.log("USB charger on");
+		USB_POWER.write(1);
+		imp.sleep(0.1);
+		// Check PWRDG to be 1. If it's 0 there is a short or over-current on the USB
+		if (USB_PWRGD.read() == 1) {
+		    charging_ok = true;
+		    server.log("Charging current in range.");
+		} else {
+		    charging_ok = false;
+		    server.log("Error: Charging current exceeds 700mA on at least one device.");
+		}
+		imp.sleep(4);
+		USB_POWER.write(0);
+    		server.log("USB charger off");
+		if (charging_ok)
+		    SUCCESS_LED_GREEN.write(1);
+		else
+		    FAILURE_LED_RED.write(1);		    
+    		server.log("Factory blink-up done");
+		factoryOnIdle();
+	    });
+    } else 
+	factoryOnIdle();
 }
 
 
@@ -1399,7 +1428,24 @@ function init()
 	// Pin assignment on the factory Imp
 	//
 	BLINKUP_BUTTON      <- hardware.pin1;
+	USB_POWER           <- hardware.pin2;
 	BLINKUP_LED         <- hardware.pin5;
+	USB_PWRGD           <- hardware.pin7;
+	FAILURE_LED_RED     <- hardware.pin8;
+	SUCCESS_LED_GREEN   <- hardware.pin9;
+
+	// configure LED outputs
+	SUCCESS_LED_GREEN.configure(DIGITAL_OUT);
+	FAILURE_LED_RED.configure(DIGITAL_OUT);
+	BLINKUP_LED.configure(DIGITAL_OUT);
+    	BLINKUP_LED.write(0);
+
+	// turn off USB power initially
+	USB_POWER.configure(DIGITAL_OUT);
+	USB_POWER.write(0);
+
+	// PWRGD on MCP1825 is open drain, needs a pull-up resistor
+	USB_PWRGD.configure(DIGITAL_IN_PULLUP);
 	
 	factoryOnIdle();
     } else if (ENVIRONMENT_MODULE == board_type) {
