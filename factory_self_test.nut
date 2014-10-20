@@ -6,6 +6,9 @@ local connection_available = false;
 
 testList <- array(0);
 
+macaddress <- imp.getmacaddress();
+serialNumber <- hardware.getimpeeid();
+
 //
 // I2C addresses and registers
 //
@@ -154,6 +157,7 @@ const TEST_CLASS_SCANNER = "SCANNER";
 const TEST_CLASS_AUDIO   = "AUDIO";
 const TEST_CLASS_CHARGER = "CHARGER";
 const TEST_CLASS_BUTTON  = "BUTTON";
+const TEST_CLASS_BLESS   = "BLESS";
 
 //
 // Test control flow for communication with backend
@@ -226,6 +230,7 @@ const TEST_ID_BUTTON_RELEASE = 70100;
 const TEST_ID_GENERIC_IO_EXP_SETUP = 500000;
 const TEST_ID_GENERIC_ACCEL_SETUP = 500100;
 const TEST_ID_TEST_TIME = 600000;
+const TEST_ID_BLESS = 600100;
 
 //
 // Pin assignment on the I2C I/O expander
@@ -631,7 +636,7 @@ class IoExpander extends I2cDevice
 
 function test_flush() {
     if (testList.len() > 0) {
-	local result_data_table = {macAddress = imp.getmacaddress(),
+	local result_data_table = {serialNumber = serialNumber,
 	    testControl = TEST_CONTROL_UPDATE,
 	    testList = testList}
 	agent.send("testresult", result_data_table);
@@ -1226,18 +1231,36 @@ class FactoryTester {
     }
     
     function testFinish() {
+
+/*
+	server.bless(test_ok, function(bless_success) {
+		//server.flush(5);
+		if (test_ok) imp.clearconfiguration();
+	    });
+*/
+
 	local test_time = hardware.millis() - test_start_time;
 	test_log(TEST_CLASS_NONE, TEST_RESULT_INFO, format("Total test time: %dms", test_time), TEST_ID_TEST_TIME, {test_time=test_time});
-
-	local result_data_table = {macAddress = imp.getmacaddress(),
+	test_flush();
+	server.flush(5);
+/*
+		if (bless_success)
+		    test_log(TEST_CLASS_BLESS, TEST_RESULT_SUCCESS, "Blessing succeeded.", TEST_ID_BLESS, 
+		    {bless_success=bless_success, test_ok=test_ok});
+		else 
+		    test_log(TEST_CLASS_BLESS, TEST_RESULT_ERROR, "Blessing failed.", TEST_ID_BLESS, 
+		    {bless_success=bless_success, test_ok=test_ok});
+*/
+	
+	local result_data_table = {serialNumber = serialNumber,
 	    testControl = test_ok ? TEST_CONTROL_PASS : TEST_CONTROL_FAIL,
 	    testList = testList};
 	agent.send("testresult", result_data_table);
 	testList.clear()
-
-	if (test_ok)
+	
+	if (test_ok) {
 	    hwPiezo.playSound("test-pass", false)
-	else {
+	} else {
 	    hwPiezo.playSound("test-fail", false);
 	    // enable blink-up in case of a test failure for retesting
 	    //imp.enableblinkup(true);
@@ -1269,7 +1292,7 @@ class FactoryTester {
 	    //   Could translate to Chinese here or ask Flex to do it.
 
 	    testList.clear();
-	    local result_data_table = {macAddress = imp.getmacaddress(),
+	    local result_data_table = {serialNumber = serialNumber,
 		testControl = TEST_CONTROL_START,
 		testList = testList};
 	    agent.send("testresult", result_data_table);
