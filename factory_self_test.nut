@@ -21,10 +21,8 @@ const SX1505ADDR = 0x21;
 // Change this to enable the factory blink-up
 // This is the WIFI SSID and password that will be used for factory blink-up
 // HACK
-const SSID = "2WIRE084";
-const PASSWORD = "7890384768";
-//const SSID = "hiku-hq";
-//const PASSWORD = "broadwayVeer";
+const SSID = "Flex-HiKu";
+const PASSWORD = "1234@abcd";
 
 // number of seconds after which a watchdog timer flushes
 // all outstanding data to the server
