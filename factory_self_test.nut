@@ -9,6 +9,22 @@ testList <- array(0);
 macaddress <- imp.getmacaddress();
 serialNumber <- hardware.getimpeeid();
 
+// if true, every test is logged individually allowing test failures to be captured before a device crash;
+// leads to more API calls
+// if false, tests are batched by test group; fewer API calls, but less granularity when tests fail
+logIndividual <- true;
+
+// timer handle for timing out devices that did not complete the button test
+// after the charging test is done
+testIncompleteTimer <- null;
+const TEST_INCOMPLETE_TIMEOUT = 45;
+
+// number of seconds after which to enable USB charging
+const TEST_USB_CHARGE_DELAY = 25;
+
+// watchdog timer for flushing data to server if test gets stuck
+flushTimer <- null;
+
 //
 // I2C addresses and registers
 //
@@ -21,8 +37,8 @@ const SX1505ADDR = 0x21;
 // Change this to enable the factory blink-up
 // This is the WIFI SSID and password that will be used for factory blink-up
 // HACK
-const SSID = "Flex-HiKu";
-const PASSWORD = "1234@abcd";
+const SSID = "hiku-hq";
+const PASSWORD = "broadwayVeer";
 
 // number of seconds after which a watchdog timer flushes
 // all outstanding data to the server
@@ -160,10 +176,13 @@ const TEST_CLASS_BLESS   = "BLESS";
 //
 // Test control flow for communication with backend
 //
+const TEST_CONTROL_MASTER_START = "MASTER_START";
 const TEST_CONTROL_START = "START";
 const TEST_CONTROL_UPDATE = "UPDATE";
 const TEST_CONTROL_PASS = "PASS";
 const TEST_CONTROL_FAIL = "FAIL";
+const TEST_CONTROL_MASTER_DONE = "MASTER_DONE";
+const TEST_CONTROL_MASTER_TIMEOUT = "MASTER_TIMEOUT";
 
 //
 // Test IDs identifying individual tests
@@ -265,13 +284,13 @@ const CHARGE_MIN_INCREASE = 0.03;
 // VREF = 3V
 const BATT_ADC_RDIV    = 0.001097724100496; // =  3*(40.2+80.6)/(80.6 * 4096)
 // number of ADC samples to average over
-const BATT_ADC_SAMPLES  = 20
+const BATT_ADC_SAMPLES  = 20;
 
 //
 // MT700 scanner
 //
-
-const TEST_REFERENCE_BARCODE = "123456789012\r\n";
+// Barcodes to be placed in boxes 0, 1, 2, 3; allow for mapping a device serial number to a test box
+TEST_REFERENCE_BARCODES <- ["9000567800007\r\n", "1111567811110\r\n", "2222567822224\r\n", "3333567833338\r\n"];
 
 // set test_ok to false if any one test fails
 test_ok <- true;
@@ -286,11 +305,8 @@ if (!("nv" in getroottable()))
 {
     nv <- { 
     	setup_count = 0,
-    	disconnect_reason=0, 
     };
 }
-
-const CONNECT_RETRY_TIME = 45; // for now 45 seconds retry time
 
 //======================================================================
 // Handles all audio output
@@ -299,9 +315,6 @@ class Piezo
     // The hardware pin controlling the piezo 
     pin = null;
     
-    page_device = false;
-	pageToneIdx=0;
-		
     // In Squirrel, if you initialize a member array or table, all
     // instances will point to the same one.  So init in the constructor.
     tonesParamsList = {};
@@ -642,7 +655,7 @@ function test_flush() {
     }
 }
 
-function test_log(testClass, testResult, testMsg=null, testId=null, jsonData=null) {
+function test_log(testClass, testResult, testMsg=null, testId=null, jsonData=null, testBox=null) {
 
     // Create one file with sequence of test messages
     // and individual files for each category.
@@ -654,11 +667,13 @@ function test_log(testClass, testResult, testMsg=null, testId=null, jsonData=nul
 	testResult=testResult,
 	testMsg=testMsg,
 	testId=testId,
-	jsonData=jsonData};
+	jsonData=jsonData,
+	testBox=testBox
+    };
     
     testList.append(testObj);
 
-    if ((testResult == TEST_RESULT_ERROR) || (testResult == TEST_RESULT_FATAL)) 
+    if ((testResult == TEST_RESULT_ERROR) || (testResult == TEST_RESULT_FATAL) || logIndividual) 
 	test_flush();
     
     if (testResult == TEST_RESULT_FATAL) 
@@ -909,7 +924,17 @@ class FactoryTester {
 	// in register RegInterruptSource on the SX1508/5/2, and in register INT1_SRC on accelerometer
 	pin_validate(CPU_INT, 1, "Verify CPU_INT at 1 after interrupt", TEST_ID_ACCEL_CPU_INT_AFTER);
 	i2cIOExp.verify(i2cReg.RegInterruptSource, 0x01, TEST_ID_SX150X_ACCEL_INT);
-	i2cAccel.verify(ACCEL_INT1_SRC, 0x6A, TEST_ID_ACCEL_INT); 
+	// HACK
+	// determine what the valid values are for register ACCEL_INT1_SRC
+	/*
+	local int1_src_val = i2cAccel.read(ACCEL_INT1_SRC);
+	if (int1_src_val & 0x3F)
+	    test_log(TEST_CLASS_ACCEL, TEST_RESULT_SUCCESS, format("Accelerometer interrupt triggered. INT1_SRC(0x31) = 0x%02x", int1_src_val), 
+	    TEST_ID_ACCEL_INT, {int1_src_val=int1_src_val});
+	else
+	    test_log(TEST_CLASS_ACCEL, TEST_RESULT_ERROR, format("Accelerometer interrupt not triggered. INT1_SRC(0x31) = 0x%02x", int1_src_val), 
+	    TEST_ID_ACCEL_INT, {int1_src_val=int1_src_val});
+        */
 
 	// disable self test and interrupts, clear interrupt bit
 	i2cAccel.write(ACCEL_CTRL_REG4, 0x00); 
@@ -970,10 +995,15 @@ class FactoryTester {
 	SCANNER_UART.disable();
 	i2cIOExp.write(i2cReg.RegDir, i2cIOExp.read(i2cReg.RegDir) | 0x70);
 
-	if (scan_string == TEST_REFERENCE_BARCODE) 
+	local barcode_match = false;
+	for (local i=0; i<TEST_REFERENCE_BARCODES.len(); i++) {
+	    barcode_match = barcode_match || (scan_string == TEST_REFERENCE_BARCODES[i]);
+	}
+
+	if (barcode_match) 
 	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_SUCCESS, format("Scanned %s", scan_string), TEST_ID_SCANNER_BARCODE, {barcode=scan_string});
 	else
-	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_ERROR, format("Scanned %s, expected %s", scan_string, TEST_REFERENCE_BARCODE), 
+	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_ERROR, format("Scanned unexpected barcode %s", scan_string), 
 	    TEST_ID_SCANNER_BARCODE, {barcode=scan_string});
 	
 	//test_log(TEST_CLASS_SCANNER, TEST_RESULT_INFO, "**** SCANNER TESTS DONE ****");
@@ -1250,6 +1280,9 @@ class FactoryTester {
 		    {bless_success=bless_success, test_ok=test_ok});
 */
 	
+	if (flushTimer)
+	    imp.cancelwakeup(flushTimer);
+
 	local result_data_table = {serialNumber = serialNumber,
 	    testControl = test_ok ? TEST_CONTROL_PASS : TEST_CONTROL_FAIL,
 	    testList = testList};
@@ -1298,7 +1331,7 @@ class FactoryTester {
 	    factoryTester.test_start_time = hardware.millis();
 	    // flush all data to the server using a watchdog timer in case the
 	    // test gets stuck and there is data remaining
-	    imp.wakeup(WATCHDOG_FLUSH, test_flush)
+	    flushTimer = imp.wakeup(WATCHDOG_FLUSH, test_flush);
 
 	    //test_log(TEST_CLASS_NONE, TEST_RESULT_INFO, "**** TESTS STARTING ****");
 	    local os_version = imp.getsoftwareversion();
@@ -1336,14 +1369,21 @@ function factoryOnIdle() {
 
 function buttonCallback()
 {
+    if (testIncompleteTimer)
+	imp.cancelwakeup(testIncompleteTimer);
+
     // Disable any further callbacks until blink-up is done
     BLINKUP_BUTTON.configure(DIGITAL_IN);
     // Check if button is pressed
     if (BLINKUP_BUTTON.read() == 1) {
+	local result_data_table = {serialNumber = serialNumber,
+	    testControl = TEST_CONTROL_MASTER_START,
+	    testList = []};
+	agent.send("testresult", result_data_table);
 	USB_POWER.write(0);
 	BLINKUP_LED.configure(DIGITAL_OUT);
     	BLINKUP_LED.write(0);
-	// turn of red LED if it was on from a previous test failure
+	// turn off red LED if it was on from a previous test failure
 	FAILURE_LED_RED.write(0);
 	// briefly blink green LED to indicate start of test
 	SUCCESS_LED_GREEN.write(0);
@@ -1356,26 +1396,31 @@ function buttonCallback()
 	//
 	// HACK
 	// implement synchronization through backend for better timing
-	imp.wakeup(20, function() {
-		local charging_ok = false;
+	imp.wakeup(TEST_USB_CHARGE_DELAY, function() {
+		local charging_ok = true;
 		USB_POWER.write(1);
 		imp.sleep(0.1);
-		// Check PWRDG to be 1. If it's 0 there is a short or over-current on the USB
-		if (USB_PWRGD.read() == 1) {
-		    charging_ok = true;
-		    server.log("Charging current in range.");
+		for (local testBox=0; testBox<USB_PWRGD_PINS.len(); testBox++)
+		    // Check PWRDG to be 1. If it's 0 there is a short or over-current on the USB
+		    if (USB_PWRGD_PINS[testBox].read() == 1) {
+		    charging_ok = charging_ok && true;
+		    test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, "Charging current in range (<=700mA).",
+			TEST_ID_CHARGER_CURRENT, {charging_current_ref=700}, testBox);
+		    //server.log("Charging current in range.");
 		    //HACK
 		    //match devices through different barcodes in compartments 0..3
 		    //test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, "Charging current below 700mA.", TEST_ID_CHARGER_CURRENT);
-		} else {
-		    charging_ok = false;
-		    server.log("Error: Charging current exceeds 700mA on at least one device.");
-		    //test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "Charging current exceeds 700mA.", TEST_ID_CHARGER_CURRENT);
-		}
+		    } else {
+			charging_ok = false;
+			test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "Charging current exceeds 700mA.",
+			    TEST_ID_CHARGER_CURRENT, {charging_current_ref=700}, testBox);
+			//server.log("Error: Charging current exceeds 700mA on at least one device.");
+			//test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "Charging current exceeds 700mA.", TEST_ID_CHARGER_CURRENT);
+		    }
 		//test_flush();
 		imp.sleep(CHARGE_DURATION);
 		USB_POWER.write(0);
-    		server.log("USB charger off");
+    		//server.log("USB charger off");
 		if (charging_ok)
 		    SUCCESS_LED_GREEN.write(1);
 		else
@@ -1386,7 +1431,21 @@ function buttonCallback()
 		// HACK
 		// turn on charging again so DUT doesn't die while writing test software
 		USB_POWER.write(1);
-		factoryOnIdle();
+
+		local result_data_table = {serialNumber = serialNumber,
+		    testControl = TEST_CONTROL_MASTER_DONE,
+		    testList = []};
+		agent.send("testresult", result_data_table);
+		
+		testIncompleteTimer = imp.wakeup(TEST_INCOMPLETE_TIMEOUT, function() {
+			local result_data_table = {serialNumber = serialNumber,
+			    testControl = TEST_CONTROL_MASTER_TIMEOUT,
+			    testList = []};
+			agent.send("testresult", result_data_table);
+			factoryOnIdle();
+		    });
+		// allow test to run again here
+		BLINKUP_BUTTON.configure(DIGITAL_IN, buttonCallback);
 	    });
     } else 
 	factoryOnIdle();
@@ -1404,7 +1463,7 @@ function init()
 	BLINKUP_BUTTON      <- hardware.pin1;
 	USB_POWER           <- hardware.pin2;
 	BLINKUP_LED         <- hardware.pin5;
-	USB_PWRGD           <- hardware.pin7;
+	USB_PWRGD_PINS      <- [hardware.pin7, hardware.pin7, hardware.pin7, hardware.pin7]; 
 	FAILURE_LED_RED     <- hardware.pin8;
 	SUCCESS_LED_GREEN   <- hardware.pin9;
 
@@ -1419,7 +1478,8 @@ function init()
 	USB_POWER.write(0);
 
 	// PWRGD on MCP1825 is open drain, needs a pull-up resistor
-	USB_PWRGD.configure(DIGITAL_IN_PULLUP);
+	for (local i=0; i<USB_PWRGD_PINS.len(); i++)
+	    USB_PWRGD_PINS[i].configure(DIGITAL_IN_PULLUP);
 	
 	factoryOnIdle();
     } else if (ENVIRONMENT_MODULE == board_type) {
