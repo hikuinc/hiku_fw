@@ -94,6 +94,11 @@ const CONNECT_RETRY_TIME = 45; // for now 45 seconds retry time
 
 const SETUP_BARCODE_PREFIX = "4H1KU5"
 
+// use the factory BSSID to ensure scanning the special barcodes
+// on the hiku box only works in the factory
+// HACK
+const FACTORY_BSSID = "0cda412a0420";
+
 enum DeviceState
 /*
                            ---> SCAN_CAPTURED ------>
@@ -1125,7 +1130,7 @@ class Scanner
                     if(0!= agent.send("uploadBeep", {
                                               scandata=scannerOutput,
                                               scansize=scannerOutput.len(),
-                                              serial=hardware.getimpeeid(),
+                                              serial=hardware.getdeviceid(),
                                               fw_version=cFirmwareVersion,
                                               linkedrecord="",
                                               audiodata="",
@@ -1574,7 +1579,7 @@ function sendLastBuffer()
     {
         if(agent.send("endAudioUpload", {
                                       scandata="",
-                                      serial=hardware.getimpeeid(),
+                                      serial=hardware.getdeviceid(),
                                       fw_version=cFirmwareVersion,
                                       linkedrecord="",
                                       audiodata="", // to be added by agent
@@ -1586,7 +1591,7 @@ function sendLastBuffer()
     } else {
         agent.send("abortAudioUpload", {
                                       scandata="",
-                                      serial=hardware.getimpeeid(),
+                                      serial=hardware.getdeviceid(),
                                       fw_version=cFirmwareVersion,
                                       linkedrecord="",
                                       audiodata="", // to be added by agent
@@ -2080,7 +2085,7 @@ function onConnected(status)
 		 							             
         	// Send the agent our impee ID
         local data = { 
-        				impeeId = hardware.getimpeeid(), 
+        				impeeId = hardware.getdeviceid(), 
         				fw_version = cFirmwareVersion,
         				bootup_reason = nv.boot_up_reason,
         				disconnect_reason = nv.disconnect_reason,
@@ -2088,6 +2093,8 @@ function onConnected(status)
         				sleep_duration = nv.sleep_duration,
         				osVersion = imp.getsoftwareversion(),
 						time_to_connect = timeToConnect,
+                                                at_factory = (imp.getbssid() == FACTORY_BSSID),
+	                                        macAddress = imp.getmacaddress()
         			};
         agentSend("init_status", data);
         

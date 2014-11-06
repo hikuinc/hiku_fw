@@ -21,7 +21,8 @@ if (!("nv" in getroottable()))
 			gWakeUpReason = 0x0000,
 			gBatteryLevel = 0.0,
 			gFwVersion = 0.0,
-			
+			at_factory = false,
+	                macAddress = null
     	  };
 }
 
@@ -70,8 +71,12 @@ gAuthData <-{
     			secret="c923b1e09386"
 			}
 
-// Heroku server base URL			
-gBaseUrl <- "https://hiku.herokuapp.com/api/v1";
+// Heroku server base URL	
+// HACK
+// HACK
+// HACK
+// for testing only		
+gBaseUrl <- "https://hiku-staging.herokuapp.com/api/v1";
 
 gServerUrl <- gBaseUrl + "/list";	
 
@@ -85,6 +90,33 @@ gAudioUrl <- gBaseUrl + "/audio";
 
 const BATT_0_PERCENT = 43726.16;
 
+// prefixes indicating special barcodes with minimum
+// and maximum barcode lengths in characters
+const PREFIX_IMP_MAC = "0C2A69";
+const PREFIX_IMP_LABELING = ".HCMGETMAC";
+const PREFIX_GENERAL = ".HFB";
+
+const TEST_CMD_PACKAGE = "package";
+const TEST_CMD_PRINT_LABEL = "label";
+
+gSpecialBarcodePrefixes <- [{
+	// MAC addresses of Electric Imp modules printed as barcodes at the factory
+	prefix = PREFIX_IMP_MAC,
+	min_len = 12,
+	max_len = 12,
+	url = gBaseUrl + "/factory"},{
+	// barcode for generating a 2D datamatrix barcode for the scanner at the
+        // label printer in production	
+	prefix = PREFIX_IMP_LABELING,
+	min_len = 10,
+	max_len = 10,
+	url = gBaseUrl + "/factory"},{
+	// general special barcodes
+	prefix = PREFIX_GENERAL,
+	min_len = 5,
+	max_len = 64,
+	url = null
+    }];
 
 //======================================================================
 // Beep handling 
@@ -221,15 +253,13 @@ function sendBeepToHikuServer(data)
         return;
     }
     
-    
-    if( data.scandata != "" && isSpecialBarcode(data.scandata))
-    {
-      server.log("Checking Special Barcode Successful");
-      if (gAudioState != AudioStates.AudioError) {
-        gAudioState = AudioStates.AudioFinishedBarcode;
-      }
-    	sendSpecialBarcode(data);
-    	return;
+    if(data.scandata != "") {
+	if (handleSpecialBarcodes(data)) {
+	    if (gAudioState != AudioStates.AudioError) {
+		gAudioState = AudioStates.AudioFinishedBarcode;
+	    }
+	    return;
+	}
     }
     
     local timeStr = getUTCTime();
@@ -378,61 +408,104 @@ function onBeepReturn(res) {
 }
 
 // Send the barcode to hiku's server
-function sendSpecialBarcode(data)
+function handleSpecialBarcodes(data)
 {
-    local disableSendToServer = false;
-    local newData;
-    //disableSendToServer = true;
-    if (disableSendToServer)
-    {
-        agentLog("(sending to hiku server not enabled)");
-        return;
+    local barcode = data.scandata;
+    local req = null;
+    local is_special = false;
+    // test the barcode against all known special barcode prefixes
+    for (local i=0; i<gSpecialBarcodePrefixes.len() && !is_special; i++) {
+	local prefix = gSpecialBarcodePrefixes[i]["prefix"];
+	local min_len = gSpecialBarcodePrefixes[i]["min_len"];
+	local max_len = gSpecialBarcodePrefixes[i]["max_len"];
+	local barcode_len = barcode.len();
+	if ((barcode_len >= min_len) && (barcode_len <= max_len)) {
+	    local temp = barcode.slice(0,prefix.len());
+  	    server.log("Original Barcode: "+barcode+" Sliced Barcode: "+temp);
+	    if (temp == prefix)
+		switch (prefix) {
+	    case PREFIX_IMP_MAC :
+		server.log(format("Scanned MAC %s", barcode));
+		if (!nv.at_factory) {
+		    return false;
+		}
+		is_special = true;
+		local json_data = http.jsonencode ({
+			"macAddress": nv.macAddress,
+			"serialNumber": nv.gImpeeId,
+			"scannedMacAddress": barcode,
+			"command": TEST_CMD_PACKAGE
+    		    });
+		server.log(json_data);
+		req = http.post(
+		    gSpecialBarcodePrefixes[i]["url"],
+		    {"Content-Type": "application/json", 
+			"Accept": "application/json"}, 
+		    json_data);
+		break;
+	    case PREFIX_IMP_LABELING :
+		server.log(format("Scanned label code %s", barcode));
+		if (!nv.at_factory) {
+		    return false;
+		}
+		is_special = true;
+		local json_data = http.jsonencode ({
+			"macAddress": nv.macAddress,
+			"serialNumber": nv.gImpeeId,
+			"command": TEST_CMD_PRINT_LABEL
+    		    });
+		server.log(json_data);
+		req = http.post(
+		    gSpecialBarcodePrefixes[i]["url"],
+		    {"Content-Type": "application/json", 
+			"Accept": "application/json"}, 
+		    json_data);
+		break;
+	    case PREFIX_GENERAL :
+		server.log(format("Scanned special barcode %s", barcode));
+		is_special = true;
+		local timeStr = getUTCTime();
+		local mySig = http.hash.sha256(gAuthData.app_id+gAuthData.secret+timeStr);
+		mySig = BlobToHexString(mySig);
+		
+		server.log(format("Current Impee Id=%s Valid ImpeeId=%s",nv.gImpeeId, data.serial));
+		nv.gImpeeId = data.serial;
+		
+		local newData = {
+    		    "frob":data.scandata,   			
+    		    "token": nv.gImpeeId,
+                    "sig": mySig,
+                    "app_id": gAuthData.app_id,
+                    "time": timeStr,
+                    "serialNumber": nv.gImpeeId,
+    		};
+		local url = gSetupUrl+"/"+data.scandata;
+		server.log("Put URL: "+url);
+		// URL-encode the whole thing
+		data = http.urlencode(newData);
+		server.log(data);
+		req = http.put(
+		    url,
+		    {"Content-Type": "application/x-www-form-urlencoded", 
+			"Accept": "application/json"}, 
+		    data);
+		break;
+	    }
+	}
     }
-    
-    local timeStr = getUTCTime();
-    local mySig = http.hash.sha256(gAuthData.app_id+gAuthData.secret+timeStr);
-    mySig = BlobToHexString(mySig);
-    
-    server.log(format("Current Impee Id=%s Valid ImpeeId=%s",nv.gImpeeId, data.serial));
-    nv.gImpeeId = data.serial;
-
-    newData = {
-    			"frob":data.scandata,   			
-    			"token": nv.gImpeeId,
-                "sig": mySig,
-                "app_id": gAuthData.app_id,
-                "time": timeStr,
-                "serialNumber": nv.gImpeeId,
-    		  };
-	  
-    //data = gAuthData + newData;
-    
-    
-    local url = gSetupUrl+"/"+data.scandata;
-    server.log("Put URL: "+url);
-    data = newData;
-        
-    // URL-encode the whole thing
-    data = http.urlencode(data);
-    server.log(data);
+    if (!is_special)
+	return false;
+	
     // Create and send the request
-    agentLog("Sending beep to server...");
-    local req = http.put(
-            //"http://bobert.net:4444", 
-            //"http://www.hiku.us/sand/cgi-bin/readRawDeviceData.py", 
-            //"http://199.115.118.221/scanner_1/imp_beep",
-            url,
-            {"Content-Type": "application/x-www-form-urlencoded", 
-            "Accept": "application/json"}, 
-            data);
+    agentLog("Sending special barcode to server...");
             
     // If the server is down, this will block all other events
     // until it times out.  Events seem to be queued on the server 
     // with no ill effects.  They do not block the device.  Could consider 
     // moving to async. The timeout period (tested) is 60 seconds.  
-    local res;
     gTransactionTime = time();
     req.sendasync(onSpecialBarcodeReturn);
+    return true;
 }
 
 function onSpecialBarcodeReturn(res) {
@@ -473,23 +546,6 @@ function onSpecialBarcodeReturn(res) {
     // TODO: device.send will be dropped if response took so long that 
     // the device went back to sleep.  Handle that? 
     device.send("uploadCompleted", returnString);
-}
-
-
-function isSpecialBarcode(barcode)
-{
-  local specialPrefix = ".HFB";
-  
-  if( barcode.len() > specialPrefix.len() )
-  {
-  	// The barcode is longer than specialPrefix length
-  	// at this time we can compare the 4 characters and validate
-  	local temp = barcode.slice(0,specialPrefix.len());
-  	server.log("Original Barcode: "+barcode+" Sliced Barcode: "+temp);
-  	return (temp == specialPrefix);
-  }
-  
-  return false;
 }
 
 /*
@@ -1041,6 +1097,8 @@ device.on("init_status", function(data) {
     nv.gFwVersion = data.fw_version;
     nv.gWakeUpReason = data.bootup_reason;
     nv.gSleepDuration = data.sleep_duration;
+    nv.at_factory = data.at_factory;
+    nv.macAddress = data.macAddress;
     
     //server.log(format("Device to Agent Time: %dms", (time()*1000 - data.time_stamp)));
     server.log(format("Device OS Version: %s", data.osVersion));

@@ -7,7 +7,7 @@ local connection_available = false;
 testList <- array(0);
 
 macaddress <- imp.getmacaddress();
-serialNumber <- hardware.getimpeeid();
+serialNumber <- hardware.getdeviceid();
 
 // if true, every test is logged individually allowing test failures to be captured before a device crash;
 // leads to more API calls
