@@ -6,7 +6,7 @@ local connection_available = false;
 
 testList <- array(0);
 
-macaddress <- imp.getmacaddress();
+macAddress <- imp.getmacaddress();
 serialNumber <- hardware.getdeviceid();
 
 // if true, every test is logged individually allowing test failures to be captured before a device crash;
@@ -37,8 +37,12 @@ const SX1505ADDR = 0x21;
 // Change this to enable the factory blink-up
 // This is the WIFI SSID and password that will be used for factory blink-up
 // HACK
-const SSID = "hiku-hq";
-const PASSWORD = "broadwayVeer";
+const SSID = "cache";
+const PASSWORD = "upgrades";
+//const SSID = "Flex-HiKu";
+//const PASSWORD = "1234@abcd";
+//const SSID = "CrownePlaza";
+//const PASSWORD = "";
 
 // number of seconds after which a watchdog timer flushes
 // all outstanding data to the server
@@ -648,6 +652,7 @@ class IoExpander extends I2cDevice
 function test_flush() {
     if (testList.len() > 0) {
 	local result_data_table = {serialNumber = serialNumber,
+	    macAddress = macAddress,
 	    testControl = TEST_CONTROL_UPDATE,
 	    testList = testList}
 	agent.send("testresult", result_data_table);
@@ -1284,6 +1289,7 @@ class FactoryTester {
 	    imp.cancelwakeup(flushTimer);
 
 	local result_data_table = {serialNumber = serialNumber,
+	    macAddress = macAddress,
 	    testControl = test_ok ? TEST_CONTROL_PASS : TEST_CONTROL_FAIL,
 	    testList = testList};
 	agent.send("testresult", result_data_table);
@@ -1324,6 +1330,7 @@ class FactoryTester {
 
 	    testList.clear();
 	    local result_data_table = {serialNumber = serialNumber,
+		macAddress = macAddress,
 		testControl = TEST_CONTROL_START,
 		testList = testList};
 	    agent.send("testresult", result_data_table);
@@ -1377,6 +1384,7 @@ function buttonCallback()
     // Check if button is pressed
     if (BLINKUP_BUTTON.read() == 1) {
 	local result_data_table = {serialNumber = serialNumber,
+	    macAddress = macAddress,
 	    testControl = TEST_CONTROL_MASTER_START,
 	    testList = []};
 	agent.send("testresult", result_data_table);
@@ -1433,12 +1441,14 @@ function buttonCallback()
 		USB_POWER.write(1);
 
 		local result_data_table = {serialNumber = serialNumber,
+		    macAddress = macAddress,
 		    testControl = TEST_CONTROL_MASTER_DONE,
 		    testList = []};
 		agent.send("testresult", result_data_table);
 		
 		testIncompleteTimer = imp.wakeup(TEST_INCOMPLETE_TIMEOUT, function() {
 			local result_data_table = {serialNumber = serialNumber,
+			    macAddress = macAddress,
 			    testControl = TEST_CONTROL_MASTER_TIMEOUT,
 			    testList = []};
 			agent.send("testresult", result_data_table);
