@@ -76,7 +76,8 @@ gAuthData <-{
 // HACK
 // HACK
 // for testing only		
-gBaseUrl <- "https://hiku-staging.herokuapp.com/api/v1";
+gBaseUrl <- "https://hiku.herokuapp.com/api/v1";
+gFactoryUrl <- "https://hiku-staging.herokuapp.com/api/v1";
 
 gServerUrl <- gBaseUrl + "/list";	
 
@@ -92,7 +93,7 @@ const BATT_0_PERCENT = 43726.16;
 
 // prefixes indicating special barcodes with minimum
 // and maximum barcode lengths in characters
-const PREFIX_IMP_MAC = "0C2A69";
+const PREFIX_IMP_MAC = "0c2a69";
 const PREFIX_IMP_LABELING = ".HCMGETMAC";
 const PREFIX_GENERAL = ".HFB";
 
@@ -104,13 +105,13 @@ gSpecialBarcodePrefixes <- [{
 	prefix = PREFIX_IMP_MAC,
 	min_len = 12,
 	max_len = 12,
-	url = gBaseUrl + "/factory"},{
+	url = gFactoryUrl + "/factory"},{
 	// barcode for generating a 2D datamatrix barcode for the scanner at the
         // label printer in production	
 	prefix = PREFIX_IMP_LABELING,
 	min_len = 10,
 	max_len = 10,
-	url = gBaseUrl + "/factory"},{
+	url = gFactoryUrl + "/factory"},{
 	// general special barcodes
 	prefix = PREFIX_GENERAL,
 	min_len = 5,
