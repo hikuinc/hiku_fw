@@ -70,8 +70,7 @@ if( nv.sleep_count != 0 )
 // Consts and enums
 const cFirmwareVersion = "1.1.11" // Beta firmware is 1.0.0
 const cButtonTimeout = 6;  // in seconds
-const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
-//const cDelayBeforeDeepSleep = 3600.0;  // in seconds
+const cDelayBeforeDeepSleep = 1200.0;  // in seconds and just change this one
 // The two variables below here are to use a hysteresis for the Accelerometer to stop
 // moving, and if the accelerometer doesn’t stop moving within the cDelayBeforeAccelClear
 // then we don’t go to sleep. Here is how it would work:
@@ -97,7 +96,7 @@ const SETUP_BARCODE_PREFIX = "4H1KU5"
 // use the factory BSSID to ensure scanning the special barcodes
 // on the hiku box only works in the factory
 // HACK
-const FACTORY_BSSID = "0cda412a0420";
+const FACTORY_BSSID = "20aa4b532731";
 
 enum DeviceState
 /*
