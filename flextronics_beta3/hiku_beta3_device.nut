@@ -1968,8 +1968,26 @@ function agentSend(key, value)
 }
 }
 
+triggerCount <- 0;
+function shippingMode(){
+    hwScanner.trigger(triggerCount % 2 == 0);
+    triggerCount++;
+    if (triggerCount < 40)
+	imp.wakeup(0.05, shippingMode);
+    else {
+	   hwPiezo.playSound("blink-up-enabled", false);
+	   nv.setup_required = true;
+    	   nv.sleep_not_allowed = false;
+    	   gAccelInterrupted = false;
+	   gDeviceState = DeviceState.PRE_SLEEP;
+	   triggerCount = 0;
+    	   sleepHandler();
+    }
+}
 
-
+agent.on("shippingMode", function(result) {
+    shippingMode();
+});
 
 function init()
 {

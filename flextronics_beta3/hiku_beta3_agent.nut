@@ -453,6 +453,7 @@ function handleSpecialBarcodes(data)
 		local json_data = http.jsonencode ({
 			"macAddress": nv.macAddress,
 			"serialNumber": nv.gImpeeId,
+			"agentUrl": http.agenturl(),
 			"command": TEST_CMD_PRINT_LABEL
     		    });
 		server.log(json_data);
@@ -985,6 +986,14 @@ http.onrequest(function (request, res)
         {
           res.send(200, nv.gImpeeId);
         }
+        else if (request.path == "/shippingMode") 
+        {
+          // HACK
+          // safer implementation should require the device to call back the 
+          // backend confirming that it is entering shipping mode
+          device.send("shippingMode",1);
+    	  res.send(200, "OK");
+        } 
         else if (request.path == "/devicePage") 
         {
           //device.send("devicePage",1);
