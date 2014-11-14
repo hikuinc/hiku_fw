@@ -282,7 +282,7 @@ const BATT_MIN_WARN_VOLTAGE = 3.5;
 const VREF_MIN = 2.9;
 const VREF_MAX = 3.1;
 // minimal voltage increase when charger is plugged in
-const CHARGE_MIN_INCREASE = 0.03;
+const CHARGE_MIN_INCREASE = 0.005;
 // ADC resolution is 12 bits; 2^12=4096
 // Resistor divider R4/R9 is 40.2k/80.6k
 // VREF = 3V
@@ -1265,26 +1265,11 @@ class FactoryTester {
     
     function testFinish() {
 
-/*
-	server.bless(test_ok, function(bless_success) {
-		//server.flush(5);
-		if (test_ok) imp.clearconfiguration();
-	    });
-*/
-
 	local test_time = hardware.millis() - test_start_time;
 	test_log(TEST_CLASS_NONE, TEST_RESULT_INFO, format("Total test time: %dms", test_time), TEST_ID_TEST_TIME, {test_time=test_time});
 	test_flush();
 	server.flush(5);
-/*
-		if (bless_success)
-		    test_log(TEST_CLASS_BLESS, TEST_RESULT_SUCCESS, "Blessing succeeded.", TEST_ID_BLESS, 
-		    {bless_success=bless_success, test_ok=test_ok});
-		else 
-		    test_log(TEST_CLASS_BLESS, TEST_RESULT_ERROR, "Blessing failed.", TEST_ID_BLESS, 
-		    {bless_success=bless_success, test_ok=test_ok});
-*/
-	
+    	
 	if (flushTimer)
 	    imp.cancelwakeup(flushTimer);
 
@@ -1307,6 +1292,25 @@ class FactoryTester {
 	// HACK
 	// retest automatically for software dev
 	imp.enableblinkup(true);
+    
+	server.bless(true /*test_ok */, function(bless_success) {
+		//
+        if (bless_success)
+        {
+		    test_log(TEST_CLASS_BLESS, TEST_RESULT_SUCCESS, "Blessing succeeded.", TEST_ID_BLESS, 
+		    {bless_success=bless_success, test_ok=test_ok});        
+        }
+		else
+        {
+        	test_log(TEST_CLASS_BLESS, TEST_RESULT_ERROR, "Blessing failed.", TEST_ID_BLESS, 
+		    {bless_success=bless_success, test_ok=test_ok});
+        }
+	test_flush();
+        server.flush(5);
+        
+        if( bless_success ) imp.clearconfiguration();
+        
+	    });
     }
 
     function testStart(status)
@@ -1380,7 +1384,7 @@ function buttonCallback()
 	imp.cancelwakeup(testIncompleteTimer);
 
     // Disable any further callbacks until blink-up is done
-    BLINKUP_BUTTON.configure(DIGITAL_IN);
+    BLINKUP_BUTTON.configure(DIGITAL_IN_PULLDOWN);
     // Check if button is pressed
     if (BLINKUP_BUTTON.read() == 1) {
 	local result_data_table = {serialNumber = serialNumber,
@@ -1455,7 +1459,7 @@ function buttonCallback()
 			factoryOnIdle();
 		    });
 		// allow test to run again here
-		BLINKUP_BUTTON.configure(DIGITAL_IN, buttonCallback);
+		BLINKUP_BUTTON.configure(DIGITAL_IN_PULLDOWN, buttonCallback);
 	    });
     } else 
 	factoryOnIdle();
