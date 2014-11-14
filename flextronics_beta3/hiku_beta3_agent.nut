@@ -77,7 +77,7 @@ gAuthData <-{
 // HACK
 // for testing only		
 gBaseUrl <- "https://hiku.herokuapp.com/api/v1";
-gFactoryUrl <- "https://hiku-staging.herokuapp.com/api/v1";
+gFactoryUrl <- "https://hiku-mfg.herokuapp.com/api/v1";
 
 gServerUrl <- gBaseUrl + "/list";	
 
