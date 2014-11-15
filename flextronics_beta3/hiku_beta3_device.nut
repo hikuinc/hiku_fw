@@ -1989,7 +1989,8 @@ function shippingMode(){
 }
 
 agent.on("shippingMode", function(result) {
-    shippingMode();
+	if (imp.getbssid() == FACTORY_BSSID)
+	    shippingMode();
 });
 
 function init()
