@@ -1412,23 +1412,22 @@ function buttonCallback()
 		local charging_ok = true;
 		USB_POWER.write(1);
 		imp.sleep(0.1);
-		for (local testBox=0; testBox<USB_PWRGD_PINS.len(); testBox++)
-		    // Check PWRDG to be 1. If it's 0 there is a short or over-current on the USB
-		    if (USB_PWRGD_PINS[testBox].read() == 1) {
+		// Check PWRDG to be 1. If it's 0 there is a short or over-current on the USB
+		if (USB_PWRGD_PIN.read() == 1) {
 		    charging_ok = charging_ok && true;
 		    test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, "Charging current in range (<=700mA).",
-			TEST_ID_CHARGER_CURRENT, {charging_current_ref=700}, testBox);
+			TEST_ID_CHARGER_CURRENT, {charging_current_ref=700});
 		    //server.log("Charging current in range.");
 		    //HACK
 		    //match devices through different barcodes in compartments 0..3
 		    //test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, "Charging current below 700mA.", TEST_ID_CHARGER_CURRENT);
 		    } else {
-			charging_ok = false;
-			test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "Charging current exceeds 700mA.",
-			    TEST_ID_CHARGER_CURRENT, {charging_current_ref=700}, testBox);
+		    charging_ok = false;
+		    test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "Charging current exceeds 700mA.",
+			TEST_ID_CHARGER_CURRENT, {charging_current_ref=700});
 			//server.log("Error: Charging current exceeds 700mA on at least one device.");
-			//test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "Charging current exceeds 700mA.", TEST_ID_CHARGER_CURRENT);
-		    }
+		    //test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "Charging current exceeds 700mA.", TEST_ID_CHARGER_CURRENT);
+		}
 		test_flush();
 		imp.sleep(CHARGE_DURATION);
 		USB_POWER.write(0);
@@ -1477,7 +1476,7 @@ function init()
 	BLINKUP_BUTTON      <- hardware.pin1;
 	USB_POWER           <- hardware.pin2;
 	BLINKUP_LED         <- hardware.pin5;
-	USB_PWRGD_PINS      <- [hardware.pin7, hardware.pin7, hardware.pin7, hardware.pin7]; 
+	USB_PWRGD_PIN      <-  hardware.pin7;
 	FAILURE_LED_RED     <- hardware.pin8;
 	SUCCESS_LED_GREEN   <- hardware.pin9;
 
@@ -1492,8 +1491,7 @@ function init()
 	USB_POWER.write(0);
 
 	// PWRGD on MCP1825 is open drain, needs a pull-up resistor
-	for (local i=0; i<USB_PWRGD_PINS.len(); i++)
-	    USB_PWRGD_PINS[i].configure(DIGITAL_IN_PULLUP);
+	USB_PWRGD_PIN.configure(DIGITAL_IN_PULLUP);
 	
 	factoryOnIdle();
     } else if (ENVIRONMENT_MODULE == board_type) {
