@@ -110,7 +110,7 @@ const AUDIO_MID_VARIANCE = 2000;//128;
 
 // Minimum and maximum amplitude when recording the buzzer
 const AUDIO_BUZZER_AMP_MIN = 280;
-const AUDIO_BUZZER_AMP_MAX = 1250;
+const AUDIO_BUZZER_AMP_MAX = 2000;
 
 // Number of min/max values to store for amplitude evaluation
 const AUDIO_NUM_VALUES = 20;
@@ -270,14 +270,14 @@ const CHARGE_PGOOD_L     = 7;
 //
 // maximal and minimal battery voltages acceptable during assembly/test
 //
-const BATT_MAX_VOLTAGE      = 4.2;
+const BATT_MAX_VOLTAGE      = 4.1;
 // Battery voltage needs to be at least above V_LOWV=3.1V of BQ24072
 // (3.2V with margin for error ) such that charging in testing is done
 // in fast-charge mode.
-const BATT_MIN_VOLTAGE      = 3.2;
+const BATT_MIN_VOLTAGE      = 3.5;
 // Issue a battery warning if below 3.5V as we wouldn't want to ship
 // devices with empty batteries.
-const BATT_MIN_WARN_VOLTAGE = 3.5;
+const BATT_MIN_WARN_VOLTAGE = 3.7;
 // Reference voltage VREF, min and max.
 const VREF_MIN = 2.9;
 const VREF_MAX = 3.1;
@@ -1441,7 +1441,7 @@ function buttonCallback()
 		// HACK
 		// HACK
 		// turn on charging again so DUT doesn't die while writing test software
-		USB_POWER.write(1);
+		// USB_POWER.write(1);
 
 		local result_data_table = {serialNumber = serialNumber,
 		    macAddress = macAddress,
