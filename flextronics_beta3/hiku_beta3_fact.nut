@@ -100,13 +100,13 @@ const AUDIO_SAMPLE_RATE = 8000; // recording rate in Hz
 const ADC_MAX = 4095;
 // Allowable noise amplitude when recording silence 
 // with and without WiFi running
-const AUDIO_SILENCE_AMP_WIFI = 128;
-const AUDIO_SILENCE_AMP_NO_WIFI = 128;
+const AUDIO_SILENCE_AMP_WIFI = 800; //128;
+const AUDIO_SILENCE_AMP_NO_WIFI = 800; //128;
 
 // A/D converter readings should be at mid point when recording silence,
 // i.e. 4096/2 for left-aligned data, allowing +/- 128.
 const AUDIO_MID = 2048;
-const AUDIO_MID_VARIANCE = 128;
+const AUDIO_MID_VARIANCE = 2000;//128;
 
 // Minimum and maximum amplitude when recording the buzzer
 const AUDIO_BUZZER_AMP_MIN = 280;
@@ -1429,7 +1429,7 @@ function buttonCallback()
 			//server.log("Error: Charging current exceeds 700mA on at least one device.");
 			//test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "Charging current exceeds 700mA.", TEST_ID_CHARGER_CURRENT);
 		    }
-		//test_flush();
+		test_flush();
 		imp.sleep(CHARGE_DURATION);
 		USB_POWER.write(0);
     		//server.log("USB charger off");
