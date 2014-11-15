@@ -1273,20 +1273,6 @@ class FactoryTester {
 	if (flushTimer)
 	    imp.cancelwakeup(flushTimer);
 
-	local result_data_table = {serialNumber = serialNumber,
-	    macAddress = macAddress,
-	    testControl = test_ok ? TEST_CONTROL_PASS : TEST_CONTROL_FAIL,
-	    testList = testList};
-	agent.send("testresult", result_data_table);
-	testList.clear()
-	
-	if (test_ok) {
-	    hwPiezo.playSound("test-pass", false)
-	} else {
-	    hwPiezo.playSound("test-fail", false);
-	    // enable blink-up in case of a test failure for retesting
-	    //imp.enableblinkup(true);
-	}
 	// HACK
 	// HACK
 	// HACK
@@ -1305,6 +1291,20 @@ class FactoryTester {
         	test_log(TEST_CLASS_BLESS, TEST_RESULT_ERROR, "Blessing failed.", TEST_ID_BLESS, 
 		    {bless_success=bless_success, test_ok=test_ok});
         }
+		test_ok = test_ok && bless_success;
+		local result_data_table = {serialNumber = serialNumber,
+		    macAddress = macAddress,
+		    testControl = test_ok ? TEST_CONTROL_PASS : TEST_CONTROL_FAIL,
+		    testList = testList};
+		agent.send("testresult", result_data_table);
+		testList.clear()
+		
+		if (test_ok) {
+		    hwPiezo.playSound("test-pass", false)
+		} else {
+		    hwPiezo.playSound("test-fail", false);
+		}
+
 	test_flush();
         server.flush(5);
         
