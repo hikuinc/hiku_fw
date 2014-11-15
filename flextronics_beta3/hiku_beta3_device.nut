@@ -1981,6 +1981,7 @@ function shippingMode(){
     	   gAccelInterrupted = false;
 	   gDeviceState = DeviceState.PRE_SLEEP;
 	   triggerCount = 0;
+	   imp.clearconfiguration();
     	   sleepHandler();
     }
 }
