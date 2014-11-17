@@ -646,6 +646,13 @@ class IoExpander extends I2cDevice
     // actual vs. expected value.
     function pin_fast_probe(pin_num, expect, drive_type, name, test_id, failure_mode=TEST_RESULT_ERROR) {
 	pin_configure(pin_num, drive_type);
+	// HACK
+	// HACK 
+	// HACK
+	// leave more time for the BUTTON_L pull-up test so the de-bouncing capacitor can
+	// charge through the pull-up resistor before sampling the signal
+	if (test_id == TEST_ID_BUTTON_L_PU)
+	    imp.sleep(0.05);
 	local actual = pin_read(pin_num);
 	// Quickly turn off the pin driver after reading as driving the pin may
 	// create a short in case of a PCB failure.
