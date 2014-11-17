@@ -25,7 +25,7 @@ const BLINKUP_IMP_MAC = "0c2a690043cc";
 // timer handle for timing out devices that did not complete the button test
 // after the charging test is done
 testIncompleteTimer <- null;
-const TEST_INCOMPLETE_TIMEOUT = 5;
+const TEST_INCOMPLETE_TIMEOUT = 8;
 
 // watchdog timer for flushing data to server if test gets stuck
 flushTimer <- null;
@@ -120,8 +120,8 @@ const AUDIO_MID = 2048;
 const AUDIO_MID_VARIANCE = 2000;//128;
 
 // Minimum and maximum amplitude when recording the buzzer
-const AUDIO_BUZZER_AMP_MIN = 280;
-const AUDIO_BUZZER_AMP_MAX = 2000;
+const AUDIO_BUZZER_AMP_MIN = 400;
+const AUDIO_BUZZER_AMP_MAX = 2048;
 
 // Number of min/max values to store for amplitude evaluation
 const AUDIO_NUM_VALUES = 20;
@@ -1047,8 +1047,9 @@ class FactoryTester {
 	i2cIOExp.write(i2cReg.RegPullUp, 0x00);
 
 	local regData = i2cIOExp.read(i2cReg.RegData);
-	// clear SCANNER_TRIGGER_OUT_L (0x20) low to turn the scanner off
-	regData = regData | 0x20;
+	// set SCANNER_TRIGGER_OUT_L (0x20) high to turn the scanner trigger off
+	// set SW_VCC_EN_OUT_L (0x10) high to turn the scanner power off
+	regData = regData | 0x30;
 	i2cIOExp.write(i2cReg.RegData, regData);		
 
 	//test_log(TEST_CLASS_BUTTON, TEST_RESULT_INFO, "**** BUTTON TEST DONE ****");
@@ -1290,7 +1291,8 @@ class FactoryTester {
 		if (audioCurrentTest != AUDIO_TEST_DONE) {
 		    // Flush all data to the server to not introduce WiFi
 		    // noise into the following recording.
-		    server.flush(2);
+		    test_flush();
+		    server.flush(5);
 		    // record uncompressed 12-bit samples (vs. 8-bit a-law) to simplify
 		    // data interpretation
 		    hardware.sampler.configure(EIMP_AUDIO_IN, AUDIO_SAMPLE_RATE, 
