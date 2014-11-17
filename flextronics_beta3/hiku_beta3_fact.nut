@@ -14,13 +14,14 @@ serialNumber <- hardware.getdeviceid();
 // if false, tests are batched by test group; fewer API calls, but less granularity when tests fail
 logIndividual <- true;
 
+// MAC address of the factory Imp to run the blinkup/OS upgrade firmware;
+// the other Imp runs the test fixture firmware
+const BLINKUP_IMP_MAC = "0c2a690043cc";
+
 // timer handle for timing out devices that did not complete the button test
 // after the charging test is done
 testIncompleteTimer <- null;
-const TEST_INCOMPLETE_TIMEOUT = 45;
-
-// number of seconds after which to enable USB charging
-const TEST_USB_CHARGE_DELAY = 25;
+const TEST_INCOMPLETE_TIMEOUT = 5;
 
 // watchdog timer for flushing data to server if test gets stuck
 flushTimer <- null;
@@ -46,10 +47,16 @@ const PASSWORD = "upgrades";
 
 // number of seconds after which a watchdog timer flushes
 // all outstanding data to the server
-const WATCHDOG_FLUSH = 40;
+const WATCHDOG_FLUSH = 10;
 
+// number of seconds charging is delayed by to allow factory Imp to submit master run entry
+const CHARGE_DELAY = 1;
+// number of seconds to delay sampling the overcurrent signal
+const CHARGE_SAMPLE_INTERVAL = 0.01;
 // number of seconds USB charging is turned on for
-const CHARGE_DURATION = 2;
+const CHARGE_SAMPLES = 100;
+// number of seconds to delay LED after charging test
+const CHARGE_LED_DELAY = 5;
 
 // 0x0D is used for misc instead of the 0x10
 local sx1508reg = {RegMisc = 0x10,
@@ -182,10 +189,11 @@ const TEST_CLASS_BLESS   = "BLESS";
 //
 const TEST_CONTROL_MASTER_START = "MASTER_START";
 const TEST_CONTROL_START = "START";
+const TEST_CONTROL_FIXTURE_START = "FIXTURE_START";
 const TEST_CONTROL_UPDATE = "UPDATE";
 const TEST_CONTROL_PASS = "PASS";
 const TEST_CONTROL_FAIL = "FAIL";
-const TEST_CONTROL_MASTER_DONE = "MASTER_DONE";
+//const TEST_CONTROL_MASTER_DONE = "MASTER_DONE";
 const TEST_CONTROL_MASTER_TIMEOUT = "MASTER_TIMEOUT";
 
 //
@@ -691,6 +699,8 @@ class FactoryTester {
     // sleep time between I2C reconfiguration attempts
     i2c_sleep_time = 0.2;
     test_start_time = 0;
+    // battery voltage is needed by both battery and charger test routines
+    batt_voltage = 0;
     i2cIOExp = null;
     
     constructor()
@@ -949,7 +959,140 @@ class FactoryTester {
 
 	//test_log(TEST_CLASS_ACCEL, TEST_RESULT_INFO, "**** ACCELEROMETER TESTS DONE ****");
 	test_flush();
-	scannerTest();
+	batteryTest();
+    }
+
+    function batteryTest() {
+	
+	//test_log(TEST_CLASS_CHARGER, TEST_RESULT_INFO, "**** CHARGER TESTS STARTING ****");
+
+	local vref_voltage = hardware.voltage();
+	if ((vref_voltage > VREF_MIN) && (vref_voltage < VREF_MAX))
+	    test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, format("Reference voltage VREF %fV.", vref_voltage),
+	    TEST_ID_CHARGER_VREF, {vref_voltage=vref_voltage});
+	else
+	    test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Reference voltage VREF %fV out of range, required %fV<VREF<%fV.", vref_voltage, VREF_MIN, VREF_MAX),
+	    TEST_ID_CHARGER_VREF, {vref_voltage=vref_voltage, vref_min=VREF_MIN, vref_max=VREF_MAX});
+	    
+	local bat_acc = 0;
+	for (local i = 0; i < BATT_ADC_SAMPLES; i++)
+    	    bat_acc += (BATT_VOLT_MEASURE.read() >> 4) & 0xFFF;
+
+	batt_voltage = (bat_acc/BATT_ADC_SAMPLES) * BATT_ADC_RDIV;
+
+	// check battery voltage to be in allowable range
+	if (batt_voltage > BATT_MIN_VOLTAGE) {
+	    if (batt_voltage < BATT_MAX_VOLTAGE)
+		test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, format("Battery voltage %fV.", batt_voltage), 
+		TEST_ID_CHARGER_BATT_VOLT, {batt_voltage=batt_voltage});
+	    else
+		test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Battery voltage %fV higher than allowed %fV.", batt_voltage, BATT_MAX_VOLTAGE), 
+		TEST_ID_CHARGER_BATT_VOLT, {batt_voltage=batt_voltage, batt_max_voltage=BATT_MAX_VOLTAGE});
+	} else 
+	    test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Battery voltage %fV lower than allowed %fV.", batt_voltage, BATT_MIN_VOLTAGE), 
+		TEST_ID_CHARGER_BATT_VOLT, {batt_voltage=batt_voltage, batt_min_voltage=BATT_MIN_VOLTAGE});
+
+	// check battery voltage to be in desirable range for shipment to customers
+	if (batt_voltage < BATT_MIN_WARN_VOLTAGE)
+	    test_log(TEST_CLASS_CHARGER, TEST_RESULT_WARNING, format("Battery voltage %fV below desired %fV.", batt_voltage, BATT_MIN_WARN_VOLTAGE),
+	    TEST_ID_CHARGER_BATT_VOLT, {batt_voltage=batt_voltage, batt_min_warn_voltage=BATT_MIN_WARN_VOLTAGE});
+
+	test_flush();
+
+	// turn the scanner LEDs on until button is pressed and released
+	// turn on power to the scanner and reset it
+	local regData = i2cIOExp.read(i2cReg.RegData);
+	i2cIOExp.write(i2cReg.RegDir, i2cIOExp.read(i2cReg.RegDir) & 0x8F);
+	regData = (regData & 0x8F) | 0x20;
+	// set SW_VCC_EN_OUT_L (0x10) low to turn on power to scanner
+	// set SCANNER_TRIGGER_OUT_L (0x20) high (scanner needs a falling edge to trigger scanning)
+	// set SCANNER_RESET_L (0x40) low to reset scanner
+	i2cIOExp.write(i2cReg.RegData, regData);
+	// set SCANNER_RESET_L (0x40) high to take the scanner out of reset
+	regData = regData | 0x40;
+	i2cIOExp.write(i2cReg.RegData, regData);
+	// set SCANNER_TRIGGER_OUT_L (0x20) low to turn the scanner on
+	regData = regData & 0xDF;
+	i2cIOExp.write(i2cReg.RegData, regData);
+
+	buttonTest();
+    }
+
+    function buttonTest() {
+	//test_log(TEST_CLASS_BUTTON, TEST_RESULT_INFO, "**** BUTTON TEST STARTING ****");
+		
+	// Prepare I/O pin expander for button press
+	i2cIOExp.write(i2cReg.RegPullUp, 0x04);
+
+	// wait for pull-up resistor to charge capacitor C13
+	imp.sleep(0.1);
+
+	while ((i2cIOExp.read(i2cReg.RegData) & 0x4) != 0)
+	    imp.sleep(0.02);
+        test_log(TEST_CLASS_BUTTON, TEST_RESULT_SUCCESS, "Button pressed.", TEST_ID_BUTTON_PRESS);
+	while ((i2cIOExp.read(i2cReg.RegData) & 0x4) != 0x4);
+        test_log(TEST_CLASS_BUTTON, TEST_RESULT_SUCCESS, "Button released.", TEST_ID_BUTTON_RELEASE);
+
+	i2cIOExp.write(i2cReg.RegPullUp, 0x00);
+
+	local regData = i2cIOExp.read(i2cReg.RegData);
+	// clear SCANNER_TRIGGER_OUT_L (0x20) low to turn the scanner off
+	regData = regData | 0x20;
+	i2cIOExp.write(i2cReg.RegData, regData);		
+
+	//test_log(TEST_CLASS_BUTTON, TEST_RESULT_INFO, "**** BUTTON TEST DONE ****");
+	test_flush();
+	chargerTest();
+    }
+
+    function chargerTest() {
+
+	local charge_pgood = i2cIOExp.pin_read(CHARGE_PGOOD_L);
+	local charge_status = i2cIOExp.pin_read(CHARGE_STATUS_L);
+
+	// Full test suite would have to check for CHARGE_PGOOD_L flashing at 2Hz
+	// for safety timer expiration. See http://www.ti.com/lit/ds/symlink/bq24072t.pdf page 23.
+	if (charge_pgood || charge_status) {	    
+	    imp.wakeup(0.05, chargerTest.bindenv(this));
+	} else {
+
+   	    local result_data_table = {serialNumber = serialNumber,
+		macAddress = macAddress,
+		testControl = TEST_CONTROL_FIXTURE_START,
+		testList = []};
+	    agent.send("testresult", result_data_table);
+
+	    factoryTester.test_start_time = hardware.millis();
+	    // flush all data to the server using a watchdog timer in case the
+	    // test gets stuck and there is data remaining
+	    flushTimer = imp.wakeup(WATCHDOG_FLUSH, test_flush);
+
+	    if (charge_status)
+		test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "CHARGE_STATUS_L not low when USB charging.", TEST_ID_CHARGER_CHARGE_STATUS_L);
+	    if (charge_pgood)
+		test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "CHARGE_PGOOD_L not low when USB charging.", TEST_ID_CHARGER_CHARGE_PGOOD_L);
+
+	    // wait for the battery voltage to stabilize with charger switched on
+	    imp.sleep(0.1);
+
+	    local bat_acc = 0;
+	    for (local i = 0; i < BATT_ADC_SAMPLES; i++)
+    		bat_acc += (BATT_VOLT_MEASURE.read() >> 4) & 0xFFF;
+	    
+	    local charge_voltage = (bat_acc/BATT_ADC_SAMPLES) * BATT_ADC_RDIV;
+	    local volt_diff = charge_voltage - batt_voltage;
+
+	    if (volt_diff > CHARGE_MIN_INCREASE)
+		test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, format("Battery voltage when charging %fV greater than before charging.", volt_diff),
+	    TEST_ID_CHARGER_BATT_VOLT_DIFF, {volt_diff=volt_diff});
+	    else
+		test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Battery voltage difference %fV to before charging, requiring greater %fV.", volt_diff, CHARGE_MIN_INCREASE),
+		TEST_ID_CHARGER_BATT_VOLT_DIFF, {volt_diff=volt_diff, charge_min_increase=CHARGE_MIN_INCREASE});
+	    
+	    test_flush();
+	    //test_log(TEST_CLASS_CHARGER, TEST_RESULT_INFO, "**** CHARGER TESTS DONE ****");
+	    scannerTest();
+	}
     }
 
     function scannerTest() {
@@ -1154,116 +1297,14 @@ class FactoryTester {
 	    hardware.sampler.reset();
 	    //test_log(TEST_CLASS_AUDIO, TEST_RESULT_INFO, "**** AUDIO TESTS DONE ****");
 	    test_flush();
-	    factoryTester.chargerTest();
+	    factoryTester.testFinish();
 	}
     }
- 
-    function chargerTest() {
+     
+    function testFinish() {
+
 	// turn off microphone/scanner after audio test
 	i2cIOExp.pin_configure(SW_VCC_EN_L, DRIVE_TYPE_FLOAT);
-	
-	//test_log(TEST_CLASS_CHARGER, TEST_RESULT_INFO, "**** CHARGER TESTS STARTING ****");
-
-	local vref_voltage = hardware.voltage();
-	if ((vref_voltage > VREF_MIN) && (vref_voltage < VREF_MAX))
-	    test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, format("Reference voltage VREF %fV.", vref_voltage),
-	    TEST_ID_CHARGER_VREF, {vref_voltage=vref_voltage});
-	else
-	    test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Reference voltage VREF %fV out of range, required %fV<VREF<%fV.", vref_voltage, VREF_MIN, VREF_MAX),
-	    TEST_ID_CHARGER_VREF, {vref_voltage=vref_voltage, vref_min=VREF_MIN, vref_max=VREF_MAX});
-	    
-	local bat_acc = 0;
-	for (local i = 0; i < BATT_ADC_SAMPLES; i++)
-    	    bat_acc += (BATT_VOLT_MEASURE.read() >> 4) & 0xFFF;
-
-	local batt_voltage = (bat_acc/BATT_ADC_SAMPLES) * BATT_ADC_RDIV;
-
-	// check battery voltage to be in allowable range
-	if (batt_voltage > BATT_MIN_VOLTAGE) {
-	    if (batt_voltage < BATT_MAX_VOLTAGE)
-		test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, format("Battery voltage %fV.", batt_voltage), 
-		TEST_ID_CHARGER_BATT_VOLT, {batt_voltage=batt_voltage});
-	    else
-		test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Battery voltage %fV higher than allowed %fV.", batt_voltage, BATT_MAX_VOLTAGE), 
-		TEST_ID_CHARGER_BATT_VOLT, {batt_voltage=batt_voltage, batt_max_voltage=BATT_MAX_VOLTAGE});
-	} else 
-	    test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Battery voltage %fV lower than allowed %fV.", batt_voltage, BATT_MIN_VOLTAGE), 
-		TEST_ID_CHARGER_BATT_VOLT, {batt_voltage=batt_voltage, batt_min_voltage=BATT_MIN_VOLTAGE});
-
-	// check battery voltage to be in desirable range for shipment to customers
-	if (batt_voltage < BATT_MIN_WARN_VOLTAGE)
-	    test_log(TEST_CLASS_CHARGER, TEST_RESULT_WARNING, format("Battery voltage %fV below desired %fV.", batt_voltage, BATT_MIN_WARN_VOLTAGE),
-	    TEST_ID_CHARGER_BATT_VOLT, {batt_voltage=batt_voltage, batt_min_warn_voltage=BATT_MIN_WARN_VOLTAGE});
-
-	local charge_pgood = i2cIOExp.pin_read(CHARGE_PGOOD_L);
-	local charge_status = i2cIOExp.pin_read(CHARGE_STATUS_L);
-	local chargeWaitCount = 0;
-	//
-	// HACK
-	//
-	// Full test suite would have to check for CHARGE_PGOOD_L flashing at 2Hz
-	// for safety timer expiration. See http://www.ti.com/lit/ds/symlink/bq24072t.pdf page 23.
-	while ((charge_pgood || charge_status) && (chargeWaitCount < 100)) {
-	    chargeWaitCount += 1;
-	    imp.sleep(0.1);
-	    charge_pgood = i2cIOExp.pin_read(CHARGE_PGOOD_L);
-	    charge_status = i2cIOExp.pin_read(CHARGE_STATUS_L);
-	}
-
-	if (charge_status)
-	    test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "CHARGE_STATUS_L not low when USB charging.", TEST_ID_CHARGER_CHARGE_STATUS_L);
-	if (charge_pgood)
-	    test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "CHARGE_PGOOD_L not low when USB charging.", TEST_ID_CHARGER_CHARGE_PGOOD_L);
-
-	// wait for the battery voltage to stabilize with charger switched on
-	imp.sleep(0.1);
-
-	bat_acc = 0;
-	for (local i = 0; i < BATT_ADC_SAMPLES; i++)
-    	    bat_acc += (BATT_VOLT_MEASURE.read() >> 4) & 0xFFF;
-
-	local charge_voltage = (bat_acc/BATT_ADC_SAMPLES) * BATT_ADC_RDIV;
-	local volt_diff = charge_voltage - batt_voltage;
-
-	if (volt_diff > CHARGE_MIN_INCREASE)
-	    test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, format("Battery voltage when charging %fV greater than before charging.", volt_diff),
-	    TEST_ID_CHARGER_BATT_VOLT_DIFF, {volt_diff=volt_diff});
-	else
-	    test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Battery voltage difference %fV to before charging, requiring greater %fV.", volt_diff, CHARGE_MIN_INCREASE),
-	    TEST_ID_CHARGER_BATT_VOLT_DIFF, {volt_diff=volt_diff, charge_min_increase=CHARGE_MIN_INCREASE});
-	
-	test_flush();
-	//test_log(TEST_CLASS_CHARGER, TEST_RESULT_INFO, "**** CHARGER TESTS DONE ****");
-	buttonTest();
-    }
-
-    function buttonTest() {
-	//test_log(TEST_CLASS_BUTTON, TEST_RESULT_INFO, "**** BUTTON TEST STARTING ****");
-
-	// Prepare I/O pin expander for button press
-	i2cIOExp.write(i2cReg.RegInterruptMask, 0xFF);
-	i2cIOExp.write(i2cReg.RegInterruptSource, 0xFF);
-	i2cIOExp.write(i2cReg.RegSenseLow, 0x00);
-	i2cIOExp.write(i2cReg.RegDir, 0xFF);
-	i2cIOExp.write(i2cReg.RegData, 0xFF);
-	i2cIOExp.write(i2cReg.RegPullUp, 0x04);
-	i2cIOExp.write(i2cReg.RegPullDown, 0x00);
-
-	while ((i2cIOExp.read(i2cReg.RegData) & 0x4) != 0)
-	    imp.sleep(0.02);
-        test_log(TEST_CLASS_BUTTON, TEST_RESULT_SUCCESS, "Button pressed.", TEST_ID_BUTTON_PRESS);
-	while ((i2cIOExp.read(i2cReg.RegData) & 0x4) != 0x4);
-        test_log(TEST_CLASS_BUTTON, TEST_RESULT_SUCCESS, "Button released.", TEST_ID_BUTTON_RELEASE);
-
-	// The operator needs to listen to the buzzer sound after pressing and
-	// releasing the button, which indicates test pass or fail.
-	i2cIOExp.write(i2cReg.RegPullUp, 0x00);
-
-	//test_log(TEST_CLASS_BUTTON, TEST_RESULT_INFO, "**** BUTTON TEST DONE ****");
-	testFinish();
-    }
-    
-    function testFinish() {
 
 	local test_time = hardware.millis() - test_start_time;
 	test_log(TEST_CLASS_NONE, TEST_RESULT_INFO, format("Total test time: %dms", test_time), TEST_ID_TEST_TIME, {test_time=test_time});
@@ -1299,11 +1340,11 @@ class FactoryTester {
 		agent.send("testresult", result_data_table);
 		testList.clear()
 		
-		if (test_ok) {
-		    hwPiezo.playSound("test-pass", false)
-		} else {
-		    hwPiezo.playSound("test-fail", false);
-		}
+		//if (test_ok) {
+		//    hwPiezo.playSound("test-pass", false)
+		//} else {
+		//    hwPiezo.playSound("test-fail", false);
+		//}
 
 	test_flush();
         server.flush(5);
@@ -1339,11 +1380,6 @@ class FactoryTester {
 		testList = testList};
 	    agent.send("testresult", result_data_table);
 	    
-	    factoryTester.test_start_time = hardware.millis();
-	    // flush all data to the server using a watchdog timer in case the
-	    // test gets stuck and there is data remaining
-	    flushTimer = imp.wakeup(WATCHDOG_FLUSH, test_flush);
-
 	    //test_log(TEST_CLASS_NONE, TEST_RESULT_INFO, "**** TESTS STARTING ****");
 	    local os_version = imp.getsoftwareversion();
 	    test_log(TEST_CLASS_NONE, TEST_RESULT_INFO, format("OS version: %s",os_version), TEST_ID_OS_VERSION, {os_version=os_version});
@@ -1378,21 +1414,18 @@ function factoryOnIdle() {
 	});
 }
 
+charging_ok <- false;
+
 function buttonCallback()
 {
     if (testIncompleteTimer)
 	imp.cancelwakeup(testIncompleteTimer);
 
-    // Disable any further callbacks until blink-up is done
+    // Disable any further callbacks until blink-up or test is done
     BLINKUP_BUTTON.configure(DIGITAL_IN_PULLDOWN);
+
     // Check if button is pressed
     if (BLINKUP_BUTTON.read() == 1) {
-	local result_data_table = {serialNumber = serialNumber,
-	    macAddress = macAddress,
-	    testControl = TEST_CONTROL_MASTER_START,
-	    testList = []};
-	agent.send("testresult", result_data_table);
-	USB_POWER.write(0);
 	BLINKUP_LED.configure(DIGITAL_OUT);
     	BLINKUP_LED.write(0);
 	// turn off red LED if it was on from a previous test failure
@@ -1403,63 +1436,67 @@ function buttonCallback()
 	SUCCESS_LED_GREEN.write(1);
 	imp.sleep(0.1);
 	SUCCESS_LED_GREEN.write(0);
-    	server.log("Factory blink-up started");
-    	server.factoryblinkup(SSID,PASSWORD, BLINKUP_LED, BLINKUP_ACTIVEHIGH | BLINKUP_FAST);
-	//
-	// HACK
-	// implement synchronization through backend for better timing
-	imp.wakeup(TEST_USB_CHARGE_DELAY, function() {
-		local charging_ok = true;
-		USB_POWER.write(1);
-		imp.sleep(0.1);
-		// Check PWRDG to be 1. If it's 0 there is a short or over-current on the USB
-		if (USB_PWRGD_PIN.read() == 1) {
-		    charging_ok = charging_ok && true;
-		    test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, "Charging current in range (<=700mA).",
-			TEST_ID_CHARGER_CURRENT, {charging_current_ref=700});
-		    //server.log("Charging current in range.");
-		    //HACK
-		    //match devices through different barcodes in compartments 0..3
-		    //test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, "Charging current below 700mA.", TEST_ID_CHARGER_CURRENT);
-		    } else {
-		    charging_ok = false;
-		    test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "Charging current exceeds 700mA.",
-			TEST_ID_CHARGER_CURRENT, {charging_current_ref=700});
-			//server.log("Error: Charging current exceeds 700mA on at least one device.");
-		    //test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "Charging current exceeds 700mA.", TEST_ID_CHARGER_CURRENT);
-		}
-		test_flush();
-		imp.sleep(CHARGE_DURATION);
-		USB_POWER.write(0);
-    		//server.log("USB charger off");
-		if (charging_ok)
+	// blinkup/OS upgrade Imp
+	if (macAddress == BLINKUP_IMP_MAC) {
+    	    server.log("Factory blink-up started");
+    	    server.factoryblinkup(SSID,PASSWORD, BLINKUP_LED, BLINKUP_ACTIVEHIGH | BLINKUP_FAST);
+	    imp.wakeup(10, function() {
+    		    server.log("Factory blink-up done");
+		    // allow test to run again here
 		    SUCCESS_LED_GREEN.write(1);
-		else
-		    FAILURE_LED_RED.write(1);		    
-    		server.log("Factory blink-up done");
-		// HACK
-		// HACK
-		// HACK
-		// turn on charging again so DUT doesn't die while writing test software
-		// USB_POWER.write(1);
+		    BLINKUP_BUTTON.configure(DIGITAL_IN_PULLDOWN, buttonCallback);
+		});
+	} else {
+	    local result_data_table = {serialNumber = serialNumber,
+		macAddress = macAddress,
+		testControl = TEST_CONTROL_MASTER_START,
+		testList = []};
+	    agent.send("testresult", result_data_table);
+	    server.flush(5);
+	    // wait for the test start to get to the server to establish the master run entry
+	    imp.sleep(CHARGE_DELAY);
+	    USB_POWER.write(1);
+	    charging_ok = true;
+	    for (local i=0; i<CHARGE_SAMPLES; i++) {
+		imp.sleep(CHARGE_SAMPLE_INTERVAL);
+		// Check PWRDG to be 1. If it's 0 there is a short or over-current on the USB
+		charging_ok = charging_ok && (USB_PWRGD_PIN.read() == 1);
+	    }
+	    USB_POWER.write(0);
+ 	    if (charging_ok) 
+		test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, "Charging current in range (<=700mA).",
+		TEST_ID_CHARGER_CURRENT, {charging_current_ref=700});
+	    else
+		test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "Charging current exceeds 700mA.",
+		TEST_ID_CHARGER_CURRENT, {charging_current_ref=700});
+	    test_flush();
+	    server.flush(5);
 
-		local result_data_table = {serialNumber = serialNumber,
-		    macAddress = macAddress,
-		    testControl = TEST_CONTROL_MASTER_DONE,
-		    testList = []};
-		agent.send("testresult", result_data_table);
-		
-		testIncompleteTimer = imp.wakeup(TEST_INCOMPLETE_TIMEOUT, function() {
-			local result_data_table = {serialNumber = serialNumber,
-			    macAddress = macAddress,
-			    testControl = TEST_CONTROL_MASTER_TIMEOUT,
-			    testList = []};
-			agent.send("testresult", result_data_table);
-			factoryOnIdle();
-		    });
-		// allow test to run again here
-		BLINKUP_BUTTON.configure(DIGITAL_IN_PULLDOWN, buttonCallback);
-	    });
+	    imp.wakeup(CHARGE_LED_DELAY, function() {
+		    //local result_data_table = {serialNumber = serialNumber,
+			//macAddress = macAddress,
+			//testControl = TEST_CONTROL_MASTER_DONE,
+			//testList = []};
+		    //agent.send("testresult", result_data_table);
+		    
+		    testIncompleteTimer = imp.wakeup(TEST_INCOMPLETE_TIMEOUT, function() {
+			    local result_data_table = {serialNumber = serialNumber,
+				macAddress = macAddress,
+				testControl = TEST_CONTROL_MASTER_TIMEOUT,
+				testList = []};
+			    agent.send("testresult", result_data_table);
+			    factoryOnIdle();
+			});
+
+		    if (charging_ok)
+			SUCCESS_LED_GREEN.write(1);
+		    else 
+			FAILURE_LED_RED.write(1);		    
+
+		    // allow test to run again here
+		    BLINKUP_BUTTON.configure(DIGITAL_IN_PULLDOWN, buttonCallback);
+		});
+	    } 
     } else 
 	factoryOnIdle();
 }
