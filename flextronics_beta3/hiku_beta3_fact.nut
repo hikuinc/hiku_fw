@@ -1,6 +1,6 @@
 // Copyright 2014 hiku labs inc. All rights reserved. Confidential.
 // Setup the server to behave when we have the no-wifi condition
-server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
+//server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 local sendBufferSize = 24*1024; // 16K send buffer size
 
 local oldsize = imp.setsendbuffersize(sendBufferSize);
@@ -25,7 +25,7 @@ const BLINKUP_IMP_MAC = "0c2a690043cc";
 // timer handle for timing out devices that did not complete the button test
 // after the charging test is done
 testIncompleteTimer <- null;
-const TEST_INCOMPLETE_TIMEOUT = 8;
+const TEST_INCOMPLETE_TIMEOUT = 40;
 
 // watchdog timer for flushing data to server if test gets stuck
 flushTimer <- null;
@@ -52,6 +52,8 @@ const PASSWORD = "upgrades";
 // number of seconds after which a watchdog timer flushes
 // all outstanding data to the server
 const WATCHDOG_FLUSH = 10;
+
+const SERVER_FLUSH_TIME = 5;
 
 // number of seconds charging is delayed by to allow factory Imp to submit master run entry
 const CHARGE_DELAY = 1;
@@ -121,7 +123,7 @@ const AUDIO_MID_VARIANCE = 2000;//128;
 
 // Minimum and maximum amplitude when recording the buzzer
 const AUDIO_BUZZER_AMP_MIN = 400;
-const AUDIO_BUZZER_AMP_MAX = 2048;
+const AUDIO_BUZZER_AMP_MAX = 3500;
 
 // Number of min/max values to store for amplitude evaluation
 const AUDIO_NUM_VALUES = 20;
@@ -1292,7 +1294,7 @@ class FactoryTester {
 		    // Flush all data to the server to not introduce WiFi
 		    // noise into the following recording.
 		    test_flush();
-		    server.flush(5);
+		    server.flush(SERVER_FLUSH_TIME);
 		    // record uncompressed 12-bit samples (vs. 8-bit a-law) to simplify
 		    // data interpretation
 		    hardware.sampler.configure(EIMP_AUDIO_IN, AUDIO_SAMPLE_RATE, 
@@ -1322,7 +1324,7 @@ class FactoryTester {
 	local test_time = hardware.millis() - test_start_time;
 	test_log(TEST_CLASS_NONE, TEST_RESULT_INFO, format("Total test time: %dms", test_time), TEST_ID_TEST_TIME, {test_time=test_time});
 	test_flush();
-	server.flush(5);
+	server.flush(SERVER_FLUSH_TIME);
     	
 	if (flushTimer)
 	    imp.cancelwakeup(flushTimer);
@@ -1335,6 +1337,7 @@ class FactoryTester {
     
 	server.bless(test_ok, function(bless_success) {
 		//
+        
         if (bless_success)
         {
 		    test_log(TEST_CLASS_BLESS, TEST_RESULT_SUCCESS, "Blessing succeeded.", TEST_ID_BLESS, 
@@ -1345,14 +1348,15 @@ class FactoryTester {
         	test_log(TEST_CLASS_BLESS, TEST_RESULT_ERROR, "Blessing failed.", TEST_ID_BLESS, 
 		    {bless_success=bless_success, test_ok=test_ok});
         }
-		test_flush();
-		test_ok = test_ok && bless_success;
-		local result_data_table = {serialNumber = serialNumber,
-		    macAddress = macAddress,
-		    testControl = test_ok ? TEST_CONTROL_PASS : TEST_CONTROL_FAIL,
-		    testList = testList};
-		agent.send("testresult", result_data_table);
-		testList.clear()
+   		test_ok = test_ok && bless_success;
+	  	local result_data_table = {serialNumber = serialNumber,
+		      macAddress = macAddress,
+		      testControl = test_ok ? TEST_CONTROL_PASS : TEST_CONTROL_FAIL,
+		      testList = testList};
+		    agent.send("testresult", result_data_table);     
+        testList.clear()  
+        //test_flush();
+        
 		
 		//if (test_ok) {
 		//    hwPiezo.playSound("test-pass", false)
@@ -1360,7 +1364,7 @@ class FactoryTester {
 		//    hwPiezo.playSound("test-fail", false);
 		//}
 
-        server.flush(10);
+        server.flush(SERVER_FLUSH_TIME);
         
         if( bless_success ) imp.clearconfiguration();
         
@@ -1465,7 +1469,7 @@ function buttonCallback()
 		testControl = TEST_CONTROL_MASTER_START,
 		testList = []};
 	    agent.send("testresult", result_data_table);
-	    server.flush(5);
+	    server.flush(SERVER_FLUSH_TIME);
 	    // wait for the test start to get to the server to establish the master run entry
 	    imp.sleep(CHARGE_DELAY);
 	    USB_POWER.write(1);
@@ -1480,10 +1484,10 @@ function buttonCallback()
 		test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, "Charging current in range (<=700mA).",
 		TEST_ID_CHARGER_CURRENT, {charging_current_ref=700});
 	    else
-		test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, "Charging current exceeds 700mA.",
+		test_log(TEST_CLASS_CHARGER, TEST_RESULT_WARNING, "Charging current exceeds 700mA.",
 		TEST_ID_CHARGER_CURRENT, {charging_current_ref=700});
 	    test_flush();
-	    server.flush(5);
+	    server.flush(SERVER_FLUSH_TIME);
 
 	    imp.wakeup(CHARGE_LED_DELAY, function() {
 		    //local result_data_table = {serialNumber = serialNumber,
