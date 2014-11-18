@@ -1345,6 +1345,7 @@ class FactoryTester {
         	test_log(TEST_CLASS_BLESS, TEST_RESULT_ERROR, "Blessing failed.", TEST_ID_BLESS, 
 		    {bless_success=bless_success, test_ok=test_ok});
         }
+		test_flush();
 		test_ok = test_ok && bless_success;
 		local result_data_table = {serialNumber = serialNumber,
 		    macAddress = macAddress,
@@ -1359,7 +1360,6 @@ class FactoryTester {
 		//    hwPiezo.playSound("test-fail", false);
 		//}
 
-        test_flush();
         server.flush(10);
         
         if( bless_success ) imp.clearconfiguration();
