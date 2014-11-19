@@ -2101,6 +2101,7 @@ function onConnected(status)
 hwPiezo <- Piezo(hardware.pin5); 
 if (imp.getssid() == "" && !("first_boot" in nv)) {
     nv.first_boot <- 1;
+    nv.setup_required = true;
     imp.deepsleepfor(1);
 }
 
