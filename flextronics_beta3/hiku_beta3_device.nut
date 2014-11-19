@@ -441,10 +441,6 @@ class Piezo
     // The hardware pin controlling the piezo 
     pin = null;
     
-    // this is for the 180 degrees out of phase to increase
-    // Piezo volume
-    pin_aux = null;
-    
     page_device = false;
 	pageToneIdx=0;
 		
@@ -467,20 +463,12 @@ class Piezo
     static extraShortTone = 0.1; // duration in seconds
 
     //**********************************************************
-    constructor(hwPin, hwPin_aux)
+    constructor(hwPin)
     {
     	//gInitTime.piezo = hardware.millis();
         pin = hwPin;
         
-        pin_aux = hwPin_aux
-
-        // Configure pin
-        pin.configure(DIGITAL_OUT);
-        pin_aux.configure(DIGITAL_OUT);
-        pin.write(0); // Turn off piezo by default
-        pin_aux.write(0);
-
-		disable();
+	disable();
 
         tonesParamsList = {
             // [[period, duty cycle, duration], ...]
@@ -521,8 +509,9 @@ class Piezo
     
     function disable()
     {
-    	pin.configure(DIGITAL_IN_PULLUP);
-    	pin_aux.configure(DIGITAL_IN_PULLUP);
+	pin.write(0);
+    	pin.configure(DIGITAL_OUT);
+	pin.write(0);
     }
     
     // utility futimeoutnction to validate that the tone is present
@@ -578,7 +567,6 @@ class Piezo
     {
         // Turn off the previous note
         pin.write(0);
-		pin_aux.write(0);
         
         if( !page_device )
         {
@@ -621,7 +609,6 @@ class Piezo
             // Play the first note
             local params = tonesParamsList[tone][0];
             pin.configure(PWM_OUT, params[0], params[1]);
-            pin_aux.configure(PWM_OUT, params[0], params[1]);
             // Play the next note after the specified delay
             currentTone = tone;
             currentToneIdx = 1;
@@ -633,11 +620,9 @@ class Piezo
             foreach (params in tonesParamsList[tone])
             {
                 pin.configure(PWM_OUT, params[0], params[1]);
-                pin.configure(PWM_OUT, params[0], params[1]);
                 imp.sleep(params[2]);
             }
             pin.write(0);
-			pin_aux.write(0);
         }
     }
         
@@ -648,7 +633,6 @@ class Piezo
     {
         // Turn off the previous note
         pin.write(0);
-        pin_aux.write(0);
 
         // This happens when playing more than one tone concurrently, 
         // which can happen if you scan again before the first tone
@@ -666,7 +650,6 @@ class Piezo
             local params = tonesParamsList[currentTone][currentToneIdx];
            // local params1 = tonesParamsList[currentTone][currentToneIdx-1];
             pin.configure(PWM_OUT, params[0], params[1]);
-            pin_aux.configure(PWM_OUT, params[0], params[1]);
 
             currentToneIdx++;
             imp.wakeup(params[2], _continueSound.bindenv(this));
@@ -1027,7 +1010,9 @@ class Scanner
         ioExpander.setPin(pin, 1); // pull high to disable trigger
 
         // Configure scanner UART (for RX only)
-        hardware.configure(UART_57); 
+	// WARNING: Ensure pin5 is never accidentally configured as a UART TX output
+	// and driven high. This triggers the buzzer and can cause device crashes
+        // on a low battery.	
         hardware.uart57.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
                                  scannerCallback.bindenv(this));
         //gInitTime.scanner = hardware.millis() - gInitTime.scanner;
@@ -1039,7 +1024,6 @@ class Scanner
         ioExpander.setPin(reset, 0); // pull reset low 
         ioExpander.setPin(pin, 0); // pull trigger low 
         hardware.uart57.disable();
-        hardware.pin5.configure(DIGITAL_IN_PULLUP);
         hardware.pin7.configure(DIGITAL_IN_PULLUP);
         hardware.pin2.configure(DIGITAL_IN_PULLUP);
         
@@ -2147,7 +2131,7 @@ function onConnected(status)
 
 // start off here and things should move
 // Piezo config
-hwPiezo <- Piezo(hardware.pin5, hardware.pinC); 
+hwPiezo <- Piezo(hardware.pin5); 
 if (imp.getssid() == "" && !("first_boot" in nv)) {
     nv.first_boot <- 1;
     nv.setup_required = true;
