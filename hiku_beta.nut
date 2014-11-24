@@ -2,6 +2,9 @@
 // Setup the server to behave when we have the no-wifi condition
 server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 
+// Always enable blinkup to keep LED flashing; power costs are negligible
+imp.enableblinkup(true);
+
 local entryTime = hardware.millis();
 
 /*
@@ -1342,9 +1345,6 @@ class PushButton
     
     function blinkUpDevice(blink=false)
     {
-    	// Since the blinkup is enabled all the time, lets not enable them
-    	// again, its unnecessary
-     	imp.enableblinkup(blink);
     	if( blink )
     	{
     		hwPiezo.playSound("blink-up-enabled");
@@ -2048,12 +2048,6 @@ function init()
 function onConnected(status)
 {
 	gIsConnecting = false;
-	
-	// always enable the blinkup when a connection call back happens
-	if( !nv.setup_required)
-	{
-		imp.enableblinkup(true);
-	}
 	
     if (status == SERVER_CONNECTED) {
         local timeToConnect = hardware.millis() - entryTime;
