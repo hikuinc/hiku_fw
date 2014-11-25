@@ -28,7 +28,7 @@ if (!("nv" in getroottable()))
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "1.1.10";
+gAgentVersion <- "1.3.00";
 
 gAudioState <- AudioStates.AudioError;
 

@@ -2,6 +2,9 @@
 // Setup the server to behave when we have the no-wifi condition
 server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 
+// Always enable blinkup to keep LED flashing; power costs are negligible
+imp.enableblinkup(true);
+
 local entryTime = hardware.millis();
 
 /*
@@ -68,7 +71,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.1.11" // Beta firmware is 1.0.0
+const cFirmwareVersion = "1.3.00" // Beta3 firmware starts with 1.3.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -1348,9 +1351,6 @@ class PushButton
     
     function blinkUpDevice(blink=false)
     {
-    	// Since the blinkup is enabled all the time, lets not enable them
-    	// again, its unnecessary
-     	imp.enableblinkup(blink);
     	if( blink )
     	{
     		hwPiezo.playSound("blink-up-enabled");
@@ -2074,12 +2074,6 @@ function init()
 function onConnected(status)
 {
 	gIsConnecting = false;
-	
-	// always enable the blinkup when a connection call back happens
-	if( !nv.setup_required)
-	{
-		imp.enableblinkup(true);
-	}
 	
     if (status == SERVER_CONNECTED) {
 	if (imp.getbssid() == FACTORY_BSSID) {
