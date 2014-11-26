@@ -1214,11 +1214,13 @@ class FactoryTester {
 	    audioBufCount++;
 	    if (audioBufCount == 4) 
 		hardware.sampler.stop();
-	    if (audioCurrentTest == AUDIO_TEST_SILENCE_WIFI)
-		test_flush();
+	    //if (audioCurrentTest == AUDIO_TEST_SILENCE_WIFI)
+	    //	test_flush();
 	    for (local i=0; i<length/2; i++)
 		audio_array[i]=(buffer[2*i+1] << 4) + (buffer[2*i] >> 4);
-	    test_log(TEST_CLASS_AUDIO, TEST_RESULT_INFO, "Audio buffer data.", TEST_ID_AUDIO_BUFFER_DATA, 
+	    // Only log audio data for buzzer test to reduce data volume
+	    if (audioCurrentTest == AUDIO_TEST_BUZZER)
+		test_log(TEST_CLASS_AUDIO, TEST_RESULT_INFO, "Audio buffer data.", TEST_ID_AUDIO_BUFFER_DATA, 
 		{audioBufCount=audioBufCount, audioCurrentTest=audioCurrentTest, data=audio_array, size=length/2});
 	    // Average over AUDIO_NUM_VALUES min and max values
 	    // to determine signal amplitude; avoids pass/fail based on outliers.
