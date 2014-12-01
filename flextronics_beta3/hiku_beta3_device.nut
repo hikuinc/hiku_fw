@@ -71,7 +71,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.3.00" // Beta3 firmware starts with 1.3.00
+const cFirmwareVersion = "1.3.01" // Beta3 firmware starts with 1.3.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
