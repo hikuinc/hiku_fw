@@ -44,7 +44,7 @@ if (!("nv" in getroottable()))
 {
     nv <- { 
         	sleep_count = 0, 
-    	    setup_required=false, 
+    	    setup_required=true, 
     	    setup_count = 0,
     	    disconnect_reason=0, 
     	    sleep_not_allowed=false,
@@ -88,7 +88,7 @@ const cDelayBeforeDeepSleep = 30.0;  // in seconds and just change this one
 local cActualDelayBeforeDeepSleep = cDelayBeforeDeepSleep - 2;
 const cDeepSleepDuration = 86380.0;  // in seconds (24h - 20s)
 const cDeepSleepInSetupMode = 2419180.0; // 28 days - 20seconds
-const BLINK_UP_TIME = 300.0; // in seconds (5M)
+const BLINK_UP_TIME = 600.0; // in seconds (10 minutes)
 
 // This is the number of button presses required to enter blink up mode
 const BLINK_UP_BUTTON_COUNT = 3;
@@ -2072,6 +2072,7 @@ function onConnected(status)
         if( nv.setup_required )
         {
         	nv.setup_required = false;
+	        nv.sleep_not_allowed = false;
         	nv.setup_count++;
         	log("Setup Completed!");
         }
