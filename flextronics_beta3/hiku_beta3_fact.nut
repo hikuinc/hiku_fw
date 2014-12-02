@@ -134,6 +134,7 @@ AUDIO_BUF0 <- blob(AUDIO_BUFFER_SIZE);
 AUDIO_BUF1 <- blob(AUDIO_BUFFER_SIZE);
 AUDIO_BUF2 <- blob(AUDIO_BUFFER_SIZE);
 AUDIO_BUF3 <- blob(AUDIO_BUFFER_SIZE);
+AUDIO_BUF4 <- blob(AUDIO_BUFFER_SIZE);
 audio_array <- array(AUDIO_BUFFER_SIZE/2);
 
 // test sequence
@@ -247,7 +248,10 @@ const TEST_ID_SCANNER_UART_OVERRUN_ERROR = 40300;
 const TEST_ID_SCANNER_UART_LINE_IDLE = 40400;
 const TEST_ID_SCANNER_BARCODE = 40500;
 const TEST_ID_AUDIO_BUFFER_OVERRUN = 50000;
-const TEST_ID_AUDIO_BUFFER_DATA = 50100;
+const TEST_ID_AUDIO_BUFFER_DATA0 = 50100;
+const TEST_ID_AUDIO_BUFFER_DATA1 = 50100;
+const TEST_ID_AUDIO_BUFFER_DATA2 = 50100;
+const TEST_ID_AUDIO_BUFFER_DATA3 = 50100;
 const TEST_ID_AUDIO_SILENCE_MIN = 50200;
 const TEST_ID_AUDIO_SILENCE_MAX = 50300;
 const TEST_ID_AUDIO_SILENCE_AMP = 50400;
@@ -1183,7 +1187,7 @@ class FactoryTester {
 	// record uncompressed 12-bit samples (vs. 8-bit a-law) to simplify
 	// data interpretation
 	hardware.sampler.configure(EIMP_AUDIO_IN, AUDIO_SAMPLE_RATE, 
-            [AUDIO_BUF0, AUDIO_BUF1, AUDIO_BUF2, AUDIO_BUF3], 
+            [AUDIO_BUF0, AUDIO_BUF1, AUDIO_BUF2, AUDIO_BUF3, AUDIO_BUF4], 
             audioCallback);
 	audioCurrentTest = AUDIO_TEST_SILENCE;
 	audioBufCount = 0;
@@ -1214,30 +1218,84 @@ class FactoryTester {
 	    audioBufCount++;
 	    if (audioBufCount == 4) 
 		hardware.sampler.stop();
-	    //if (audioCurrentTest == AUDIO_TEST_SILENCE_WIFI)
-	    //	test_flush();
-	    for (local i=0; i<length/2; i++)
-		audio_array[i]=(buffer[2*i+1] << 4) + (buffer[2*i] >> 4);
-	    // Only log audio data for buzzer test to reduce data volume
-	    if (audioCurrentTest == AUDIO_TEST_BUZZER)
-		test_log(TEST_CLASS_AUDIO, TEST_RESULT_INFO, "Audio buffer data.", TEST_ID_AUDIO_BUFFER_DATA, 
-		{audioBufCount=audioBufCount, audioCurrentTest=audioCurrentTest, data=audio_array, size=length/2});
-	    // Average over AUDIO_NUM_VALUES min and max values
-	    // to determine signal amplitude; avoids pass/fail based on outliers.
-	    local audio_val;
-	    for (local i=0; i<length/2; i++) {
-		audio_val = audio_array[i];
-		if (audio_val < audioMin.top()) {
-		    audioMin.pop();
-		    audioMin.push(audio_val);
-		    audioMin.sort(comp_vals_up);
-		} else if (audio_val > audioMax.top()) {
-		    audioMax.pop();
-		    audioMax.push(audio_val);
-		    audioMax.sort(comp_vals_down);
-		}
-	    }
 	    if (audioBufCount == 4) {
+		// Only log audio data for buzzer test to reduce data volume
+		local audio_val;
+		for (local i=0; i<length/2; i++) {
+		    audio_val = (AUDIO_BUF0[2*i+1] << 4) + (AUDIO_BUF0[2*i] >> 4);
+		    // Average over AUDIO_NUM_VALUES min and max values
+		    // to determine signal amplitude; avoids pass/fail based on outliers.
+		    if (audio_val < audioMin.top()) {
+			audioMin.pop();
+			audioMin.push(audio_val);
+			audioMin.sort(comp_vals_up);
+		    } else if (audio_val > audioMax.top()) {
+			audioMax.pop();
+			audioMax.push(audio_val);
+			audioMax.sort(comp_vals_down);
+		    }
+		    audio_array[i] = audio_val;
+		}
+		// Only log audio data for buzzer test to reduce data volume
+		if (audioCurrentTest == AUDIO_TEST_BUZZER) {
+		    test_log(TEST_CLASS_AUDIO, TEST_RESULT_INFO, "Audio buffer 0 data.", TEST_ID_AUDIO_BUFFER_DATA0, 
+			{audioBufCount=1, audioCurrentTest=audioCurrentTest, data=audio_array, size=length/2});
+		    test_flush();
+		}
+		for (local i=0; i<length/2; i++) {
+		    audio_val = (AUDIO_BUF1[2*i+1] << 4) + (AUDIO_BUF1[2*i] >> 4);
+		    if (audio_val < audioMin.top()) {
+			audioMin.pop();
+			audioMin.push(audio_val);
+			audioMin.sort(comp_vals_up);
+		    } else if (audio_val > audioMax.top()) {
+			audioMax.pop();
+			audioMax.push(audio_val);
+			audioMax.sort(comp_vals_down);
+		    }
+		    audio_array[i] = audio_val;
+		}
+		if (audioCurrentTest == AUDIO_TEST_BUZZER) {
+		    test_log(TEST_CLASS_AUDIO, TEST_RESULT_INFO, "Audio buffer 1 data.", TEST_ID_AUDIO_BUFFER_DATA1, 
+			{audioBufCount=2, audioCurrentTest=audioCurrentTest, data=audio_array, size=length/2});
+		    test_flush();
+		}
+		for (local i=0; i<length/2; i++) {
+		    audio_val = (AUDIO_BUF2[2*i+1] << 4) + (AUDIO_BUF2[2*i] >> 4);
+		    if (audio_val < audioMin.top()) {
+			audioMin.pop();
+			audioMin.push(audio_val);
+			audioMin.sort(comp_vals_up);
+		    } else if (audio_val > audioMax.top()) {
+			audioMax.pop();
+			audioMax.push(audio_val);
+			audioMax.sort(comp_vals_down);
+		    }
+		    audio_array[i] = audio_val;
+		}
+		if (audioCurrentTest == AUDIO_TEST_BUZZER) {
+		    test_log(TEST_CLASS_AUDIO, TEST_RESULT_INFO, "Audio buffer 2 data.", TEST_ID_AUDIO_BUFFER_DATA2, 
+			{audioBufCount=3, audioCurrentTest=audioCurrentTest, data=audio_array, size=length/2});
+		    test_flush();
+		}
+		for (local i=0; i<length/2; i++) {
+		    audio_val = (AUDIO_BUF3[2*i+1] << 4) + (AUDIO_BUF3[2*i] >> 4);
+		    if (audio_val < audioMin.top()) {
+			audioMin.pop();
+			audioMin.push(audio_val);
+			audioMin.sort(comp_vals_up);
+		    } else if (audio_val > audioMax.top()) {
+			audioMax.pop();
+			audioMax.push(audio_val);
+			audioMax.sort(comp_vals_down);
+		    }
+		    audio_array[i] = audio_val;
+		}
+		if (audioCurrentTest == AUDIO_TEST_BUZZER) {
+		    test_log(TEST_CLASS_AUDIO, TEST_RESULT_INFO, "Audio buffer 3 data.", TEST_ID_AUDIO_BUFFER_DATA3, 
+			{audioBufCount=4, audioCurrentTest=audioCurrentTest, data=audio_array, size=length/2});
+		    test_flush();
+		}
 		hardware.sampler.reset();
 		audioMin = audioMin.reduce(function(prev_val, cur_val){return (prev_val + cur_val)})/audioMin.len();
 		audioMax = audioMax.reduce(function(prev_val, cur_val){return (prev_val + cur_val)})/audioMax.len();
