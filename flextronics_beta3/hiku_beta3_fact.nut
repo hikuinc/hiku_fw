@@ -123,7 +123,7 @@ const AUDIO_MID_VARIANCE = 2000;//128;
 
 // Minimum and maximum amplitude when recording the buzzer
 const AUDIO_BUZZER_AMP_MIN = 400;
-const AUDIO_BUZZER_AMP_MAX = 3500;
+const AUDIO_BUZZER_AMP_MAX = 3900;
 
 // Number of min/max values to store for amplitude evaluation
 const AUDIO_NUM_VALUES = 20;
@@ -370,7 +370,7 @@ class Piezo
         tonesParamsList = {
             // [[period, duty cycle, duration], ...]
             // 1kHz for 1s
-            "one-khz": [[0.001, 0.5, 0.6]],
+            "one-khz": [[0.001, 0.5, 1.5]],
             "test-fail": [[noteB4, 0.85, 0.5]],
             "test-pass": [[noteE6, 0.85, 0.5]],
             "test-start": [[noteB4, 0.85, longTone], [noteE5, 0.15, shortTone]]
