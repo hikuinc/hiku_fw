@@ -113,8 +113,8 @@ const AUDIO_SAMPLE_RATE = 8000; // recording rate in Hz
 const ADC_MAX = 4095;
 // Allowable noise amplitude when recording silence 
 // with and without WiFi running
-const AUDIO_SILENCE_AMP_WIFI = 800; //128;
-const AUDIO_SILENCE_AMP_NO_WIFI = 800; //128;
+const AUDIO_SILENCE_AMP_WIFI = 1500; //128;
+const AUDIO_SILENCE_AMP_NO_WIFI = 1500; //128;
 
 // A/D converter readings should be at mid point when recording silence,
 // i.e. 4096/2 for left-aligned data, allowing +/- 128.
