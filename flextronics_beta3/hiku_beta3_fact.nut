@@ -123,7 +123,7 @@ const AUDIO_MID_VARIANCE = 2000;//128;
 
 // Minimum and maximum amplitude when recording the buzzer
 const AUDIO_BUZZER_AMP_MIN = 400;
-const AUDIO_BUZZER_AMP_MAX = 3900;
+const AUDIO_BUZZER_AMP_MAX = 4096;
 
 // Number of min/max values to store for amplitude evaluation
 const AUDIO_NUM_VALUES = 20;
