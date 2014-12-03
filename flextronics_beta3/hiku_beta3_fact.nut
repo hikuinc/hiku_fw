@@ -1330,6 +1330,7 @@ class FactoryTester {
 			TEST_ID_AUDIO_SILENCE_WIFI_AMP, {audioAmp=audioMax-audioMin, requiredAmp=AUDIO_SILENCE_AMP_WIFI});
 		    audioCurrentTest = AUDIO_TEST_BUZZER;
 		    test_flush();
+		    server.flush(SERVER_FLUSH_TIME);
 		    hwPiezo.playSound("one-khz");
 		    break;
 		case AUDIO_TEST_BUZZER:
