@@ -1329,6 +1329,7 @@ class FactoryTester {
 			test_log(TEST_CLASS_AUDIO, TEST_RESULT_ERROR, format("Audio amplitude recording silence %d (with WiFi), required <%d.", audioMax-audioMin, AUDIO_SILENCE_AMP_WIFI), 
 			TEST_ID_AUDIO_SILENCE_WIFI_AMP, {audioAmp=audioMax-audioMin, requiredAmp=AUDIO_SILENCE_AMP_WIFI});
 		    audioCurrentTest = AUDIO_TEST_BUZZER;
+		    test_flush();
 		    hwPiezo.playSound("one-khz");
 		    break;
 		case AUDIO_TEST_BUZZER:
