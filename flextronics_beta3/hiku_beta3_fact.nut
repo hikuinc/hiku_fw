@@ -1182,17 +1182,19 @@ class FactoryTester {
 	//test_log(TEST_CLASS_AUDIO, TEST_RESULT_INFO, "**** AUDIO TESTS STARTING ****");
 	// Flush all data to the server to not introduce WiFi
 	// noise into audio recording.
-	server.flush(2);
+	test_flush();
+	server.flush(SERVER_FLUSH_TIME);
 	hardware.sampler.reset();
 	// record uncompressed 12-bit samples (vs. 8-bit a-law) to simplify
 	// data interpretation
 	hardware.sampler.configure(EIMP_AUDIO_IN, AUDIO_SAMPLE_RATE, 
             [AUDIO_BUF0, AUDIO_BUF1, AUDIO_BUF2, AUDIO_BUF3, AUDIO_BUF4], 
             audioCallback);
-	audioCurrentTest = AUDIO_TEST_SILENCE;
+	audioCurrentTest = AUDIO_TEST_BUZZER;
 	audioBufCount = 0;
 	audioMin = array(AUDIO_NUM_VALUES, ADC_MAX);
 	audioMax = array(AUDIO_NUM_VALUES, 0);
+	hwPiezo.playSound("one-khz");
 	hardware.sampler.start();
 	// audioCallback will be called as buffers fill up 
     }   
