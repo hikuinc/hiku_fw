@@ -16,7 +16,7 @@ serialNumber <- hardware.getdeviceid();
 // if true, every test is logged individually allowing test failures to be captured before a device crash;
 // leads to more API calls
 // if false, tests are batched by test group; fewer API calls, but less granularity when tests fail
-logIndividual <- true;
+logIndividual <- false;
 
 // MAC address of the factory Imp to run the blinkup/OS upgrade firmware;
 // the other Imp runs the test fixture firmware
