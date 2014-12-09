@@ -550,7 +550,7 @@ class I2cDevice
 	if (test_id==null)
 	    test_id = default_test_id;
         if(i2cPort.write(i2cAddress, format("%c%c", register, data)) != 0)
-            test_log(test_class, TEST_RESULT_ERROR, format("I2C write, register 0x%x", register), test_id, {address=register, write_data=data});
+            test_log(test_class, TEST_RESULT_FATAL, format("I2C write, register 0x%x", register), test_id, {address=register, write_data=data});
     }
 
     // Write a byte address, read back register contents and verify if exp_data is not null
