@@ -519,7 +519,7 @@ class I2cDevice
         local data = i2cPort.read(i2cAddress, format("%c", register), 1);
         if(data == null)
         {
-	    test_log(test_class, TEST_RESULT_ERROR, format("I2C read, register 0x%x", register), test_id, {address=register});
+	    test_log(test_class, TEST_RESULT_FATAL, format("I2C read, register 0x%x", register), test_id, {address=register});
             // TODO: this should return null, right??? Do better handling.
             // TODO: print the i2c address as part of the error
             return -1;
@@ -1376,14 +1376,14 @@ class FactoryTester {
 	    hardware.sampler.reset();
 	    //test_log(TEST_CLASS_AUDIO, TEST_RESULT_INFO, "**** AUDIO TESTS DONE ****");
 	    test_flush();
+
+	    // turn off microphone/scanner after audio test
+	    factoryTester.i2cIOExp.pin_configure(SW_VCC_EN_L, DRIVE_TYPE_FLOAT);
 	    factoryTester.testFinish();
 	}
     }
      
     function testFinish() {
-
-	// turn off microphone/scanner after audio test
-	i2cIOExp.pin_configure(SW_VCC_EN_L, DRIVE_TYPE_FLOAT);
 
 	local test_time = hardware.millis() - test_start_time;
 	test_log(TEST_CLASS_NONE, TEST_RESULT_INFO, format("Total test time: %dms", test_time), TEST_ID_TEST_TIME, {test_time=test_time});
