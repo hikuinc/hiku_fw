@@ -316,7 +316,7 @@ TEST_REFERENCE_BARCODES <- ["9000567800007\r\n", "1111567811110\r\n", "222256782
 // set test_ok to false if any one test fails
 test_ok <- true;
 
-gIsConnecting <- false;
+testBox <- null;
 
 // This NV persistence is only good for warm boot
 // if we get a cold boot, all of this goes away
@@ -370,6 +370,14 @@ class Piezo
             // [[period, duty cycle, duration], ...]
             // 1kHz for 1s
             "one-khz": [[0.001, 0.5, 1.5]],
+	    //925Hz
+            "box0": [[0.001081081081081, 0.5, 1.5]],
+	    //975Hz
+            "box1": [[0.0010256410256411, 0.5, 1.5]],
+	    //1025Hz
+            "box2": [[0.000975609756098, 0.5, 1.5]],
+	    //1075Hz
+            "box3": [[0.00093023255814, 0.5, 1.5]],
             "test-fail": [[noteB4, 0.85, 0.5]],
             "test-pass": [[noteE6, 0.85, 0.5]],
             "test-start": [[noteB4, 0.85, longTone], [noteE5, 0.15, shortTone]]
@@ -684,7 +692,7 @@ function test_flush() {
     }
 }
 
-function test_log(testClass, testResult, testMsg=null, testId=null, jsonData=null, testBox=null) {
+function test_log(testClass, testResult, testMsg=null, testId=null, jsonData=null, dummy=null) {
 
     // Create one file with sequence of test messages
     // and individual files for each category.
@@ -696,8 +704,7 @@ function test_log(testClass, testResult, testMsg=null, testId=null, jsonData=nul
 	testResult=testResult,
 	testMsg=testMsg,
 	testId=testId,
-	jsonData=jsonData,
-	testBox=testBox
+	jsonData=jsonData
     };
     
     testList.append(testObj);
@@ -1161,8 +1168,12 @@ class FactoryTester {
 	i2cIOExp.write(i2cReg.RegDir, i2cIOExp.read(i2cReg.RegDir) | 0x70);
 
 	local barcode_match = false;
+	testBox = null;
 	for (local i=0; i<TEST_REFERENCE_BARCODES.len(); i++) {
-	    barcode_match = barcode_match || (scan_string == TEST_REFERENCE_BARCODES[i]);
+	    if (scan_string == TEST_REFERENCE_BARCODES[i])  {
+		barcode_match = true;
+		testBox = i;
+	    }
 	}
 
 	if (barcode_match) 
@@ -1193,7 +1204,10 @@ class FactoryTester {
 	audioBufCount = 0;
 	audioMin = array(AUDIO_NUM_VALUES, ADC_MAX);
 	audioMax = array(AUDIO_NUM_VALUES, 0);
-	hwPiezo.playSound("one-khz");
+	if (testBox == null)
+	    hwPiezo.playSound("one-khz");
+	else
+	    hwPiezo.playSound(format("box%u", testBox));
 	hardware.sampler.start();
 	// audioCallback will be called as buffers fill up 
     }   
@@ -1336,7 +1350,10 @@ class FactoryTester {
 		    audioCurrentTest = AUDIO_TEST_BUZZER;
 		    test_flush();
 		    server.flush(SERVER_FLUSH_TIME);
-		    hwPiezo.playSound("one-khz");
+		    if (testBox == null)
+			hwPiezo.playSound("one-khz");
+		    else
+			hwPiezo.playSound(format("box%u", testBox));
 		    break;
 		case AUDIO_TEST_BUZZER:
 		    if (((audioMax-audioMin) > AUDIO_BUZZER_AMP_MIN) && ((audioMax-audioMin) < AUDIO_BUZZER_AMP_MAX))
