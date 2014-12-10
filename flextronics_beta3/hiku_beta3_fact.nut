@@ -1433,6 +1433,7 @@ class FactoryTester {
         if( bless_success ) imp.clearconfiguration();
         
 	    });
+	if(!test_ok) imp.clearconfiguration();
     }
 
     function testStart(status)
