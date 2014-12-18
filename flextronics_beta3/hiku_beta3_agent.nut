@@ -28,9 +28,10 @@ if (!("nv" in getroottable()))
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "1.3.00";
+gAgentVersion <- "1.3.01";
 
 gAudioState <- AudioStates.AudioError;
+gAudioAbort <- false;
 
 // Byte pointer indicating the number of bytes of audio data
 // the server has picked up from the Imp agent with HTTP GETs
@@ -72,10 +73,6 @@ gAuthData <-{
 			}
 
 // Heroku server base URL	
-// HACK
-// HACK
-// HACK
-// for testing only		
 gBaseUrl <- "https://hiku.herokuapp.com/api/v1";
 gFactoryUrl <- "https://hiku-mfg.herokuapp.com/api/v1";
 
@@ -819,7 +816,8 @@ device.on("startAudioUpload", function(data) {
     gChunkCount = 0;
     gAudioReadPointer = 0;
     gAudioString = "";
-
+    gAudioAbort = false;
+    
     // POST to the server to indicate that a new audio recording is
     // starting; receive an audio token in return
     local newData;
@@ -871,7 +869,7 @@ function onReceiveAudioToken(m)
           } else {  
             gAudioToken = body.data.audioToken;
             agentLog(format("Token POST: AudioToken received: %s", gAudioToken));
-            gAudioState = AudioStates.AudioRecording;
+            gAudioState = gAudioAbort ? AudioStates.AudioError : AudioStates.AudioRecording;
           }
         }
         catch(e)
@@ -892,6 +890,7 @@ device.on("deviceLog", function(str){
 // Send complete audio sample to the server
 device.on("abortAudioUpload", function(data) {
     agentLog("Error: aborting audio upload");
+    gAudioAbort = true;
     gAudioState = AudioStates.AudioError;
 });
   
