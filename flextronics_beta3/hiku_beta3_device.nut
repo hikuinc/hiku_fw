@@ -1053,6 +1053,7 @@ class Scanner
     // Start the scanner and sampler
     function startScanRecord() 
     {
+        scannerOutput = "";
         // Trigger the scanner
         hwScanner.trigger(true);
 
@@ -1111,7 +1112,6 @@ class Scanner
                         return;
                     }
                     updateDeviceState(DeviceState.SCAN_CAPTURED);
-
                     /*log("Code: \"" + scannerOutput + "\" (" + 
                                scannerOutput.len() + " chars)");*/
                     //determineSetupBarcode(scannerOutput);
@@ -1293,24 +1293,25 @@ class PushButton
                 		}
                 		//buttonState = ButtonState.BUTTON_DOWN;
                 		return;
-                	}               
+                	}
+		    agentSend("button","Pressed");
                     updateDeviceState(DeviceState.SCAN_RECORD);
                     buttonState = ButtonState.BUTTON_DOWN;
                     //log("Button state change: DOWN");
-
                     hwScanner.startScanRecord();
                 }
-				else
-				{
-				    buttonState = ButtonState.BUTTON_DOWN;
-				}
+		else
+		{
+		    buttonState = ButtonState.BUTTON_DOWN;
+		}
                 
                 break;
             case 2:
                 // Button in released state
                 if (buttonState == ButtonState.BUTTON_DOWN)
                 {
-				    server.log("BUTTON RELEASED!");
+		    server.log("BUTTON RELEASED!");
+		    agentSend("button","Released");
                     buttonState = ButtonState.BUTTON_UP;
                     //log("Button state change: UP");
 				    /*
@@ -1455,8 +1456,10 @@ class ChargeStatus
     function chargerDetectionCB()
     {
     	// the pin is high charger is attached and low is a removal
-    	log(format("USB Detection CB: %s", ioExpander.getPin(7)? "disconnected":"connected"));
-        server.log(format("USB Detection CB: %s", ioExpander.getPin(7)? "disconnected":"connected"));
+	local status = ioExpander.getPin(7)? "disconnected":"connected";
+    	log(format("USB Detection CB: %s", status));
+        server.log(format("USB Detection CB: %s", status));
+	agentSend("usbState",status);
     }
 
     //**********************************************************************
@@ -1867,6 +1870,31 @@ function preSleepHandler() {
     }
 }
 
+function configurePinsBeforeSleep()
+{
+
+    // Disable the scanner and its UART
+    //log("sleepHandler: about to disable the HW Scanner");
+    hwScanner.disable();
+    hwPiezo.disable();
+     
+    // Force the imp to sleep immediately, to avoid catching more interrupts
+    intHandler.handlePin1Int();
+    intHandler.clearAllIrqs();
+
+    // Configure Button PIN as Input
+    ioExpander.setDir(2, 1); // set as input
+    ioExpander.setPullUp(2, 1); // enable pullup
+    ioExpander.setIrqMask(2, 1); // enable IRQ
+    ioExpander.setIrqEdges(2, 1, 1); // rising and falling
+    	
+    // Disable the SW 3.3v switch, to save power during deep sleep
+    //log("sleepHandler: about to disable the 3v3");
+    //sw3v3.disable();   
+    ioExpander.setPin(4, 1);
+    i2cDev.disable();
+}
+
 //**********************************************************************
 // This is where we want to actually enter sleep if there aren’t any 
 // further accelerometer interrupts
@@ -1886,21 +1914,6 @@ function sleepHandler()
 	// free memory
     log(format("Free memory: %d bytes", imp.getmemoryfree()));
     
-    // Disable the scanner and its UART
-    //log("sleepHandler: about to disable the HW Scanner");
-    hwScanner.disable();
-    // Disable the SW 3.3v switch, to save power during deep sleep
-    //log("sleepHandler: about to disable the 3v3");
-    //sw3v3.disable();   
-    ioExpander.setPin(4, 1);
-    
-    hwPiezo.disable();
-     
-    // Force the imp to sleep immediately, to avoid catching more interrupts
-    intHandler.handlePin1Int();
-    intHandler.clearAllIrqs();
-    i2cDev.disable();
-    
     assert(gDeviceState == DeviceState.PRE_SLEEP);
     log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", hardware.pin1.read()));
     server.expectonlinein(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);
@@ -1908,6 +1921,9 @@ function sleepHandler()
     nv.boot_up_reason = 0x0;
     nv.sleep_duration = time();
     server.disconnect();
+    
+    configurePinsBeforeSleep();
+    
     imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);   
 }
 

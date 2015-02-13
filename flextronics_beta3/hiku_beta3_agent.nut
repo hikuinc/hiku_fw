@@ -69,8 +69,21 @@ local boot_reasons = [
 
 gAuthData <-{
 			    app_id="e3a8ccb635d08ce76b407ec644",
-    			secret="c923b1e09386"
-			}
+    			secret="c923b1e09386",
+			};
+			
+gMixPanelData <- {
+		    url="https://api.mixpanel.com/track/",
+		    token="d4dca732e8c83981405c87c65ae3e834",
+		 };
+
+const MIX_PANEL_EVENT_DEVICE_BUTTON = "DeviceButton";
+const MIX_PANEL_EVENT_BARCODE = "DeviceScan";
+const MIX_PANEL_EVENT_SPEAK = "DeviceSpeak";
+const MIX_PANEL_EVENT_CHARGER = "DeviceCharger";
+const MIX_PANEL_EVENT_CONNECTIVITY = "DeviceConnectivity";
+const MIX_PANEL_EVENT_CONFIG = "DeviceConfig";
+const MIX_PANEL_EVENT_STATUS = "DeviceStatus";
 
 // Heroku server base URL	
 gBaseUrl <- "https://hiku.herokuapp.com/api/v1";
@@ -115,6 +128,53 @@ gSpecialBarcodePrefixes <- [{
 	max_len = 64,
 	url = null
     }];
+
+//======================================================================
+function sendMixPanelEvent(event, parameters)
+{
+/*
+  // Disabled for now
+  local defaultParam = (parameters)?parameters:{};
+  defaultParam["token"] <- gMixPanelData.token;
+  defaultParam["distinct_id"] <- nv.gImpeeId;
+  defaultParam["time"] <- time();
+  
+  local data = {
+	    "event":event,
+	    "properties":defaultParam,
+         };
+	 
+  local request = {data=http.base64encode(http.jsonencode(data))};
+  
+    // Create and send the request
+  local req = http.post(
+            gMixPanelData.url,
+            {"Content-Type": "application/x-www-form-urlencoded", 
+            "Accept": "application/json"}, 
+            http.urlencode(request));
+            
+    // If the server is down, this will block all other events
+    // until it times out.  Events seem to be queued on the server 
+    // with no ill effects.  They do not block the device.  Could consider 
+    // moving to async. The timeout period (tested) is 60 seconds.  
+    req.sendasync(onMixPanelEventComplete);
+  */
+}
+
+function onMixPanelEventComplete(m)
+{
+    if (m.statuscode != 200)
+    {
+        server.log(format("AGENT: MixPanelEvent: Error: got status code %d, expected 200", 
+                    m.statuscode));
+    }
+    else
+    {
+      local body = http.jsondecode(m.body);
+      server.log(body);
+      server.log("MixPanelEventSuccess");
+    }
+}
 
 //======================================================================
 // Beep handling 
@@ -166,6 +226,8 @@ function sendBatteryLevelToHikuServer(data)
     local disableSendToServer = false;
     local urlToPut = gBatteryUrl + "/" + nv.gImpeeId;
     local newData;
+    
+    sendMixPanelEvent(MIX_PANEL_EVENT_CHARGER,{"batteryLevel":data.batteryLevel});
     
     server.log(format("AGENT: Battery Level URL: %s", urlToPut));
     //disableSendToServer = true;
@@ -241,7 +303,8 @@ function sendBeepToHikuServer(data)
     //server.log(format("AGENT: Audio get at %d", gAudioReadPointer));
 
     local disableSendToServer = false;
-    local newData;
+    local newData = null;
+    
     local is_superscan = false;
     //disableSendToServer = true;
     if (disableSendToServer)
@@ -267,7 +330,7 @@ function sendBeepToHikuServer(data)
     server.log(format("Current Impee Id=%s Valid ImpeeId=%s",nv.gImpeeId, data.serial));
     nv.gImpeeId = data.serial;
         
-    // Special handling for audio beeps 
+    // Special handling for audio beeps
     if (data.scandata == "")
     {
         // If not expired, attach the current linkedrecord (usually 
@@ -294,46 +357,45 @@ function sendBeepToHikuServer(data)
                 "time": timeStr,
     		  };  
     	if (gAudioState != AudioStates.AudioError) {
-        gAudioState = AudioStates.AudioFinished;
-      }
+	  gAudioState = AudioStates.AudioFinished;
+	  sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFinished"});
+	}
     }
     else 
     {
       if (is_superscan) {
-    	    newData = {
-    			  "ean":data.scandata,
-    			  "audioToken": gAudioToken,
-    			  "audioType": "alaw",    			
-    			  "token": nv.gImpeeId,
-            "sig": mySig,
-            "app_id": gAuthData.app_id,
-            "time": timeStr,
-    		 };   
-    	   if (gAudioState != AudioStates.AudioError) {
-	          gAudioState = AudioStates.AudioFinished;
-	       }
+	  newData = {
+	    "ean":format("%s",data.scandata),
+	    "audioToken": gAudioToken,
+	    "audioType": "alaw",    			
+	    "token": nv.gImpeeId,
+	    "sig": mySig,
+	    "app_id": gAuthData.app_id,
+	    "time": timeStr,
+	  };   
+	if (gAudioState != AudioStates.AudioError) {
+	  gAudioState = AudioStates.AudioFinished;
+	  sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"CrowdSourced","barcode":data.scandata});
+	}
       } else {
-    	    newData = {
-    			  "ean":data.scandata,
-    			  "audioType": "alaw",    			
-    			  "token": nv.gImpeeId,
-            "sig": mySig,
-            "app_id": gAuthData.app_id,
-            "time": timeStr,
-    	   };   
+	  newData = {
+	    "ean":data.scandata,
+	    "audioType": "alaw",    			
+	    "token": nv.gImpeeId,
+	    "sig": mySig,
+	    "app_id": gAuthData.app_id,
+	    "time": timeStr,
+	  };   
     	   if (gAudioState != AudioStates.AudioError) {
 	          gAudioState = AudioStates.AudioFinishedBarcode;
 	       }
 	    }
+	    sendMixPanelEvent(MIX_PANEL_EVENT_BARCODE,{"status":"Scanned", "barcode":data.scandata});
       // save EAN in case of a superscan
       gEan = newData.ean;
     }
-    data = newData;
-        
     // URL-encode the whole thing
-    data = http.urlencode(data);
-    server.log(data);
-
+    newData = http.urlencode(newData);
     // Create and send the request
     agentLog("Sending beep to server...");
     local req = http.post(
@@ -343,7 +405,7 @@ function sendBeepToHikuServer(data)
             gServerUrl,
             {"Content-Type": "application/x-www-form-urlencoded", 
             "Accept": "application/json"}, 
-            data);
+            newData);
             
     // If the server is down, this will block all other events
     // until it times out.  Events seem to be queued on the server 
@@ -401,7 +463,8 @@ function onBeepReturn(res) {
 
     // Return status to device
     // TODO: device.send will be dropped if response took so long that 
-    // the device went back to sleep.  Handle that? 
+    // the device went back to sleep.  Handle that?
+    sendMixPanelEvent((gAudioState == AudioStates.AudioFinished)?MIX_PANEL_EVENT_SPEAK:MIX_PANEL_EVENT_BARCODE,{"barcode":gEan,"status":returnString});
     device.send("uploadCompleted", returnString);
 }
 
@@ -411,6 +474,7 @@ function handleSpecialBarcodes(data)
     local barcode = data.scandata;
     local req = null;
     local is_special = false;
+    local dataToSend = null;
     // test the barcode against all known special barcode prefixes
     for (local i=0; i<gSpecialBarcodePrefixes.len() && !is_special; i++) {
 	local prefix = gSpecialBarcodePrefixes[i]["prefix"];
@@ -427,13 +491,14 @@ function handleSpecialBarcodes(data)
 		if (!nv.at_factory) {
 		    return false;
 		}
-		is_special = true;
-		local json_data = http.jsonencode ({
+		dataToSend = {
 			"macAddress": nv.macAddress,
 			"serialNumber": nv.gImpeeId,
 			"scannedMacAddress": barcode,
 			"command": TEST_CMD_PACKAGE
-    		    });
+    		    };
+		is_special = true;
+		local json_data = http.jsonencode (dataToSend);
 		server.log(json_data);
 		req = http.post(
 		    gSpecialBarcodePrefixes[i]["url"],
@@ -447,12 +512,14 @@ function handleSpecialBarcodes(data)
 		    return false;
 		}
 		is_special = true;
-		local json_data = http.jsonencode ({
+		dataToSend = {
 			"macAddress": nv.macAddress,
 			"serialNumber": nv.gImpeeId,
 			"agentUrl": http.agenturl(),
 			"command": TEST_CMD_PRINT_LABEL
-    		    });
+    		    };
+		sendMixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend);
+		local json_data = http.jsonencode (dataToSend);
 		server.log(json_data);
 		req = http.post(
 		    gSpecialBarcodePrefixes[i]["url"],
@@ -478,22 +545,26 @@ function handleSpecialBarcodes(data)
                     "time": timeStr,
                     "serialNumber": nv.gImpeeId,
     		};
+		
+		dataToSend = {"frob":data.scandata, "command":"ExternalAppAuthentication"};
 		local url = gSetupUrl+"/"+data.scandata;
 		server.log("Put URL: "+url);
 		// URL-encode the whole thing
-		data = http.urlencode(newData);
-		server.log(data);
+		dataToSend = http.urlencode(newData);
+		server.log(dataToSend);
 		req = http.put(
 		    url,
 		    {"Content-Type": "application/x-www-form-urlencoded", 
 			"Accept": "application/json"}, 
-		    data);
+		    dataToSend);
 		break;
 	    }
 	}
     }
     if (!is_special)
 	return false;
+	
+    sendMixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend);
 	
     // Create and send the request
     agentLog("Sending special barcode to server...");
@@ -604,7 +675,8 @@ function onBeepComplete(m)
 
     // Return status to device
     // TODO: device.send will be dropped if response took so long that 
-    // the device went back to sleep.  Handle that? 
+    // the device went back to sleep.  Handle that?
+    sendMixPanelEvent(MIX_PANEL_EVENT_BARCODE,{"barcode":gEan,"status":returnString});
     device.send("uploadCompleted", returnString);
 }
 */
@@ -791,7 +863,8 @@ device.on("batteryLevel", function(data) {
     						  battery_level = nv.gBatteryLevel
     					}
     				);	
-    sendBatteryLevelToHikuServer({batteryLevel=data});  
+    sendBatteryLevelToHikuServer({batteryLevel=data});
+    sendMixPanelEvent(MIX_PANEL_EVENT_CHARGER,{"batteryLevel":nv.gBatteryLevel});
 });
 
 
@@ -799,7 +872,7 @@ device.on("batteryLevel", function(data) {
 // Prepare to receive audio from the device
 device.on("startAudioUpload", function(data) {
     //agentLog("in startAudioUpload");
-
+    sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"StartAudio"});
     // Reset our audio buffer
     // HACK
     // HACK
@@ -876,9 +949,20 @@ function onReceiveAudioToken(m)
         {
             agentLog(format("Token POST: Caught exception: %s", e));
             gAudioState = AudioStates.AudioError;
+	    sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFailed"});
         }
     }
 }
+
+device.on("button",function(str){
+  server.log(str);
+  sendMixPanelEvent(MIX_PANEL_EVENT_DEVICE_BUTTON,{"status":str});
+});
+
+device.on("usbState",function(str){
+  server.log(str);
+  sendMixPanelEvent(MIX_PANEL_EVENT_CHARGER,{"USBState":str});
+});
 
 device.on("deviceLog", function(str){
 	// this needs to be changed post to an http url
@@ -898,7 +982,7 @@ device.on("abortAudioUpload", function(data) {
 // Send complete audio sample to the server
 device.on("endAudioUpload", function(data) {
     //agentLog("in endAudioUpload");
-
+    sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioUploadEnd"});
     // If  no audio data, just exit
     if (gAudioString.len() == 0)
     {
@@ -916,6 +1000,7 @@ device.on("endAudioUpload", function(data) {
     {
         agentLog("Error: found barcode when expected only audio data");
         gAudioState = AudioStates.AudioError;
+	sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioUploadEndFail","barcode":data.scandata});
     }
 
     local sendToDebugServer = false;
@@ -959,7 +1044,7 @@ device.on("uploadAudioChunk", function(data) {
     //agentLog(format("in device.on uploadAudioChunk"));
     //agentLog(format("chunk length=%d", data.length));
     //dumpBlob(data.buffer);
-
+    sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioChunkReceivedFromDevice"});
     // Add the new data to the audio buffer, truncating if necessary
     data.buffer.resize(data.length);  // Most efficient way to truncate? 
     gAudioString=gAudioString+data.buffer.tostring();
@@ -1111,18 +1196,18 @@ device.on("init_status", function(data) {
     
     //server.log(format("Device to Agent Time: %dms", (time()*1000 - data.time_stamp)));
     server.log(format("Device OS Version: %s", data.osVersion));
-    sendDeviceEvents(
-    					{  	  
-    						  fw_version=nv.gFwVersion,
-    						  wakeup_reason = xlate_bootreason_to_string(nv.gWakeUpReason),
-    						  boot_time = nv.gBootTime,
-    						  sleep_duration = nv.gSleepDuration,
-    						  rssi = data.rssi,
-    						  dc_reason = getDisconnectReason(data.disconnect_reason),
-    						  os_version = data.osVersion,
-							  connectTime = data.time_to_connect
-    					}
-    				);
+    local dataToSend =  {  	  
+		      fw_version=nv.gFwVersion,
+		      wakeup_reason = xlate_bootreason_to_string(nv.gWakeUpReason),
+		      boot_time = nv.gBootTime,
+		      sleep_duration = nv.gSleepDuration,
+		      rssi = data.rssi,
+		      dc_reason = getDisconnectReason(data.disconnect_reason),
+		      os_version = data.osVersion,
+		      connectTime = data.time_to_connect
+    		    };
+    sendDeviceEvents(dataToSend);
+    sendMixPanelEvent(MIX_PANEL_EVENT_STATUS,dataToSend);
 });
 
 // Receive the Charger state update from the device to be used to send to the
@@ -1130,11 +1215,11 @@ device.on("init_status", function(data) {
 // @param: chargerState of True means Charger is attached, false otherwise
 device.on("chargerState", function( chargerState ){
     nv.gChargerState = chargerState;
-    sendDeviceEvents(
-    					{  	  
-    						  charger_state = nv.gChargerState?"attached":"removed",
-    					}
-    				); 		 
+    local dataToSend = {  	  
+    		   charger_state = nv.gChargerState?"charging":"not charging",
+    		 }
+    sendDeviceEvents(dataToSend);
+    sendMixPanelEvent(MIX_PANEL_EVENT_CHARGER,dataToSend);
 });
 
 
