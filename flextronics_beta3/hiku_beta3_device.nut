@@ -71,7 +71,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.3.01" // Beta3 firmware starts with 1.3.00
+const cFirmwareVersion = "1.3.02" // Beta3 firmware starts with 1.3.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -1870,28 +1870,40 @@ function preSleepHandler() {
     }
 }
 
+
 function configurePinsBeforeSleep()
 {
 
     // Disable the scanner and its UART
-    //log("sleepHandler: about to disable the HW Scanner");
     hwScanner.disable();
     hwPiezo.disable();
      
-    // Force the imp to sleep immediately, to avoid catching more interrupts
-    intHandler.handlePin1Int();
-    intHandler.clearAllIrqs();
+    // set all registers on the SX1508 pin expander to defined values before sleep
 
-    // Configure Button PIN as Input
-    ioExpander.setDir(2, 1); // set as input
-    ioExpander.setPullUp(2, 1); // enable pullup
-    ioExpander.setIrqMask(2, 1); // enable IRQ
-    ioExpander.setIrqEdges(2, 1, 1); // rising and falling
-    	
-    // Disable the SW 3.3v switch, to save power during deep sleep
-    //log("sleepHandler: about to disable the 3v3");
-    //sw3v3.disable();   
-    ioExpander.setPin(4, 1);
+    // set registers RegInputDisable, RegLongSlew, RegLowDrive to default values
+    i2cDev.write(0x00, 0x00);
+    i2cDev.write(0x01, 0x00);
+    i2cDev.write(0x02, 0x00);
+    // enable the pullup resistor for the button (BUTTON_L) and to disable 
+    // microphone and scanner (SW_VCC_EN_L)
+    i2cDev.write(0x03, 0x14);
+    // set registers RegPullDown, RegOpenDrain, and RegPolarity to default values
+    i2cDev.write(0x04, 0x00);
+    i2cDev.write(0x05, 0x00);
+    i2cDev.write(0x06, 0x00);
+    // set all pins on the SX1508 to inputs
+    i2cDev.write(0x07, 0xff);
+    // set output values in RegData to default values
+    i2cDev.write(0x08, 0xff);
+    // enable interrupts for button (BUTTON_L), accelerometer (ACCELEROMETER_INT), and charger (CHARGE_PGOOD_L)
+    i2cDev.write(0x09, 0x7a);
+    // set interrupt trigger to both edges for the enabled interrupts
+    i2cDev.write(0x0a, 0xc0);
+    i2cDev.write(0x0b, 0x33);
+    // clear all interrupts
+    i2cDev.write(0x0c, 0xff);    
+    i2cDev.write(0x0d, 0xff);
+
     i2cDev.disable();
 }
 
