@@ -1,5 +1,6 @@
 // Copyright 2013 Katmandu Technology, Inc. All rights reserved. Confidential.
 // Setup the server to behave when we have the no-wifi condition
+imp.setpoweren(true);
 server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 
 // Always enable blinkup to keep LED flashing; power costs are negligible
@@ -1940,11 +1941,14 @@ function sleepHandler()
     nv.sleep_count++;
     nv.boot_up_reason = 0x0;
     nv.sleep_duration = time();
-    if (!is_hiku004)
-	server.disconnect();
+    server.disconnect();
     
     configurePinsBeforeSleep();
-    
+    // NOTE: disabling blinkup before sleep is required for hiku-004
+    // as the Imp otherwise starts flashing the LEDs green/red/yellow when
+    // going to sleep
+    imp.enableblinkup(false);
+
     imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);   
 }
 
@@ -2036,6 +2040,8 @@ function init()
 	pmic <- I2cDevice(I2C_IF, 0x7e);
 	// set charging current to 500mA
 	pmic.write(0x11, 0x9);
+	// wait 350ms after release of PS_HOLD before turning off power
+	pmic.write(0x1c, 0x1);
     }
     else 
 	// Create an I2cDevice to pass around
