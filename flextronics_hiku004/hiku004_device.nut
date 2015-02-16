@@ -2038,6 +2038,8 @@ function init()
 	i2cDev <- null;
 	// create device for LP3918 power management IC
 	pmic <- I2cDevice(I2C_IF, 0x7e);
+	// set buzzer volume to maximum by setting LDO1 voltage to 3.3V
+	pmic.write(0x01, 0x0f);
 	// set charging current to 500mA
 	pmic.write(0x11, 0x9);
 	// wait 350ms after release of PS_HOLD before turning off power
