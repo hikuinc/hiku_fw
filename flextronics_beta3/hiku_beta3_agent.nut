@@ -26,6 +26,16 @@ if (!("nv" in getroottable()))
     	  };
 }
 
+// use a round robin table to do logging
+const MAX_TABLE_COUNT = 5; // going to have 5 buffers
+const MAX_LOG_COUNT = 30;
+gLogTableIndex <- 0;
+gLogTable <- [{count=0,data=""},
+	      {count=0,data=""},
+	      {count=0,data=""},
+	      {count=0,data=""},
+	      {count=0,data=""}];
+
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
 gAgentVersion <- "1.3.02";
@@ -81,12 +91,13 @@ const MIX_PANEL_EVENT_DEVICE_BUTTON = "DeviceButton";
 const MIX_PANEL_EVENT_BARCODE = "DeviceScan";
 const MIX_PANEL_EVENT_SPEAK = "DeviceSpeak";
 const MIX_PANEL_EVENT_CHARGER = "DeviceCharger";
+const MIX_PANEL_EVENT_BATTERY = "DeviceBatteryLevel";
 const MIX_PANEL_EVENT_CONNECTIVITY = "DeviceConnectivity";
 const MIX_PANEL_EVENT_CONFIG = "DeviceConfig";
 const MIX_PANEL_EVENT_STATUS = "DeviceStatus";
 
 // Heroku server base URL	
-gBaseUrl <- "https://hiku.herokuapp.com/api/v1";
+gBaseUrl <- "https://hiku-staging.herokuapp.com/api/v1";
 gFactoryUrl <- "https://hiku-mfg.herokuapp.com/api/v1";
 
 gServerUrl <- gBaseUrl + "/list";	
@@ -189,7 +200,7 @@ function sendDeviceEvents(data)
         server.log("AGENT: (sending to hiku server not enabled)");
         return;
     }
-        
+   
     // URL-encode the whole thing
     //data = http.urlencode(data);
     
@@ -227,7 +238,7 @@ function sendBatteryLevelToHikuServer(data)
     local urlToPut = gBatteryUrl + "/" + nv.gImpeeId;
     local newData;
     
-    sendMixPanelEvent(MIX_PANEL_EVENT_CHARGER,{"batteryLevel":data.batteryLevel});
+    //sendMixPanelEvent(MIX_PANEL_EVENT_BATTERY,{"batteryLevel":data.batteryLevel});
     
     server.log(format("AGENT: Battery Level URL: %s", urlToPut));
     //disableSendToServer = true;
@@ -286,7 +297,7 @@ function onCompleteEvent(m)
             // Handle the various non-OK responses.  Nothing to do for "ok". 
             if (body.status != "ok")
             {
-				server.log(format("AGENT: Battery Event - Error: %s", body.errMsg));
+		server.log(format("AGENT: Battery Event - Error: %s", body.errMsg));
             }
         }
         catch(e)
@@ -294,6 +305,13 @@ function onCompleteEvent(m)
             server.log(format("AGENT: Battery Event - Caught exception: %s", e));
         }
     }
+}
+
+function mixPanelEvent(event,extraParam)
+{
+  local data = {};
+  data[event] <- extraParam;
+  return data;
 }
 
 //**********************************************************************
@@ -359,6 +377,7 @@ function sendBeepToHikuServer(data)
     	if (gAudioState != AudioStates.AudioError) {
 	  gAudioState = AudioStates.AudioFinished;
 	  sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFinished"});
+	  //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFinished"}));
 	}
     }
     else 
@@ -376,6 +395,7 @@ function sendBeepToHikuServer(data)
 	if (gAudioState != AudioStates.AudioError) {
 	  gAudioState = AudioStates.AudioFinished;
 	  sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"CrowdSourced","barcode":data.scandata});
+	  //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"CrowdSourced","barcode":data.scandata}));
 	}
       } else {
 	  newData = {
@@ -391,6 +411,7 @@ function sendBeepToHikuServer(data)
 	       }
 	    }
 	    sendMixPanelEvent(MIX_PANEL_EVENT_BARCODE,{"status":"Scanned", "barcode":data.scandata});
+	    //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_BARCODE,{"status":"Scanned", "barcode":data.scandata}));
       // save EAN in case of a superscan
       gEan = newData.ean;
     }
@@ -464,7 +485,9 @@ function onBeepReturn(res) {
     // Return status to device
     // TODO: device.send will be dropped if response took so long that 
     // the device went back to sleep.  Handle that?
-    sendMixPanelEvent((gAudioState == AudioStates.AudioFinished)?MIX_PANEL_EVENT_SPEAK:MIX_PANEL_EVENT_BARCODE,{"barcode":gEan,"status":returnString});
+    local event = (gAudioState == AudioStates.AudioFinished)?MIX_PANEL_EVENT_SPEAK:MIX_PANEL_EVENT_BARCODE;
+    sendMixPanelEvent(event,{"barcode":gEan,"status":returnString});
+    //sendDeviceEvents(mixPanelEvent(event,{"barcode":gEan,"status":returnString}));
     device.send("uploadCompleted", returnString);
 }
 
@@ -519,6 +542,7 @@ function handleSpecialBarcodes(data)
 			"command": TEST_CMD_PRINT_LABEL
     		    };
 		sendMixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend);
+		//sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend));
 		local json_data = http.jsonencode (dataToSend);
 		server.log(json_data);
 		req = http.post(
@@ -565,7 +589,7 @@ function handleSpecialBarcodes(data)
 	return false;
 	
     sendMixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend);
-	
+    //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend));	
     // Create and send the request
     agentLog("Sending special barcode to server...");
             
@@ -618,69 +642,6 @@ function onSpecialBarcodeReturn(res) {
     device.send("uploadCompleted", returnString);
 }
 
-/*
-function onBeepComplete(m)
-{
-
-    // Handle the response
-    local returnString = "success-server";
-
-    if (m.statuscode != 200)
-    {
-        returnString = "failure"
-        agentLog(format("Error: got status code %d, expected 200", 
-                    m.statuscode));
-    }
-    else
-    {
-
-        // Parse the response (in JSON format)
-        local body = http.jsondecode(m.body);
-
-        try 
-        {
-            // Handle the various non-OK responses.  Nothing to do for "ok". 
-            if (body.status != "ok")
-            {
-                // Possible causes: speech2text failure, unknown.
-                if ("error" in body.cause)
-                {
-                    returnString = "failure";
-                    agentLog(format("Error: server responded with %s", 
-                                         body.cause.error));
-                }
-                // Possible causes: unknown UPC code
-                else if ("linkedrecord" in body.cause)
-                {
-                    gLinkedRecord = body.cause.linkedrecord;
-                    nv.gLinkedRecordTimeout = time()+10; // in seconds
-                    returnString = "unknown-upc";
-                    agentLog("Response: unknown UPC code");
-                }
-                // Unknown response type
-                else
-                {
-                    returnString = "failure";
-                    agentLog("Error: unexpected cause in response");
-                }
-            }
-        }
-        catch(e)
-        {
-            agentLog(format("Caught exception: %s", e));
-            returnString = "failure";
-            agentLog("Error: malformed response");
-        }
-    }
-
-    // Return status to device
-    // TODO: device.send will be dropped if response took so long that 
-    // the device went back to sleep.  Handle that?
-    sendMixPanelEvent(MIX_PANEL_EVENT_BARCODE,{"barcode":gEan,"status":returnString});
-    device.send("uploadCompleted", returnString);
-}
-*/
-
 function sendLogToServer(data)
 {
     local disableSendToServer = false;
@@ -690,6 +651,25 @@ function sendLogToServer(data)
         server.log("AGENT: (sending to hiku server not enabled)");
         return;
     }
+    
+    
+    gLogTable[gLogTableIndex].data +=data+"\n";
+    gLogTable[gLogTableIndex].count++;
+    
+    if( gLogTable[gLogTableIndex].count == MAX_LOG_COUNT)
+    {
+       local prevIndex = gLogTableIndex;
+       
+       gLogTableIndex = (gLogTableIndex + 1) % MAX_TABLE_COUNT;
+       gLogTable[prevIndex].count = 0;
+       data = {log=gLogTable[prevIndex].data};
+       gLogTable[prevIndex].data = "";
+    }
+    else
+    {
+      server.log(format("still budnling up: Table Index: %d, Log Count: %d",gLogTableIndex,gLogTable[gLogTableIndex].count));
+      return;
+    }    
         
     // URL-encode the whole thing
    // data = http.urlencode(data);
@@ -858,13 +838,10 @@ device.on("batteryLevel", function(data) {
 	}
 
 	nv.gBatteryLevel = data;
-    sendDeviceEvents(
-    					{  	  
-    						  battery_level = nv.gBatteryLevel
-    					}
-    				);	
+
     sendBatteryLevelToHikuServer({batteryLevel=data});
-    sendMixPanelEvent(MIX_PANEL_EVENT_CHARGER,{"batteryLevel":nv.gBatteryLevel});
+    sendMixPanelEvent(MIX_PANEL_EVENT_BATTERY,{"status":nv.gBatteryLevel});
+    
 });
 
 
@@ -873,6 +850,7 @@ device.on("batteryLevel", function(data) {
 device.on("startAudioUpload", function(data) {
     //agentLog("in startAudioUpload");
     sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"StartAudio"});
+    //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"StartAudio"}));
     // Reset our audio buffer
     // HACK
     // HACK
@@ -949,7 +927,8 @@ function onReceiveAudioToken(m)
         {
             agentLog(format("Token POST: Caught exception: %s", e));
             gAudioState = AudioStates.AudioError;
-	    sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFailed"});
+	    //sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFailed"});
+	    //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFailed"}));
         }
     }
 }
@@ -957,17 +936,19 @@ function onReceiveAudioToken(m)
 device.on("button",function(str){
   server.log(str);
   sendMixPanelEvent(MIX_PANEL_EVENT_DEVICE_BUTTON,{"status":str});
+  sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_DEVICE_BUTTON,str));
 });
 
 device.on("usbState",function(str){
   server.log(str);
   sendMixPanelEvent(MIX_PANEL_EVENT_CHARGER,{"USBState":str});
+  //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CHARGER,{"USBState":str}));
 });
 
 device.on("deviceLog", function(str){
 	// this needs to be changed post to an http url
 	server.log(format("DEVICE: %s",str));
-	sendLogToServer({log=format("DEVICE: %s",str)});
+	sendLogToServer(format("%s DEVICE: %s",getUTCTime(), str));
 });
 
 //**********************************************************************
@@ -983,6 +964,7 @@ device.on("abortAudioUpload", function(data) {
 device.on("endAudioUpload", function(data) {
     //agentLog("in endAudioUpload");
     sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioUploadEnd"});
+    //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioUploadEnd"}));
     // If  no audio data, just exit
     if (gAudioString.len() == 0)
     {
@@ -1001,6 +983,7 @@ device.on("endAudioUpload", function(data) {
         agentLog("Error: found barcode when expected only audio data");
         gAudioState = AudioStates.AudioError;
 	sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioUploadEndFail","barcode":data.scandata});
+	//sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioUploadEndFail","barcode":data.scandata}));
     }
 
     local sendToDebugServer = false;
@@ -1045,6 +1028,7 @@ device.on("uploadAudioChunk", function(data) {
     //agentLog(format("chunk length=%d", data.length));
     //dumpBlob(data.buffer);
     sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioChunkReceivedFromDevice"});
+    //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioChunkReceivedFromDevice"}));
     // Add the new data to the audio buffer, truncating if necessary
     data.buffer.resize(data.length);  // Most efficient way to truncate? 
     gAudioString=gAudioString+data.buffer.tostring();
@@ -1208,6 +1192,8 @@ device.on("init_status", function(data) {
     		    };
     sendDeviceEvents(dataToSend);
     sendMixPanelEvent(MIX_PANEL_EVENT_STATUS,dataToSend);
+    //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_STATUS,dataToSend));
+    
 });
 
 // Receive the Charger state update from the device to be used to send to the
@@ -1220,6 +1206,7 @@ device.on("chargerState", function( chargerState ){
     		 }
     sendDeviceEvents(dataToSend);
     sendMixPanelEvent(MIX_PANEL_EVENT_CHARGER,dataToSend);
+    //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CHARGER,dataToSend));
 });
 
 
@@ -1261,7 +1248,7 @@ function logServerRequest(request)
 // Proxy for server.log that prints a line prefix showing it is from the agent
 function agentLog(str)
 {
-    sendLogToServer({log=format("AGENT: %s", str), deviceID=nv.gImpeeId});
+    sendLogToServer(format("%s AGENT: %s", getUTCTime(), str));
     server.log(format("AGENT: %s", str));
 }
 
