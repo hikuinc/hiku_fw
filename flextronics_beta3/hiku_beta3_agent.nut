@@ -38,7 +38,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "1.3.02";
+gAgentVersion <- "1.3.03";
 
 gAudioState <- AudioStates.AudioError;
 gAudioAbort <- false;
@@ -97,7 +97,7 @@ const MIX_PANEL_EVENT_CONFIG = "DeviceConfig";
 const MIX_PANEL_EVENT_STATUS = "DeviceStatus";
 
 // Heroku server base URL	
-gBaseUrl <- "https://hiku-staging.herokuapp.com/api/v1";
+gBaseUrl <- "https://hiku.herokuapp.com/api/v1";
 gFactoryUrl <- "https://hiku-mfg.herokuapp.com/api/v1";
 
 gServerUrl <- gBaseUrl + "/list";	
