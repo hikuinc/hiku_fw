@@ -38,7 +38,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "1.3.03";
+gAgentVersion <- "1.3.04";
 
 gAudioState <- AudioStates.AudioError;
 gAudioAbort <- false;
@@ -750,87 +750,87 @@ device.on("batteryLevel", function(data) {
 
     agentLog(format("Battery Level Raw Reading: %d", 
                    data));	
-	if( data >= 60200 )
+	if( data >= 59760 ) // >= 4.10V battery voltage
 	{
 		data = 100;
 	}
-	else if ( data < 60200 && data >= 59649.77978 ) 
+	else if ( data < 59760 && data >= 59031 ) // >= 4.05 V battery voltage
 	{
 		data = 95;
 	}	
-	else if ( data < 59649.77978 && data >= 58811.69491 ) 
+	else if ( data < 59031 && data >= 58302 ) // >= 4.00V battery voltage
 	{
 		data = 90;
 	}	
-	else if ( data < 58811.69491 && data >= 57973.61004 ) 
+	else if ( data < 58302 && data >= 57719 ) // >= 3.96V battery voltage
 	{
 		data = 85;
 	}
-	else if ( data < 57973.61004 && data >= 57135.52517 ) 
+	else if ( data < 57719 && data >= 57136 ) // >= 3.92V battery voltage
 	{
 		data = 80;
 	}
-	else if ( data < 57135.52517 && data >= 56297.44029 ) 
+	else if ( data < 57136 && data >= 56699 ) // >= 3.89V battery voltage
 	{
 		data = 75;
 	}
-	else if ( data < 56297.44029 && data >= 55459.35542 ) 
+	else if ( data < 56699 && data >= 56407 ) // >= 3.87V battery voltage
 	{
 		data = 70;
 	}
-	else if ( data < 55459.35542 && data >= 54621.27055 ) 
+	else if ( data < 56407 && data >= 56043 ) // >= 3.845V battery voltage
 	{
 		data = 65;
 	}
-	else if ( data < 54621.27055 && data >= 53783.18568 ) 
+	else if ( data < 56043 && data >= 55678 ) // >= 3.82V battery voltage
 	{
 		data = 60;
 	}
-	else if ( data < 53783.18568 && data >= 52945.10081 ) 
+	else if ( data < 55678 && data >= 55460 ) // >= 3.805V battery voltage
 	{
 		data = 55;
 	} 	
-	else if ( data < 52945.10081 && data >= 52107.01594 ) 
+	else if ( data < 55460 && data >= 55241 ) // >= 3.79V battery voltage
 	{
 		data = 50;
 	} 
-	else if ( data < 52107.01594 && data >= 51268.93106 )
+	else if ( data < 55241 && data >= 54950 ) // >= 3.77V battery voltage
 	{
 		data = 45;
 	}
-	else if( data < 51268.93106 && data >= 50430.84619 )
+	else if( data < 54950 && data >= 54658 ) // >= 3.75V battery voltage
 	{
 		data = 40;
 	}
-	else if( data < 50430.84619 && data >= 49592.76132 )
+	else if( data < 54658 && data >= 54294 ) // >= 3.725V battery voltage
 	{
 		data = 35;
 	}
-	else if( data < 49592.76132 && data >= 48754.67645 )
+	else if( data < 54294 && data >= 53929 ) // >= 3.70V battery voltage
 	{
 		data = 30;
 	}
-	else if( data < 48754.67645 && data >= 47916.59158 )
+	else if( data < 53929 && data >= 53565 ) // >= 3.675V battery voltage
 	{
 		data = 25;
 	}	
-	else if( data < 47916.59158 && data >= 47078.50671 )
+	else if( data < 53565 && data >= 53200 ) // >= 3.65V battery voltage
 	{
 		data = 20;
 	}
-	else if( data < 47078.50671 && data >= 46240.42183 )
+	else if( data < 53200 && data >= 52763 ) // >= 3.62V battery voltage
 	{
 		data = 15;
 	}
-	else if( data < 46240.42183 && data >= 45402.33696 )
+	else if( data < 52763 && data >= 51014) // >= 3.5V battery voltage
 	{
 		data = 10;
 	}	
-	else if( data < 45402.33696 && data >= 44564.252094 )
+	else if( data < 51014 && data >= 50285 ) // >= 3.45V battery voltage
 	{
 		data = 5;
 	}			
-	else if( data < 44564.25209 )
+	else if( data < 50285 ) // <3.40V battery voltage
 	{
 		// This means we are below 5% and its 43726.16722 for 0%
 		// Perhaps we should give finer granular percentage here until it hits 1% to 0%
