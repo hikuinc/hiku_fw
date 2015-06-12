@@ -63,21 +63,18 @@ if (is_hiku004) {
     CPU_INT_RESET       <- hardware.pinY;
     EIMP_AUDIO_IN       <- hardware.pinN; // "EIMP-AUDIO_IN" in schematics
     EIMP_AUDIO_OUT      <- hardware.pinC; // "EIMP-AUDIO_OUT" in schematics
-    //RXD_IN_FROM_SCANNER <- hardware.pin7;
     IMON                <- hardware.pinE;
     I2C_IF              <- hardware.i2cFG;
     SCL_OUT             <- hardware.pinF;
     SDA_OUT             <- hardware.pinG;
     BATT_VOLT_MEASURE   <- hardware.pinH;
-    //CHARGE_DISABLE_H    <- hardware.pinC;
-    //SCANNER_UART        <- hardware.uart57;
     BTN_N               <- hardware.pinX;
     ACCEL_INT           <- hardware.pinQ;
-    CHARGER_INT_N       <- hardware.pinA;
+    ACOK_N              <- hardware.pinA;
     AUDIO_UART          <- hardware.uartUVGD;
     IMP_ST_CLK          <- hardware.pinM;
-    nrst                <- hardware.pinS;
-    boot0               <- hardware.pinK;
+    NRST                <- hardware.pinS;
+    BOOT0               <- hardware.pinK;
     VREF_EN             <- hardware.pinT;
 } else {
     CPU_INT             <- hardware.pin1;
@@ -141,7 +138,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.3.02" // Beta3 firmware starts with 1.3.00
+const cFirmwareVersion = "1.3.XX" // Beta3 firmware starts with 1.3.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -473,9 +470,9 @@ class InterruptHandler
         }
         
 	if (is_hiku004) {
-	    // HACK replace CHARGER_INT_N.read() for charging start/stop with I2C call to LP3918 or monitoring of charging current (IMON)
-	    local charger_int_n_val = CHARGER_INT_N.read() ? 0 : 1;
-	    regInterruptSource = (charger_int_n_val << 7) | ((BTN_N.read() ? 0 : 1) << 2) | (charger_int_n_val << 1) | (ACCEL_INT.read() & 1);
+	    // HACK replace ACOK_N.read() for charging start/stop with I2C call to LP3923 or monitoring of charging current (IMON)
+	    local ACOK_N_val = ACOK_N.read() ? 0 : 1;
+	    regInterruptSource = (ACOK_N_val << 7) | ((BTN_N.read() ? 0 : 1) << 2) | (ACOK_N_val << 1) | (ACCEL_INT.read() & 1);
 	} else 
 	    while (reg = i2cDevice.read(0x0C)) // RegInterruptSource
 		{
@@ -1143,11 +1140,11 @@ class Scanner
             scan_byte_cnt = 0;
             scanner_error = false;
             //IMP_ST_CLK.configure(PWM_OUT, 0.000000125, 0.5);
-            nrst.configure(DIGITAL_OUT);
-            nrst.write(0);
-            boot0.configure(DIGITAL_OUT);
-            boot0.write(0);
-            nrst.write(1);
+            NRST.configure(DIGITAL_OUT);
+            NRST.write(0);
+            BOOT0.configure(DIGITAL_OUT);
+            BOOT0.write(0);
+            NRST.write(1);
             // turn on voltage to STM32F0
 	        //pmic_val = pmic.read(0x00);
 	        //pmic.write(0x00, pmic_val | 0x08);
@@ -1174,7 +1171,7 @@ class Scanner
             audioUartCallback();
             AUDIO_UART.disable();
             // Put STM32F0 in reset mode
-            nrst.write(0);
+            NRST.write(0);
             /*
             lines_scanned = scan_byte_cnt/IMAGE_COLUMNS;
             agent.send("scan_start", null);
@@ -1509,12 +1506,14 @@ class ChargeStatus
         pin = chargePin;
 	pinStatus = 7;
 
+	if (is_hiku004)
+	    ACOK_N.configure(DIGITAL_IN, chargerDetectionCB.bindenv(this));
+	else {
         // Set event handler for IRQ
         intHandler.setIrqCallback(pin, chargerCallback.bindenv(this));
         intHandler.setIrqCallback(pinStatus, chargerDetectionCB.bindenv(this));
-	if (is_hiku004)
-	    CHARGER_INT_N.configure(DIGITAL_IN, chargerDetectionCB.bindenv(this));
-        
+	}
+	
 	BATT_VOLT_MEASURE.configure(ANALOG_IN);
 
 	if (!is_hiku004) {
@@ -1539,8 +1538,8 @@ class ChargeStatus
 	local charge_detect_n;
 
 	if (is_hiku004) 
-	    // HACK replace CHARGER_INT_N.read() for charging start/stop with I2C call to LP3918 or monitoring of charging current (IMON)
-	    charge_detect_n = CHARGER_INT_N.read();
+	    // HACK replace ACOK_N.read() for charging start/stop with I2C call to LP3918 or monitoring of charging current (IMON)
+	    charge_detect_n = ACOK_N.read();
 	else
 	    charge_detect_n = ioExpander.getPin(pin);
 
@@ -1573,7 +1572,7 @@ class ChargeStatus
 	local charge_detect_n;
 
 	if (is_hiku004)
-		charge_detect_n = CHARGER_INT_N.read();
+		charge_detect_n = ACOK_N.read();
 	    else
 		charge_detect_n = ioExpander.getPin(7);
 
@@ -1582,6 +1581,9 @@ class ChargeStatus
     	log(format("USB Detection CB: %s", status));
         server.log(format("USB Detection CB: %s", status));
 	agentSend("usbState",status);
+	
+	if (is_hiku004)
+	  chargerCallback();
     }
 
     //**********************************************************************
@@ -1610,7 +1612,7 @@ class ChargeStatus
 	local charge_detect_n;
 
 	if (is_hiku004)
-		charge_detect_n = CHARGER_INT_N.read();
+		charge_detect_n = ACOK_N.read();
 	    else
 		charge_detect_n = ioExpander.getPin(7);
 
@@ -3081,20 +3083,20 @@ agent.on("dl_complete", function(dummy) {
 // MAIN ------------------------------------------------------------------------
 VREF_EN.configure(DIGITAL_OUT);
 VREF_EN.write(1);
-nrst.configure(DIGITAL_OUT);
-nrst.write(0);
-boot0.configure(DIGITAL_OUT);
-boot0.write(0);
+NRST.configure(DIGITAL_OUT);
+NRST.write(0);
+BOOT0.configure(DIGITAL_OUT);
+BOOT0.write(0);
 IMON.configure(ANALOG_IN);
 CPU_INT_RESET.configure(DIGITAL_OUT);
 // clear interrupts
 CPU_INT_RESET.write(0);
 CPU_INT_RESET.write(1);
 
-// enable clock to STM32F0
+// enable clock to STM32F0, set to 8MHz
 IMP_ST_CLK.configure(PWM_OUT, 0.000000125, 0.5);
 
-stm32 <- Stm32(AUDIO_UART, nrst, boot0);
+stm32 <- Stm32(AUDIO_UART, NRST, BOOT0);
 
 server.log("Ready");
 server.log(imp.getsoftwareversion());
