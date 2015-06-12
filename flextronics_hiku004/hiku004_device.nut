@@ -29,9 +29,9 @@ const PS_DATA_FIELD = 6;
 const PS_PREAMBLE = "\xDE\xAD\xBE\xEF";
 const PKT_TYPE_AUDIO = 0x10;
 const PKT_TYPE_SCAN = 0x20;
-const AUDIO_PAYLOAD_LEN = 192;
+const MAX_AUDIO_PAYLOAD_LEN = 192;
 
-audio_pkt_blob <- blob(AUDIO_PAYLOAD_LEN);
+audio_pkt_blob <- blob(MAX_AUDIO_PAYLOAD_LEN);
 
 packet_state <- {
 				 state=PS_OUT_OF_SYNC,
@@ -60,9 +60,11 @@ is_hiku004 <- true;
 
 if (is_hiku004) {
     CPU_INT             <- hardware.pinW;
+    CPU_INT_RESET       <- hardware.pinY;
     EIMP_AUDIO_IN       <- hardware.pinN; // "EIMP-AUDIO_IN" in schematics
     EIMP_AUDIO_OUT      <- hardware.pinC; // "EIMP-AUDIO_OUT" in schematics
     //RXD_IN_FROM_SCANNER <- hardware.pin7;
+    IMON                <- hardware.pinE;
     I2C_IF              <- hardware.i2cFG;
     SCL_OUT             <- hardware.pinF;
     SDA_OUT             <- hardware.pinG;
@@ -75,7 +77,8 @@ if (is_hiku004) {
     AUDIO_UART          <- hardware.uartUVGD;
     IMP_ST_CLK          <- hardware.pinM;
     nrst                <- hardware.pinS;
-    boot0               <- hardware.pinJ;
+    boot0               <- hardware.pinK;
+    VREF_EN             <- hardware.pinT;
 } else {
     CPU_INT             <- hardware.pin1;
     EIMP_AUDIO_IN       <- hardware.pin2; // "EIMP-AUDIO_IN" in schematics
@@ -409,7 +412,11 @@ class InterruptHandler
     	//gInitTime.inthandler = hardware.millis();
         this.irqCallbacks.resize(numFuncs);
 
-	if (!is_hiku004) {
+	if (is_hiku004) {
+	    // clear interrupts
+	    CPU_INT_RESET.write(0);
+	    CPU_INT_RESET.write(1);
+	} else{
             this.i2cDevice = i2cDevice;
             // Disable "Autoclear NINT on RegData read". This 
             // could cause us to lose accelerometer interrupts
@@ -2148,12 +2155,19 @@ function sleepHandler()
     server.disconnect();
     
     configurePinsBeforeSleep();
+    
+    if (is_hiku004) {
+    	// clear interrupts
+	    CPU_INT_RESET.write(0);
+	    CPU_INT_RESET.write(1);
+    }
+
     // NOTE: disabling blinkup before sleep is required for hiku-004
     // as the Imp otherwise starts flashing the LEDs green/red/yellow when
     // going to sleep
     imp.enableblinkup(false);
     //imp.setpoweren(false);
-    imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);   
+    imp.onidle(function() {imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration)});   
 }
 
 
@@ -2243,15 +2257,35 @@ function init()
 	i2cDev <- null;
 	// create device for LP3918 power management IC
 	pmic <- I2cDevice(I2C_IF, 0x7e);
-	// set buzzer volume by setting LDO1 voltage to 3.0V
-	pmic.write(0x01, 0x0b);
+
+	// Enable LDO2 and LDO7. Disable LDO1, LDO8, and buck converter.
+	pmic.write(0x00, 0x06);
+	// LDO1: set to 3.0V (unused) 
+	pmic.write(0x01, 0x1b);
+	// LDO2: set to 3.0V for buzzer volume 
+	pmic.write(0x02, 0x1b);
+	// LDO3: set to 3.0V for VCC_LDO3 (I2C)
+	pmic.write(0x03, 0x1b);
+	// LDO4: set to 2.7V for VCC_VREF (microphone)
+	pmic.write(0x04, 0x15);
+	// LDO5: set to 3.0V (unused) 
+	pmic.write(0x05, 0x1b);
+	// LDO6: set to 3.0V for SCAN_LED  
+	pmic.write(0x06, 0x1b);
+	// LDO7: set to 3.3V for VCC_STM32  
+	pmic.write(0x07, 0x1f);
+	// LDO8: set to 3.0V (unused)
+	pmic.write(0x08, 0x1b);
+	// enable charging, enable EOC termination, set charging timer to 5h
+	pmic.write(0x10, 0x11);
 	// set charging current to 500mA
 	pmic.write(0x11, 0x9);
+	// set charging termination voltage to 4.2V, 
+	// charging restart voltage to 4.1V,
+	// termination current to 0.2C=100mA
+	pmic.write(0x12, 0x1d);
 	// wait 350ms after release of PS_HOLD before turning off power
 	pmic.write(0x1c, 0x1);
-    // turn on voltage to STM32F0
-	pmic_val = pmic.read(0x00);
-	pmic.write(0x00, pmic_val | 0x08);	
     }
     else 
 	// Create an I2cDevice to pass around
@@ -3045,11 +3079,17 @@ agent.on("dl_complete", function(dummy) {
 });
 
 // MAIN ------------------------------------------------------------------------
-
+VREF_EN.configure(DIGITAL_OUT);
+VREF_EN.write(1);
 nrst.configure(DIGITAL_OUT);
 nrst.write(0);
 boot0.configure(DIGITAL_OUT);
 boot0.write(0);
+IMON.configure(ANALOG_IN);
+CPU_INT_RESET.configure(DIGITAL_OUT);
+// clear interrupts
+CPU_INT_RESET.write(0);
+CPU_INT_RESET.write(1);
 
 // enable clock to STM32F0
 IMP_ST_CLK.configure(PWM_OUT, 0.000000125, 0.5);
