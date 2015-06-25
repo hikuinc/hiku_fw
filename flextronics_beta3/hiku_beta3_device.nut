@@ -1,4 +1,4 @@
-// Copyright 2013 Katmandu Technology, Inc. All rights reserved. Confidential.
+// Copyright 2015 hiku labs, inc. All rights reserved. Confidential.
 // Setup the server to behave when we have the no-wifi condition
 server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 
@@ -35,6 +35,15 @@ const BOOT_UP_REASON_SCAN_TRIG=    1 << 5; // 0x0020h
 const BOOT_UP_REASON_SCAN_RST =    1 << 6; // 0x0040h
 const BOOT_UP_REASON_CHRG_DET =    1 << 7; // 0x0080h
 */
+// set this flag to disable the UART logging
+const DEBUG_UART_ENABLED = 0;
+debug_uart <- hardware.uart6E;
+if (DEBUG_UART_ENABLED)
+{
+    debug_uart.configure(115200, 8, PARITY_NONE, 1, NO_CTSRTS|NO_RX);
+}
+
+const IMP_SERVER_LOG_ENABLED = 1;
 
 // This NV persistence is only good for warm boot
 // if we get a cold boot, all of this goes away
@@ -43,7 +52,7 @@ const BOOT_UP_REASON_CHRG_DET =    1 << 7; // 0x0080h
 if (!("nv" in getroottable()))
 {
     nv <- { 
-        	sleep_count = 0, 
+            sleep_count = 0, 
     	    setup_required=true, 
     	    setup_count = 0,
     	    disconnect_reason=0, 
@@ -157,12 +166,12 @@ function determineSetupBarcode(barcode)
     local pattern = regexp(@"\b4H1KU");
     local res = pattern.search(barcode);
 	local tempBarcode = barcode;
-	server.log(format("Barcode to Match: %s",barcode));
-	server.log("result: "+res);
+	log(format("Barcode to Match: %s",barcode));
+	log("result: "+res);
 	// result is null which means its not the setup barcode
 	if( res == null)
 	{
-	   server.log("regex didn't fint a setup barcode");
+	   log("regex didn't fint a setup barcode");
 	   return false;
 	}
 	
@@ -185,7 +194,7 @@ function determineSetupBarcode(barcode)
 	}
 	
 	
-	server.log(" setupCode: "+setupCode+" type: "+barcodeType);
+	log(" setupCode: "+setupCode+" type: "+barcodeType);
 	
 	if(setup.ssid !="" && setup.pass !="")
 	{
@@ -199,7 +208,7 @@ function determineSetupBarcode(barcode)
 }
 
 function ChangeWifi(ssid, password) {
-    server.log("device disconnecting");
+    log("device disconnecting");
     // wait for wifi buffer to empty before disconnecting
     server.flush(60);
     server.disconnect();
@@ -209,7 +218,7 @@ function ChangeWifi(ssid, password) {
     server.connect();
     
     // log that we're connected to make sure it worked
-    server.log("device reconnected to " + ssid);
+    log("device reconnected to " + ssid);
 }
 
 
@@ -221,10 +230,31 @@ class ConnectionManager
 {
 	_connCb = array(2);
 	numCb = 0;
+	_retryTimer = null;
 	
 	constructor()
 	{
 	}
+	
+   function connect(callback, timeout)
+   {
+       // Check if we're connected before calling server.connect()
+       // to avoid race condition
+  
+      if (server.isconnected()) 
+      {
+	     log("connect called, but we are already connected");
+	     gIsConnecting = false;
+	     // We're already connected, so execute the callback
+	     callback(SERVER_CONNECTED);
+      } 
+      else 
+      {
+	     // Otherwise, proceed as normal
+         log("connect called!!");
+	     server.connect(callback, timeout);
+      }
+    }	
 	
 	function registerCallback(func)
 	{
@@ -238,24 +268,19 @@ class ConnectionManager
 	
 	function init_connections()
 	{
- 		if( server.isconnected() )
-		{
-			notifyConnectionStatus(SERVER_CONNECTED);
-		}
-		else
-		{
-			server.connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
-		}
-
-    	//hwPiezo.playSound("no-connection");
-    	server.onunexpecteddisconnect(onUnexpectedDisconnect.bindenv(this));
-		server.onshutdown(onShutdown.bindenv(this));    	
-    	
+		//hwPiezo.playSound("no-connection");
+		server.onunexpecteddisconnect(onUnexpectedDisconnect.bindenv(this));
+		server.onshutdown(onShutdown.bindenv(this));
+		//connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME)
+		tryToConnect();
 	}
 	
 	function notifyConnectionStatus(status)
 	{
 		local i = 0;
+		
+		log(format("Notifying Connection Status: %d",status));
+		
 		for( i = 0; i < numCb; i++ )
 		{
 			_connCb[i](status);
@@ -269,37 +294,49 @@ class ConnectionManager
 	// otherwise its going to beep left and right which is nasty!
 	function onConnectedResume(status)
 	{
-		if( status != SERVER_CONNECTED && !nv.setup_required )
+		if( status != SERVER_CONNECTED )
 		{
 			nv.disconnect_reason = status;
-			imp.wakeup(2, tryToConnect.bindenv(this) );
+			//imp.wakeup(2, tryToConnect.bindenv(this) );
 			//hwPiezo.playSound("no-connection");
 			connection_available = false;
 		}
 		else
 		{
 			connection_available = true;
+			gIsConnecting = false;
 			notifyConnectionStatus(status);
 		}
 	}
 
 	function tryToConnect()
 	{
-    	if (!server.isconnected() && !gIsConnecting && !nv.setup_required ) {
-    		gIsConnecting = true;
-        	server.connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
-        	imp.wakeup(CONNECT_RETRY_TIME+2, tryToConnect.bindenv(this));
-    	}
+	        if (_retryTimer )
+		{
+		  imp.cancelwakeup(_retryTimer);
+		}
+		if (!server.isconnected() ) {
+			gIsConnecting = true;
+			log("Trying to reconnect!!");
+			connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
+			_retryTimer = imp.wakeup(CONNECT_RETRY_TIME+2, tryToConnect.bindenv(this));
+		}
+		else
+		{
+		    log("Trying to reconnect called but fell in the else block");
+		    onConnectedResume(SERVER_CONNECTED);
+		}
 	}
 
 	function onUnexpectedDisconnect(status)
 	{
-    	nv.disconnect_reason = status;
-    	connection_available = false;
-    	notifyConnectionStatus(status);
-    	if( !gIsConnecting )
-    	{
-   			imp.wakeup(0.5, tryToConnect.bindenv(this));
+		log(format("onUnexpectedDisconnect: %d",status));
+		nv.disconnect_reason = status;
+		connection_available = false;
+		notifyConnectionStatus(status);
+		if( !gIsConnecting )
+		{
+		      imp.wakeup(0.5, tryToConnect.bindenv(this));
    		}
 	}
 	
@@ -699,7 +736,7 @@ class CancellableTimer
 	// just create a timer and set it
     function enable() 
     {
-        server.log("Timer enable called");
+        log("Timer enable called");
 		
 		if(_timerHandle)
 		{
@@ -714,14 +751,14 @@ class CancellableTimer
 	// and set the handle to null
     function disable() 
     {
-        server.log("Timer disable called!");
+        log("Timer disable called!");
         // if the timerHandle is not null, then the timer is enabled and active
 		if(_timerHandle)
 		{
 		  //just cancel the wakeup timer and set the handle to null
 		  imp.cancelwakeup(_timerHandle);
 		  _timerHandle = null;
-		  server.log("Timer canceled wakeup!");
+		  log("Timer canceled wakeup!");
 		}
     }
     
@@ -741,7 +778,7 @@ class CancellableTimer
     // Internal function to manage cancelation and expiration
     function _timerCallback()
     {
-        server.log("timer fired!");
+        log("timer fired!");
 		actionFn();
 		_timerHandle = null;
     }
@@ -1310,7 +1347,7 @@ class PushButton
                 // Button in released state
                 if (buttonState == ButtonState.BUTTON_DOWN)
                 {
-		    server.log("BUTTON RELEASED!");
+		    log("BUTTON RELEASED!");
 		    agentSend("button","Released");
                     buttonState = ButtonState.BUTTON_UP;
                     //log("Button state change: UP");
@@ -1361,7 +1398,7 @@ class PushButton
     		{
     			nv.setup_required = true;
     			nv.sleep_not_allowed = true;
-				blinkTimer.disable();
+		        blinkTimer.disable();
     			blinkTimer.enable();
     		}
     	}
@@ -1458,7 +1495,7 @@ class ChargeStatus
     	// the pin is high charger is attached and low is a removal
 	local status = ioExpander.getPin(7)? "disconnected":"connected";
     	log(format("USB Detection CB: %s", status));
-        server.log(format("USB Detection CB: %s", status));
+        log(format("USB Detection CB: %s", status));
 	agentSend("usbState",status);
     }
 
@@ -1485,7 +1522,7 @@ class ChargeStatus
         previous_state = (charging==0)? false:true; // update the previous state with the current state
         agentSend("chargerState", previous_state); // update the charger state
         log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
-	    server.log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
+	    log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
     }
 }
 
@@ -1636,8 +1673,8 @@ function samplerCallback(buffer, length)
         }
         else
         {
-            server.log(format("About to send an audio chunck of size: %d",length));
-            server.log(format("Agent Send Response: %d", agent.send("uploadAudioChunk", {buffer=buffer, length=length})));
+            log(format("About to send an audio chunck of size: %d",length));
+            log(format("Agent Send Response: %d", agent.send("uploadAudioChunk", {buffer=buffer, length=length})));
         }
 
         // Finish timing the send.  See function comments for more info. 
@@ -1782,7 +1819,7 @@ function init_nv_items()
 {
 	log(format("sleep_count=%d setup_required=%s", 
 					nv.sleep_count, (nv.setup_required?"yes":"no")));
-	//server.log(format("Bootup Reason: %xh", nv.boot_up_reason));
+	//log(format("Bootup Reason: %xh", nv.boot_up_reason));
 }
 
 function init_unused_pins(i2cDev)
@@ -1803,11 +1840,16 @@ function init_unused_pins(i2cDev)
 	i2cDev.write(0x09, value | ( 0xF8 ));
 	
 	hardware.pinA.configure(DIGITAL_IN_PULLUP);
-	hardware.pin6.configure(DIGITAL_IN_PULLUP);
 	hardware.pinB.configure(DIGITAL_IN_PULLUP);
 	hardware.pinC.configure(DIGITAL_IN_PULLUP);
 	hardware.pinD.configure(DIGITAL_IN_PULLUP);
-	hardware.pinE.configure(DIGITAL_IN_PULLUP);
+	
+	if(!DEBUG_UART_ENABLED)
+	{
+        // Configure these two pins if we are not using the debug uart
+        hardware.pin6.configure(DIGITAL_IN_PULLUP);
+		hardware.pinE.configure(DIGITAL_IN_PULLUP);
+	}
 	
 	//gInitTime.init_unused = hardware.millis() - gInitTime.init_unused;
 }
@@ -1963,12 +2005,36 @@ function init_done()
 	}
 }
 
+function getUTCTime()
+{
+	local str ="";
+	//[dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss.SSSSSS"];
+	local d=date();
+    str = format("%04d-%02d-%02d %02d:%02d:%02d.000000", d.year, d.month+1, d.day, d.hour, d.min, d.sec);
+    return str;
+}
+
 // This is the log function wrapper
 // so that we can 
 function log(str)
 {
-	//server.log(str);
-    agentSend("deviceLog", str);
+    // by default this should be disabled, iff we are debugging locally
+    if (DEBUG_UART_ENABLED)
+	{
+	   debug_uart.write("["+getUTCTime()+"] "+str+"\r\n");
+	}
+	
+	// Send the logs to server.log iff the flag is enabled
+	// by default we should disable it and send it over to agent
+	// so the logs are captured by hiku cloud
+	if (IMP_SERVER_LOG_ENABLED)
+	{
+	   server.log(str);
+	}
+	else
+	{
+	   agentSend("deviceLog", str);
+	}
 }
 
 function agentSend(key, value)
@@ -1977,7 +2043,7 @@ function agentSend(key, value)
   {
     if(agent.send(key,value) != 0)
     {
-	  server.log(format("agentSend: failed for %s",key));
+       log(format("agentSend: failed for %s",key));
 	}
 }
 }
@@ -2060,7 +2126,7 @@ function init()
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
                        
     local oldsize = imp.setsendbuffersize(sendBufferSize);
-	server.log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
+	log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
     // Accelerometer config
     hwAccelerometer <- Accelerometer(I2C_89, 0x18, 
                                      0);
@@ -2100,9 +2166,7 @@ function init()
 }
 
 function onConnected(status)
-{
-	gIsConnecting = false;
-	
+{	
     if (status == SERVER_CONNECTED) {
 	if (imp.getbssid() == FACTORY_BSSID) {
 	    if (gDeepSleepTimer) 
@@ -2150,12 +2214,22 @@ function onConnected(status)
     {
    		nv.disconnect_reason = status;
     }
-}	
+}
+
+function heartBeat()
+{
+    if(DEBUG_UART_ENABLED)
+    {
+        imp.wakeup(5,heartBeat);
+	log("heart beat!!");
+    }
+}
 
 // start off here and things should move
 // Piezo config
 hwPiezo <- Piezo(hardware.pin5); 
 if (imp.getssid() == "" && !("first_boot" in nv)) {
+    log("entered first boot check");
     nv.first_boot <- 1;
     nv.setup_required = true;
     imp.deepsleepfor(1);
@@ -2166,3 +2240,4 @@ connMgr <- ConnectionManager();
 connMgr.registerCallback(onConnected.bindenv(this));
 connMgr.init_connections();	
 init();
+heartBeat();
