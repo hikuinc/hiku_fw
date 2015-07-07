@@ -1307,7 +1307,7 @@ class PushButton
                 
                 if ((BLINK_UP_BUTTON_COUNT-1 == buttonPressCount))
                 {
-                	blinkUpDevice(true);
+                	blinkUpDevice_internal(true,true);
                 	buttonPressCount = 0;
                 	return;
                 }
@@ -1386,12 +1386,15 @@ class PushButton
         }
         //log("buttonCallBack exit time: " + hardware.millis() + "ms");
     }
-    
-    function blinkUpDevice(blink=false)
-    {
+	
+	function blinkUpDevice_internal(blink=false, sound=false)
+	{
     	if( blink )
     	{
-    		hwPiezo.playSound("blink-up-enabled");
+		    if(sound)
+			{
+			    hwPiezo.playSound("blink-up-enabled");
+			}
     		//Enable the 5 minute Timer here
     		// Ensure that we only enable it for the setup_required case
     		if( !server.isconnected())
@@ -1401,7 +1404,12 @@ class PushButton
 		        blinkTimer.disable();
     			blinkTimer.enable();
     		}
-    	}
+    	}	  
+	}
+    
+    function blinkUpDevice(blink=false)
+    {
+        blinkUpDevice_internal(blink,false);
     	log(format("Blink-up: %s.",blink?"enabled":"disabled"));
     }
     
