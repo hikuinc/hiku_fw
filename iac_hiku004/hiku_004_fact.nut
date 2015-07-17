@@ -166,7 +166,8 @@ const AUDIO_BUZZER_AMP_MAX = 4096;
 const AUDIO_NUM_VALUES = 20;
 
 // buffers for recording audio
-audio_pkt_blob <- blob(MAX_AUDIO_PAYLOAD_LEN);
+//audio_pkt_blob <- blob(MAX_AUDIO_PAYLOAD_LEN);
+//audio_pkt_blob <- blob(AUDIO_BUFFER_SIZE/2);
 const AUDIO_BUFFER_SIZE = 2000; // size of each audio buffer 
 AUDIO_BUF0 <- blob(AUDIO_BUFFER_SIZE);
 AUDIO_BUF1 <- blob(AUDIO_BUFFER_SIZE);
@@ -184,6 +185,40 @@ audioCurrentTest <- AUDIO_TEST_SILENCE;
 audioBufCount <- 0;
 audioMin <- array(AUDIO_NUM_VALUES, ADC_MAX);
 audioMax <- array(AUDIO_NUM_VALUES, 0);
+
+alawTable <- [
+     -5504, -5248, -6016, -5760, -4480, -4224, -4992, -4736,
+     -7552, -7296, -8064, -7808, -6528, -6272, -7040, -6784,
+     -2752, -2624, -3008, -2880, -2240, -2112, -2496, -2368,
+     -3776, -3648, -4032, -3904, -3264, -3136, -3520, -3392,
+     -22016,-20992,-24064,-23040,-17920,-16896,-19968,-18944,
+     -30208,-29184,-32256,-31232,-26112,-25088,-28160,-27136,
+     -11008,-10496,-12032,-11520,-8960, -8448, -9984, -9472,
+     -15104,-14592,-16128,-15616,-13056,-12544,-14080,-13568,
+     -344,  -328,  -376,  -360,  -280,  -264,  -312,  -296,
+     -472,  -456,  -504,  -488,  -408,  -392,  -440,  -424,
+     -88,   -72,   -120,  -104,  -24,   -8,    -56,   -40,
+     -216,  -200,  -248,  -232,  -152,  -136,  -184,  -168,
+     -1376, -1312, -1504, -1440, -1120, -1056, -1248, -1184,
+     -1888, -1824, -2016, -1952, -1632, -1568, -1760, -1696,
+     -688,  -656,  -752,  -720,  -560,  -528,  -624,  -592,
+     -944,  -912,  -1008, -976,  -816,  -784,  -880,  -848,
+      5504,  5248,  6016,  5760,  4480,  4224,  4992,  4736,
+      7552,  7296,  8064,  7808,  6528,  6272,  7040,  6784,
+      2752,  2624,  3008,  2880,  2240,  2112,  2496,  2368,
+      3776,  3648,  4032,  3904,  3264,  3136,  3520,  3392,
+      22016, 20992, 24064, 23040, 17920, 16896, 19968, 18944,
+      30208, 29184, 32256, 31232, 26112, 25088, 28160, 27136,
+      11008, 10496, 12032, 11520, 8960,  8448,  9984,  9472,
+      15104, 14592, 16128, 15616, 13056, 12544, 14080, 13568,
+      344,   328,   376,   360,   280,   264,   312,   296,
+      472,   456,   504,   488,   408,   392,   440,   424,
+      88,    72,   120,   104,    24,     8,    56,    40,
+      216,   200,   248,   232,   152,   136,   184,   168,
+      1376,  1312,  1504,  1440,  1120,  1056,  1248,  1184,
+      1888,  1824,  2016,  1952,  1632,  1568,  1760,  1696,
+      688,   656,   752,   720,   560,   528,   624,   592,
+      944,   912,  1008,   976,   816,   784,   880,   848];
 
 //
 // Test message types
@@ -1468,7 +1503,9 @@ class FactoryTester {
 	  // LDO1: set to 3.0V (unused) 
 	  pmic.write(0x01, 0x1b);
 	  // LDO2: set to 3.0V for buzzer volume 
-	  pmic.write(0x02, 0x1b);
+	  //pmic.write(0x02, 0x1b);
+	  // HACK 
+	  pmic.write(0x02, 0x00);
 	  // LDO3: set to 3.0V for VCC_LDO3 (I2C)
 	  pmic.write(0x03, 0x1b);
 	  // LDO4: set to 2.7V for VCC_VREF (microphone)
@@ -1562,6 +1599,10 @@ class FactoryTester {
     function batteryTest() {
 	
 	//test_log(TEST_CLASS_CHARGER, TEST_RESULT_INFO, "**** CHARGER TESTS STARTING ****");
+	
+	// HACK 
+	BTN_N.configure(DIGITAL_OUT);
+	BTN_N.write(0);
 
 	local vref_voltage = hardware.voltage();
 	if ((vref_voltage > VREF_MIN) && (vref_voltage < VREF_MAX))
@@ -1593,6 +1634,8 @@ class FactoryTester {
 	if (batt_voltage < BATT_MIN_WARN_VOLTAGE)
 	    test_log(TEST_CLASS_CHARGER, TEST_RESULT_WARNING, format("Battery voltage %fV below desired %fV.", batt_voltage, BATT_MIN_WARN_VOLTAGE),
 	    TEST_ID_CHARGER_BATT_VOLT, {batt_voltage=batt_voltage, batt_min_warn_voltage=BATT_MIN_WARN_VOLTAGE});
+
+	BTN_N.configure(DIGITAL_IN);
 
 	test_flush();
 	stm32Test();
@@ -1653,11 +1696,41 @@ function audioUartCallback()
    if ((string_len-buf_ptr >= packet_state.pay_len) && (packet_state.state == PS_DATA_FIELD)) {
        switch (packet_state.type) {
            case PKT_TYPE_AUDIO:
-               if (audio_pkt_blob.len() - audio_pkt_blob.tell() < packet_state.pay_len) {
-                 //agent.send("uploadAudioChunk", {buffer=audio_pkt_blob, length=audio_pkt_blob.tell()});
-                 audio_pkt_blob.seek(0,'b');
+               if (packet_state.run_test == 3) {
+                for (local i=buf_ptr; i<buf_ptr+packet_state.pay_len; i++) {
+                    switch (audioBufCount) {
+                        case 0:
+                                if (AUDIO_BUF0.tell() >= AUDIO_BUF0.len()) {
+                                    audioCallback(AUDIO_BUF0, AUDIO_BUF0.len());
+                                    AUDIO_BUF0.seek(0,'b');
+                                }
+                                AUDIO_BUF0.writen(alawTable[packet_state.char_string[i]], 's');
+                                break;
+                        case 1:
+                                if (AUDIO_BUF1.tell() >= AUDIO_BUF1.len()) {
+                                    audioCallback(AUDIO_BUF1, AUDIO_BUF1.len());
+                                    AUDIO_BUF1.seek(0,'b');
+                                }
+                                AUDIO_BUF1.writen(alawTable[packet_state.char_string[i]], 's');
+                                break;
+                        case 2:
+                                if (AUDIO_BUF2.tell() >= AUDIO_BUF2.len()) {
+                                    audioCallback(AUDIO_BUF2, AUDIO_BUF2.len());
+                                    AUDIO_BUF2.seek(0,'b');
+                                }
+                                AUDIO_BUF2.writen(alawTable[packet_state.char_string[i]], 's');
+                                break;
+                        case 3:
+                                if (AUDIO_BUF3.tell() >= AUDIO_BUF3.len()) {
+                                    audioCallback(AUDIO_BUF3, AUDIO_BUF3.len());
+                                    AUDIO_BUF3.seek(0,'b');
+                                }
+                                AUDIO_BUF3.writen(alawTable[packet_state.char_string[i]], 's');
+                                break;
+                        default: break;
+                    }
+                  }
                }
-               audio_pkt_blob.writestring(packet_state.char_string.slice(buf_ptr, buf_ptr+packet_state.pay_len));
                buf_ptr += packet_state.pay_len;
                break;
            case PKT_TYPE_SCAN:
@@ -1689,6 +1762,8 @@ function audioUartCallback()
 	
 	                    //test_log(TEST_CLASS_SCANNER, TEST_RESULT_INFO, "**** SCANNER TESTS DONE ****");
 	                    test_flush();
+	                    // reset STM32F0
+	                    NRST.write(0);
 	                    imp.wakeup(0.01, chargerTest.bindenv(this));
                     }
                     // Stop collecting data
@@ -1724,6 +1799,7 @@ function audioUartCallback()
    // disable STM32 software download for now
    
    /*
+   
 
    local stm32 = Stm32(AUDIO_UART, NRST, BOOT0);
    
@@ -1880,23 +1956,41 @@ function audioUartCallback()
 	//hardware.sampler.configure(EIMP_AUDIO_IN, AUDIO_SAMPLE_RATE, 
     //        [AUDIO_BUF0, AUDIO_BUF1, AUDIO_BUF2, AUDIO_BUF3, AUDIO_BUF4], 
     //        audioCallback);
-	//audioCurrentTest = AUDIO_TEST_BUZZER;
-	//audioBufCount = 0;
-	//audioMin = array(AUDIO_NUM_VALUES, ADC_MAX);
-	//audioMax = array(AUDIO_NUM_VALUES, 0);
+	audioCurrentTest = AUDIO_TEST_BUZZER;
+	audioBufCount = 0;
+	audioMin = array(AUDIO_NUM_VALUES, ADC_MAX);
+	audioMax = array(AUDIO_NUM_VALUES, 0);
 	//testBox=3;
 	if (testBox == null)
 	    hwPiezo.playSound("one-khz");
 	else
 	    hwPiezo.playSound(format("box%u", testBox));
+	    
+    // configure the UART
+    AUDIO_UART.disable();
+
+    packet_state.state=PS_OUT_OF_SYNC;
+    packet_state.char_string = "";
+    packet_state.type = 0;
+    packet_state.pay_len = 0;
+    packet_state.run_test = 3;
+    
+    AUDIO_UART.setrxfifosize(UART_BUF_SIZE);
+    AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback.bindenv(this));
+	// enable STM32F0
+	NRST.write(1);
+
+    // flush all data to the server using a watchdog timer in case the
+    // test gets stuck and there is data remaining
+    flushTimer = imp.wakeup(WATCHDOG_FLUSH, test_flush);
+
 	//hardware.sampler.start();
 	
 	// HACK HACK HACK
-	factoryTester.testFinish();
+	//factoryTester.testFinish();
 	// audioCallback will be called as buffers fill up 
     }   
 
-    function audioCallback(buffer, length) {
 	function comp_vals_up(a, b) {
 	    if (a > b) return 1;
 	    if (a < b) return -1;
@@ -1909,14 +2003,19 @@ function audioUartCallback()
 	    return 0;
 	}
 
+    function audioCallback(buffer, length) {
+
 	if (length <= 0) {
 	    test_log(TEST_CLASS_AUDIO, TEST_RESULT_ERROR, "Audio sampler buffer overrun.", TEST_ID_AUDIO_BUFFER_OVERRUN);
 	    audioCurrentTest = AUDIO_TEST_DONE;
 	}
 	else {
 	    audioBufCount++;
-	    if (audioBufCount == 4) 
-		hardware.sampler.stop();
+	    if (audioBufCount == 4) {
+	        AUDIO_UART.disable();
+	        NRST.write(0);
+		 ///hardware.sampler.stop();
+	    }
 	    if (audioBufCount == 4) {
 		// Only log audio data for buzzer test to reduce data volume
 		local audio_val;
@@ -1999,7 +2098,7 @@ function audioUartCallback()
 			{audioBufCount=4, audioCurrentTest=audioCurrentTest, data_hex=audio_string, size=length/2});
 		    test_flush();
 		}
-		hardware.sampler.reset();
+		//hardware.sampler.reset();
 		audioMin = audioMin.reduce(function(prev_val, cur_val){return (prev_val + cur_val)})/audioMin.len();
 		audioMax = audioMax.reduce(function(prev_val, cur_val){return (prev_val + cur_val)})/audioMax.len();
 		switch (audioCurrentTest) {
@@ -2065,25 +2164,27 @@ function audioUartCallback()
 		    server.flush(SERVER_FLUSH_TIME);
 		    // record uncompressed 12-bit samples (vs. 8-bit a-law) to simplify
 		    // data interpretation
-		    hardware.sampler.configure(EIMP_AUDIO_IN, AUDIO_SAMPLE_RATE, 
-			[AUDIO_BUF0, AUDIO_BUF1, AUDIO_BUF2, AUDIO_BUF3], 
-			factoryTester.audioCallback);
+		    //hardware.sampler.configure(EIMP_AUDIO_IN, AUDIO_SAMPLE_RATE, 
+			//[AUDIO_BUF0, AUDIO_BUF1, AUDIO_BUF2, AUDIO_BUF3], 
+			//factoryTester.audioCallback);
 		    audioBufCount = 0;
 		    audioMin = array(AUDIO_NUM_VALUES, ADC_MAX);
 		    audioMax = array(AUDIO_NUM_VALUES, 0);
-		    hardware.sampler.start();		    
+		    //hardware.sampler.start();		    
 		}
 	    }
 	}
 	if (audioCurrentTest == AUDIO_TEST_DONE) {
-	    hardware.sampler.stop();
-	    hardware.sampler.reset();
+	    //hardware.sampler.stop();
+	    //hardware.sampler.reset();
+	    AUDIO_UART.disable();
+	    NRST.write(0);
 	    //test_log(TEST_CLASS_AUDIO, TEST_RESULT_INFO, "**** AUDIO TESTS DONE ****");
 	    test_flush();
 
 	    // turn off microphone/scanner after audio test
-	    factoryTester.i2cIOExp.pin_configure(SW_VCC_EN_L, DRIVE_TYPE_FLOAT);
-	    factoryTester.testFinish();
+	    //factoryTester.i2cIOExp.pin_configure(SW_VCC_EN_L, DRIVE_TYPE_FLOAT);
+	    imp.wakeup(0.01, testFinish.bindenv(this));
 	}
     }
      
@@ -2094,8 +2195,8 @@ function audioUartCallback()
 	test_flush();
 	server.flush(SERVER_FLUSH_TIME);
     	
-	if (flushTimer)
-	    imp.cancelwakeup(flushTimer);
+	//if (flushTimer)
+	//imp.cancelwakeup(flushTimer);
 
 	// HACK
 	// HACK
@@ -2104,7 +2205,7 @@ function audioUartCallback()
 	imp.enableblinkup(true);
 	
 	// HACK HACK HACK
-	test_ok = true;
+	test_ok = false;
     
 	server.bless(test_ok, function(bless_success) {
 		//
@@ -2140,7 +2241,7 @@ function audioUartCallback()
         if( bless_success ) imp.clearconfiguration();
         
 	    });
-	if(!test_ok) imp.clearconfiguration();
+	//if(!test_ok) imp.clearconfiguration();
     }
 
     function testStart(status)
