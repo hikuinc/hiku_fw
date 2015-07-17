@@ -98,7 +98,7 @@ const MIX_PANEL_EVENT_STATUS = "DeviceStatus";
 
 // Heroku server base URL	
 gBaseUrl <- "https://hiku.herokuapp.com/api/v1";
-gFactoryUrl <- "https://hiku-mfg.herokuapp.com/api/v1";
+gFactoryUrl <- "https://hiku-mfgdb.herokuapp.com/api/v1";
 
 gServerUrl <- gBaseUrl + "/list";	
 
@@ -549,6 +549,12 @@ function handleSpecialBarcodes(data)
 		//sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend));
 		local json_data = http.jsonencode (dataToSend);
 		server.log(json_data);
+		// HACK HACK HACK
+		local printer_req = http.get("https://agent.electricimp.com/WQ8othFzM2Zm/printMAC?mac="+nv.macAddress, {});
+		printer_req.sendasync(onMacPrintReturn);
+		// Goes to test controller 20000c2a69093434
+		local iac_printer_req = http.get("https://agent.electricimp.com/TvVLVemS7PR9/printMAC?mac="+nv.macAddress, {});
+		iac_printer_req.sendasync(onMacPrintReturn);
 		req = http.post(
 		    gSpecialBarcodePrefixes[i]["url"],
 		    {"Content-Type": "application/json", 
@@ -604,6 +610,9 @@ function handleSpecialBarcodes(data)
     gTransactionTime = time();
     req.sendasync(onSpecialBarcodeReturn);
     return true;
+}
+
+function onMacPrintReturn(res) {
 }
 
 function onSpecialBarcodeReturn(res) {
