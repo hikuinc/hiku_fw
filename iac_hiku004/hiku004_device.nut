@@ -2331,7 +2331,11 @@ function agentSend(key, value)
 
 triggerCount <- 0;
 function shippingMode(){
-    hwScanner.trigger(triggerCount % 2 == 0);
+    if (is_hiku004) 
+        NRST.write(triggerCount % 2);
+    else
+        hwScanner.trigger(triggerCount % 2 == 0);
+    
     triggerCount++;
     if (triggerCount < 40)
 	imp.wakeup(0.05, shippingMode);
