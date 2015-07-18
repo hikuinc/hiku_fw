@@ -114,7 +114,7 @@ const CHARGE_DELAY = 1;
 // number of seconds to delay sampling the overcurrent signal
 const CHARGE_SAMPLE_INTERVAL = 0.01;
 // number of seconds USB charging is turned on for
-const CHARGE_SAMPLES = 100;
+const CHARGE_SAMPLES = 200;
 // number of seconds to delay LED after charging test
 const CHARGE_LED_DELAY = 5;
 
@@ -159,7 +159,7 @@ const AUDIO_MID = 2048;
 const AUDIO_MID_VARIANCE = 2000;//128;
 
 // Minimum and maximum amplitude when recording the buzzer
-const AUDIO_BUZZER_AMP_MIN = 300;
+const AUDIO_BUZZER_AMP_MIN = 3000;
 const AUDIO_BUZZER_AMP_MAX = 4096;
 
 // Number of min/max values to store for amplitude evaluation
@@ -1352,6 +1352,7 @@ class FactoryTester {
     // sleep time between I2C reconfiguration attempts
     i2c_sleep_time = 0.2;
     test_start_time = 0;
+    test_time_1 = 0;
     // battery voltage is needed by both battery and charger test routines
     batt_voltage = 0;
     i2cIOExp = null;
@@ -1496,7 +1497,7 @@ class FactoryTester {
 	  pmic = I2cDevice(PMICADDR, TEST_CLASS_CHARGER, TEST_ID_GENERIC_CHARGER_SETUP);
 	  
 	  // HACK default value should be 0x47 without prior I2C config
-	  pmic.verify(0x06, PMIC_OP_EN1, TEST_ID_CHARGER_OP_EN1);
+	  pmic.verify(PMIC_OP_EN1, 0x06, TEST_ID_CHARGER_OP_EN1);
 	  
 	  // Enable LDO2 and LDO7. Disable LDO1, LDO8, and buck converter.
 	  pmic.write(0x00, 0x06);
@@ -1657,6 +1658,7 @@ function audioUartCallback()
 	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_ERROR, "PARITY_ERROR bit set on UART", TEST_ID_SCANNER_UART_PARITY_ERROR);
 	if (uart_flags & OVERRUN_ERROR & ~uart_errors_reported)
 	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_ERROR, "OVERRUN_ERROR bit set on UART", TEST_ID_SCANNER_UART_OVERRUN_ERROR);
+
 	if (uart_flags & LINE_IDLE & ~uart_errors_reported)
 	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_INFO, "LINE_IDLE bit set on UART", TEST_ID_SCANNER_UART_LINE_IDLE);
     uart_errors_reported = uart_errors_reported | uart_flags;
@@ -1798,9 +1800,6 @@ function audioUartCallback()
    // HACK 
    // disable STM32 software download for now
    
-   /*
-   
-
    local stm32 = Stm32(AUDIO_UART, NRST, BOOT0);
    
     stm32.wrUnprot();
@@ -1826,8 +1825,6 @@ function audioUartCallback()
 
    test_flush();
    
-   */
-   
    BOOT0.write(0);
    NRST.write(0);
    imp.sleep(0.01);
@@ -1850,8 +1847,7 @@ function audioUartCallback()
    
     function buttonTest() {
 
-	// wait for pull-up resistor to charge capacitor C13
-	imp.sleep(0.1);
+    test_time_1 = hardware.millis() - test_start_time;
 
 	while (BTN_N.read() != 0)
 	    imp.sleep(0.02);
@@ -1867,7 +1863,7 @@ function audioUartCallback()
 
 	// turn scanner off for 0.5s to signal success of button push
 	imp.sleep(0.5);
-
+	
 	scannerTest();
     }
 
@@ -1902,13 +1898,14 @@ function audioUartCallback()
 	    imp.wakeup(0.05, chargerTest.bindenv(this));
 	} else {
 
+	    test_start_time = hardware.millis();
+
    	    local result_data_table = {serialNumber = serialNumber,
 		macAddress = macAddress,
 		testControl = TEST_CONTROL_FIXTURE_START,
 		testList = []};
 	    agent.send("testresult", result_data_table);
 
-	    factoryTester.test_start_time = hardware.millis();
 	    // flush all data to the server using a watchdog timer in case the
 	    // test gets stuck and there is data remaining
 	    flushTimer = imp.wakeup(WATCHDOG_FLUSH, test_flush);
@@ -2190,7 +2187,7 @@ function audioUartCallback()
      
     function testFinish() {
 
-	local test_time = hardware.millis() - test_start_time;
+	local test_time = hardware.millis() - test_start_time + test_time_1;
 	test_log(TEST_CLASS_NONE, TEST_RESULT_INFO, format("Total test time: %dms", test_time), TEST_ID_TEST_TIME, {test_time=test_time});
 	test_flush();
 	server.flush(SERVER_FLUSH_TIME);
@@ -2205,7 +2202,7 @@ function audioUartCallback()
 	imp.enableblinkup(true);
 	
 	// HACK HACK HACK
-	test_ok = false;
+	test_ok = true;
     
 	server.bless(test_ok, function(bless_success) {
 		//
@@ -2250,6 +2247,9 @@ function audioUartCallback()
 	// allow for blinkup during test to reprogram on code failure
 	imp.enableblinkup(true);
 	if (status == SERVER_CONNECTED) {
+	    
+	    test_start_time = hardware.millis();
+	    
 	    hwPiezo.playSound("test-start", false);
 	    //
 	    // HACK verify that all devices are reset or reconfigured at the start of the test
