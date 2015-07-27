@@ -1073,6 +1073,7 @@ http.onrequest(function (req, res)
           // HACK
           // safer implementation should require the device to call back the 
           // backend confirming that it is entering shipping mode
+          server.log("Shipping Mode Requested!!");
           device.send("shippingMode",1);
     	  res.send(200, "OK");
         } 
