@@ -2383,9 +2383,9 @@ function init()
 	// create device for LP3918 power management IC
 	pmic <- I2cDevice(I2C_IF, 0x7e);
 
-	// Enable LDO2 and LDO7. Disable LDO1, LDO8, and buck converter.
-	pmic.write(0x00, 0x06);
-	// LDO1: set to 3.0V (unused) 
+	// Enable LDO1, LDO2 and LDO7. Disable LDO8, and buck converter.
+	pmic.write(0x00, 0x07);
+	// LDO1: set to 3.0V (charging LED) 
 	pmic.write(0x01, 0x1b);
 	// LDO2: set to 3.0V for buzzer volume 
 	pmic.write(0x02, 0x1b);
