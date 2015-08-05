@@ -1724,7 +1724,9 @@ device.on("scan_line", function (data) {
 server.log("Agent Started. Free Memory: "+imp.getmemoryfree());
 
 // in case both device and agent just booted, give device a moment to initialize, then get info
+/*
 imp.wakeup(0.5, function() {
     device.send("get_version",0);
     device.send("get_id",0);
 });
+*/
