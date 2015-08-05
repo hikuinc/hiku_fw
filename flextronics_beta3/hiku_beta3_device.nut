@@ -60,6 +60,7 @@ if (!("nv" in getroottable()))
     	    boot_up_reason = 0,
     	    voltage_level = 0.0,
     	    sleep_duration = 0.0,
+			extend_timeout = false
     	  };
 }
 
@@ -80,7 +81,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.3.02" // Beta3 firmware starts with 1.3.00
+const cFirmwareVersion = "1.3.05" // Beta3 firmware starts with 1.3.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -1149,8 +1150,8 @@ class Scanner
                         return;
                     }
                     updateDeviceState(DeviceState.SCAN_CAPTURED);
-                    /*log("Code: \"" + scannerOutput + "\" (" + 
-                               scannerOutput.len() + " chars)");*/
+                    log("Code: \"" + scannerOutput + "\" (" + 
+                               scannerOutput.len() + " chars)");
                     //determineSetupBarcode(scannerOutput);
                     if(0!= agent.send("uploadBeep", {
                                               scandata=scannerOutput,
@@ -1585,6 +1586,11 @@ agent.on("devicePage", function(result){
 	hwPiezo.playPageTone();
 });*/
 
+agent.on("stayAwake" function(result){
+  server.log("stayAwake called!!");
+  nv.extend_timeout = result;
+});
+
 
 //**********************************************************************
 // Process the last buffer, if any, and tell the agent we are done. 
@@ -1871,7 +1877,7 @@ function preSleepHandler() {
 	// previous_state before going to sleep 
 	chargeStatus.chargerCallback();
 	
-	if( nv.sleep_not_allowed || chargeStatus.previous_state )
+	if( nv.sleep_not_allowed || chargeStatus.previous_state || nv.extend_timeout )
 	{
 		//Just for testing but we should remove it later
 		//hwPiezo.playSound("device-page");
@@ -2197,8 +2203,9 @@ function onConnected(status)
         				sleep_duration = nv.sleep_duration,
         				osVersion = imp.getsoftwareversion(),
 						time_to_connect = timeToConnect,
-                                                at_factory = (imp.getbssid() == FACTORY_BSSID),
-	                                        macAddress = imp.getmacaddress()
+                        at_factory = (imp.getbssid() == FACTORY_BSSID),
+	                    macAddress = imp.getmacaddress(),
+						ssid = imp.getssid()
         			};
         agentSend("init_status", data);
         
