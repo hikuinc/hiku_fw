@@ -22,7 +22,8 @@ if (!("nv" in getroottable()))
 			gBatteryLevel = 0.0,
 			gFwVersion = 0.0,
 			at_factory = false,
-	                macAddress = null
+	        macAddress = null,
+			extendTimeout = 0.0
     	  };
 }
 
@@ -38,7 +39,9 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "1.3.04";
+gAgentVersion <- "1.3.05";
+
+gExtendTimer <- null;
 
 gAudioState <- AudioStates.AudioError;
 gAudioAbort <- false;
@@ -97,7 +100,7 @@ const MIX_PANEL_EVENT_CONFIG = "DeviceConfig";
 const MIX_PANEL_EVENT_STATUS = "DeviceStatus";
 
 // Heroku server base URL	
-gBaseUrl <- "https://hiku.herokuapp.com/api/v1";
+gBaseUrl <- "https://app.hiku.us/api/v1";
 gFactoryUrl <- "https://hiku-mfg.herokuapp.com/api/v1";
 
 gServerUrl <- gBaseUrl + "/list";	
@@ -1048,6 +1051,7 @@ device.on("shutdownRequestReason", function(status){
 http.onrequest(function (request, res)
 {
     // Handle supported requests
+	server.log(format("Request camethrough for: %s, method: %s",request.path, request.method));
     try {
       if ( request.method == "GET") { 
         if (request.path == "/getImpeeId") 
@@ -1100,6 +1104,46 @@ http.onrequest(function (request, res)
           agentLog(format("HTTP GET: Unexpected path %s", request.path));
           res.send(404, format("HTTP GET: Unexpected path %s", request.path));
         }
+	  } else if (request.method == "POST"){
+		if (request.path == "/extendTimeout")
+		{
+		  local data = http.jsondecode(request.body);
+		  // receive the extendTimeout message from the server
+		  if ("timeout" in data) {
+			server.log(format("Timeout is set to: %d",data["timeout"]));
+			// if we have the timeout flag set in the query
+			// then enable it on the agent and kick off a timer
+			nv.extendTimeout = data["timeout"];
+			if (nv.extendTimeout != 0.0 )
+			{
+			   // send the timeout value to the device
+			   // and schedule a timer so that we can clear it at the end of
+			   // expiry
+			   server.log("Timerset!!");
+			   gExtendTimer = imp.wakeup(nv.extendTimeout,function(){
+			     server.log("ExtendTimeout expired!!");
+			     nv.extendTimeout = 0.0;
+				 gExtendTimer = null;
+				 device.send("stayAwake",false);
+			   });
+			   device.send("stayAwake",true);
+			}
+			else
+			{
+			   if ( gExtendTimer )
+			   {
+			     imp.cancelwakeup(gExtendTimer);
+				 gExtendTimer = null;
+			   }
+			   device.send("stayAwake",false);
+			}
+			res.send(200,"OK");
+		  }
+		  else
+		  {
+		    res.send(400,"Missing timeout field");
+		  }
+		}
       } else {
         agentLog(format("HTTP method not allowed: %s", request.method));
         res.send(405, format("HTTP method not allowed: %s", request.method));
@@ -1171,6 +1215,11 @@ function updateImpeeId(data)
 //**********************************************************************
 // Receive impee ID from the device and send to the external requestor 
 device.on("init_status", function(data) {
+    
+	imp.wakeup(0.001, function(){
+	  device.send("stayAwake",(nv.extendTimeout != 0.0));
+	})
+
     nv.gImpeeId = data.impeeId;
     nv.gFwVersion = data.fw_version;
     nv.gWakeUpReason = data.bootup_reason;
@@ -1188,8 +1237,11 @@ device.on("init_status", function(data) {
 		      rssi = data.rssi,
 		      dc_reason = getDisconnectReason(data.disconnect_reason),
 		      os_version = data.osVersion,
-		      connectTime = data.time_to_connect
-    		    };
+		      connectTime = data.time_to_connect,
+			  ssid = data.ssid,
+			  agent_url = http.agenturl(),
+    		};
+	
     sendDeviceEvents(dataToSend);
     sendMixPanelEvent(MIX_PANEL_EVENT_STATUS,dataToSend);
     //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_STATUS,dataToSend));
@@ -1257,6 +1309,7 @@ function agentLog(str)
 // Print the contents of a table
 function dumpTable(data, prefix="")
 {
+    server.log("Dumping the table");
     foreach (k, v in data)
     {
         if (typeof v == "table")
