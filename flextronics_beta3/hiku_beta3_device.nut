@@ -81,7 +81,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.3.07" // Beta3 firmware starts with 1.3.00
+const cFirmwareVersion = "1.3.08" // Beta3 firmware starts with 1.3.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -1961,30 +1961,9 @@ function configurePinsBeforeSleep()
     i2cDev.write(0x0d, 0xff);
 
     i2cDev.disable();
-}
-
-function getDeepSleepDuration()
-{
-    local region = imp.getcountry();
-	server.log(region);
-    local country = "";
-	local t = date();
-	server.log(format("Current Time: %02d:%02d:%02d",t.hour, t.min, t.sec));
-    if (region == "00005355") {
-        country = "North American";
-		t.hour = 7;
-		t.min = 1;
-		t.sec = 1;
-    } else {
-        country = "European";
-		t.hour = 0;
-		t.min = 1;
-		t.sec = 1;
-    }
-
-	server.log(format("Country Code: %s, Sleep Until: %02d:%02d:%02d",country,t.hour, t.min, t.sec));
 	
-	return t;
+	// Reconfigure pin1 before sleep
+	hardware.pin1.configure(DIGITAL_IN_WAKEUP);
 }
 
 //**********************************************************************
@@ -2008,27 +1987,15 @@ function sleepHandler()
     
     assert(gDeviceState == DeviceState.PRE_SLEEP);
     log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", hardware.pin1.read()));
-    // TODO: remove this once the OS upgrade is done to Release 32
-	//server.expectonlinein(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);
+	server.expectonlinein(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);
     nv.sleep_count++;
     nv.boot_up_reason = 0x0;
     nv.sleep_duration = time();
-    
+	
+    server.disconnect();
     configurePinsBeforeSleep();
-    
-	imp.onidle(function(){
-	    local t = getDeepSleepDuration();
-        server.disconnect();
-        //imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);
-	    if (nv.setup_required)
-	    {
-	        imp.deepsleepfor(cDeepSleepInSetupMode); 
-	    }
-	    else
-	    {
-	        imp.deepsleepuntil(t.hour, t.min, t.sec);
-	    }
-	});
+	// We don't need to wrap this in imp.onidle() as per Electric Imp.
+    imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);
 }
 
 
