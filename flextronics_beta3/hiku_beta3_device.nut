@@ -2,6 +2,10 @@
 // Setup the server to behave when we have the no-wifi condition
 server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 
+local sendBufferSize = 24*1024; // 24K send buffer size
+
+local oldsize = imp.setsendbuffersize(sendBufferSize);
+
 // Always enable blinkup to keep LED flashing; power costs are negligible
 imp.enableblinkup(true);
 
@@ -81,7 +85,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.3.08" // Beta3 firmware starts with 1.3.00
+const cFirmwareVersion = "1.3.09" // Beta3 firmware starts with 1.3.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -138,7 +142,6 @@ gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
 const gAudioBufferSize = 2000; // Size of each audio buffer 
 const gAudioSampleRate = 8000; // in Hz
-local sendBufferSize = 24*1024; // 16K send buffer size
 
 // Workaround to capture last buffer after sampler is stopped
 gSamplerStopping <- false; 
@@ -1492,7 +1495,7 @@ class ChargeStatus
     	// every 15 seconds wake up and read the battery level
     	// TODO: change the period of measurement so that it doesn’t drain the
     	// battery
-    	//log(format("Battery Level: %d, Input Voltage: %.2f", nv.voltage_level, hardware.voltage()));
+    	log(format("Battery Level: %d, Input Voltage: %.2f", nv.voltage_level, hardware.voltage()));
     	imp.wakeup(1, function() {
     		agentSend("batteryLevel", nv.voltage_level)
     	});
@@ -1521,7 +1524,7 @@ class ChargeStatus
         {
             charging += isCharging()?1:0;
         }
-        //log(format("Charger: %s",charging?"charging":"not charging"));
+        log(format("Charger: %s",charging?"charging":"not charging"));
         
 		if( previous_state != (charging==0?false:true))
 		{
@@ -1531,7 +1534,6 @@ class ChargeStatus
         previous_state = (charging==0)? false:true; // update the previous state with the current state
         agentSend("chargerState", previous_state); // update the charger state
         log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
-	    log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
     }
 }
 
@@ -2142,7 +2144,6 @@ function init()
                                [buf1, buf2, buf3, buf4], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
                        
-    local oldsize = imp.setsendbuffersize(sendBufferSize);
 	log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
     // Accelerometer config
     hwAccelerometer <- Accelerometer(I2C_89, 0x18, 
