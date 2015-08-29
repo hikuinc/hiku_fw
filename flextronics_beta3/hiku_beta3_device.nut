@@ -2119,10 +2119,15 @@ function init()
     // we don’t need a class for this:
     
     // Configure pin 
+    ioExpander.setPin(4, 1); // start as logic 1
     ioExpander.setDir(4, 0); // set as output
     ioExpander.setPullUp(4, 0); // disable pullup
-    ioExpander.setPin(4, 0); // pull low to turn switch on
-    ioExpander.setPin(4, 0); // enable the Switcher3v3
+    ioExpander.setPullDown(4, 1); // enable pulldown
+    ioExpander.setDir(4, 1); // set as input
+    
+    // 5ms later set as output and later drive hard
+    imp.wakeup(0.005, function() { ioExpander.setDir(4, 0); ioExpander.setPin(4, 0); } ); 
+
     //sw3v3 <- Switch3v3Accessory(4);
     //sw3v3.enable();
  
