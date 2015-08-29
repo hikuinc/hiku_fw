@@ -85,7 +85,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.3.09" // Beta3 firmware starts with 1.3.00
+const cFirmwareVersion = "1.3.10" // Beta3 firmware starts with 1.3.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -2126,7 +2126,7 @@ function init()
     ioExpander.setDir(4, 1); // set as input
     
     // 5ms later set as output and later drive hard
-    imp.wakeup(0.005, function() { ioExpander.setDir(4, 0); ioExpander.setPin(4, 0); } ); 
+    imp.wakeup(0.005, function() { ioExpander.setPin(4, 0); ioExpander.setDir(4, 0); } ); 
 
     //sw3v3 <- Switch3v3Accessory(4);
     //sw3v3.enable();
