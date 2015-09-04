@@ -45,6 +45,11 @@ const CHARGE_CURRENT_MIN = 200;
 
 audio_pkt_blob <- blob(MAX_AUDIO_PAYLOAD_LEN);
 
+// Audio memory on SPI Flash
+const AUDIO_MEM_BASE_START = 0x400000;
+const AUDIO_MEM_SIZE = 0x10000;
+const AUDIO_MEM_END_ADDR = 0x410000;
+
 packet_state <- {
 				 state=PS_OUT_OF_SYNC,
 				 char_string = "",
@@ -223,9 +228,9 @@ local init_completed = false;
 
 gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
-const gAudioBufferSize = 2000; // Size of each audio buffer 
+const gAudioBufferSize = 2048; // Size of each audio buffer 
 const gAudioSampleRate = 8000; // in Hz
-local sendBufferSize = 24*1024; // 16K send buffer size
+local sendBufferSize = 24*1024; // 24K send buffer size
 
 // Workaround to capture last buffer after sampler is stopped
 gSamplerStopping <- false; 
@@ -246,6 +251,10 @@ buf2 <- blob(gAudioBufferSize);
 buf3 <- blob(gAudioBufferSize);
 buf4 <- blob(gAudioBufferSize);
 
+// offline audio buffer
+local audio_start_address = AUDIO_MEM_BASE_START;
+local audio_end_address = AUDIO_MEM_BASE_START;
+spiFlash <- null;
 
 lines_scanned <- 0;
 scan_byte_cnt <- 0;
@@ -320,7 +329,7 @@ function ChangeWifi(ssid, password) {
 
 class ConnectionManager
 {
-	_connCb = array(2);
+	_connCb = array(5);
 	numCb = 0;
 	_retryTimer = null;
 	
@@ -1714,6 +1723,111 @@ agent.on("devicePage", function(result){
 });*/
 
 
+class AudioUploader
+{
+    connection = false;
+    stop_requested = false;
+
+    constructor()
+    {   
+        connMgr.registerCallback(connectionStatusCb.bindenv(this));
+        connection = connection_available;
+    }
+    
+    function connectionStatusCb(status)
+    {
+		connection = (status == SERVER_CONNECTED);
+    }
+    
+    function startAudio()
+    {
+        if (connection)
+        {
+            startUpload();
+        }
+    }
+    
+    function startUpload()
+    {
+        
+        if (!stop_requested)
+        {
+            // this is where we add the login to start sending
+            // audio data
+            // if we have connection just send the blob to the agent
+            // otherwise wait for connection availability and send all at once
+            // It wasn't quite the last one, send normally
+            if (audio_end_address - audio_start_address >= 2048)
+            {
+                local buffer = read_flash(audio_start_address, 2048);
+                audio_start_address +=2048;
+                gAudioChunkCount++;
+                server.log(format("Audio: sending chunck: %d",gAudioChunkCount));
+                agent.send("uploadAudioChunk", {buffer=buffer, 
+                               							length=buffer.tell()});
+            }
+            imp.wakeup(0.125, startUpload.bindenv(this));
+        }
+        else
+        {
+            imp.wakeup(0.125, finishUpload.bindenv(this));
+        }
+    }
+    
+    function finishUpload()
+    {
+
+        // this is where we add the login to start sending
+        // audio data
+        // if we have connection just send the blob to the agent
+        // otherwise wait for connection availability and send all at once
+        // It wasn't quite the last one, send normally
+        local audio_remaining = (audio_end_address - audio_start_address) / 2048;
+        server.log(format("Remaining Audio(start_addr=%X, end_addr=%X, chunks=%d",audio_start_address, audio_end_address, audio_remaining));
+        for (local i=0; i < audio_remaining; i++)
+        {
+            local buffer = read_flash(audio_start_address, 2048);
+            audio_start_address +=2048;
+            gAudioChunkCount++;
+            server.log(format("Audio: sending chunck: %d",gAudioChunkCount));
+            agent.send("uploadAudioChunk", {buffer=buffer, 
+                           							length=buffer.tell()});           
+        }
+        
+        audio_remaining = (audio_end_address - audio_start_address);
+        if (audio_remaining > 0)
+        {
+            local buffer = read_flash(audio_start_address, audio_remaining);
+            audio_start_address +=audio_remaining;
+            gAudioChunkCount++;
+            server.log(format("Audio: sending chunck: %d",gAudioChunkCount));
+            agent.send("uploadAudioChunk", {buffer=buffer, 
+                           							length=buffer.tell()});             
+        }
+        
+        // This means we reached the end of the buffer, but we don't
+        // have anymore to send to the agent
+        if(agent.send("endAudioUpload", {
+                                  scandata="",
+                                  serial=hardware.getdeviceid(),
+                                  fw_version=cFirmwareVersion,
+                                  linkedrecord="",
+                                  audiodata="", // to be added by agent
+                                  scansize=gAudioChunkCount, 
+                                 }) == 0)
+        {
+            imp.wakeup(0.001, function(){hwPiezo.playSound("success-local");});
+        }
+        imp.wakeup(0.1, function(){ init_audio_memory(); })
+        stop_requested = false;
+    }
+    
+    function stopAudio()
+    {
+        stop_requested = true;
+    }
+}
+
 //**********************************************************************
 // Process the last buffer, if any, and tell the agent we are done. 
 // This function is called after sampler.stop in a way that 
@@ -1723,8 +1837,8 @@ function sendLastBuffer()
     // Send the last chunk to the server, if there is one
     if (gLastSamplerBuffer != null && gLastSamplerBufLen > 0)
     {
-        agent.send("uploadAudioChunk", {buffer=gLastSamplerBuffer, 
-                   length=gLastSamplerBufLen});
+       // agent.send("uploadAudioChunk", {buffer=gLastSamplerBuffer, 
+                 //  length=gLastSamplerBufLen});
     }
 
     // If there are less than x secs of audio, abandon the 
@@ -1742,6 +1856,7 @@ function sendLastBuffer()
     //if (secs >= 0.4 && !gAudioBufferOverran)
     if (secs >= 0.4)
     {
+        /*
         if(agent.send("endAudioUpload", {
                                       scandata="",
                                       serial=hardware.getdeviceid(),
@@ -1753,7 +1868,10 @@ function sendLastBuffer()
         {
         	hwPiezo.playSound("success-local");
         }
+        */
+        imp.wakeup(0.001, function(){gAudioUploader.stopAudio();});
     } else {
+        init_audio_memory();
         agent.send("abortAudioUpload", {
                                       scandata="",
                                       serial=hardware.getdeviceid(),
@@ -1892,8 +2010,14 @@ function audioUartCallback()
        switch (packet_state.type) {
            case PKT_TYPE_AUDIO:
                if (audio_pkt_blob.len() - audio_pkt_blob.tell() < packet_state.pay_len) {
-                 agent.send("uploadAudioChunk", {buffer=audio_pkt_blob, length=audio_pkt_blob.tell()});
+                 //agent.send("uploadAudioChunk", {buffer=audio_pkt_blob, length=audio_pkt_blob.tell()});
+                 local firstTime = (audio_end_address == AUDIO_MEM_BASE_START);
+                 write_flash(audio_pkt_blob,audio_pkt_blob.tell());
                  audio_pkt_blob.seek(0,'b');
+                 if (firstTime)
+                 {
+                    imp.wakeup(0.001,function(){gAudioUploader.startAudio()});   
+                 }
                }
                audio_pkt_blob.writestring(packet_state.char_string.slice(buf_ptr, buf_ptr+packet_state.pay_len));
                buf_ptr += packet_state.pay_len;
@@ -1986,6 +2110,60 @@ function scannerDebugCallback()
     }
 }
 
+
+function init_audio_memory()
+{
+    if ("spiflash" in hardware)
+    {
+        spiFlash <- hardware.spiflash;
+        spiFlash.enable();
+        server.log(format("Audio: SPI FLASH (ID: %d, SIZE: %d", spiFlash.chipid(), spiFlash.size()));
+        for (local i = AUDIO_MEM_BASE_START; i < AUDIO_MEM_END_ADDR; i +=4096)
+        {
+            server.log(format("Audio: Erasing Audio Sector: %X",i));
+            spiFlash.erasesector(i);
+        }
+        spiFlash.disable();
+    }
+    audio_start_address = AUDIO_MEM_BASE_START;
+    audio_end_address = AUDIO_MEM_BASE_START;    
+}
+// initialize the audio memory to use for record and queue to the agent
+init_audio_memory();
+
+function write_flash(buffer, length)
+{
+    if (spiFlash)
+    {
+        spiFlash.enable();
+        local status = spiFlash.write(audio_end_address,buffer);
+        spiFlash.disable();
+        if (status)
+        {
+            server.log(format("Audio: SPI Flash Write Failed! status=%d",status));
+            return;
+        }
+        else
+        {
+            server.log(format("Audio: Wrote audio data (size=%d)",length));
+        }
+        audio_end_address +=length;
+    }
+}
+
+function read_flash(address, length)
+{
+    local buffer = null;
+    // Read data from the provided address and length of data from 
+    // Flash, iff the flash handle is not null, otherwise just return null
+    if(spiFlash)
+    {
+        spiFlash.enable();
+        buffer = spiFlash.read(address, length);
+        spiFlash.disable();           
+    }
+    return buffer;
+}
 
 //======================================================================
 // Accelerometer
@@ -2586,6 +2764,7 @@ init_done();
 connMgr <- ConnectionManager();
 connMgr.registerCallback(onConnected.bindenv(this));
 connMgr.init_connections();	
+gAudioUploader <- AudioUploader();
 init();
 
 // STM32 microprocessor firmware updater
