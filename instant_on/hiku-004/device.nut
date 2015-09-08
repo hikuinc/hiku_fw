@@ -2,7 +2,7 @@
 // Setup the server to behave when we have the no-wifi condition
 imp.setpoweren(true);
 server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
-
+server.connect(null, 30);
 // Always enable blinkup to keep LED flashing; power costs are negligible
 imp.enableblinkup(true);
 
@@ -12,8 +12,7 @@ const SCAN_DEBUG_SAMPLES = 1024;
 const IMAGE_COLUMNS = 1016;
 const FLASH_BLOCK = 1024;
 SCAN_MAX_BYTES <- SCAN_DEBUG_SAMPLES*IMAGE_COLUMNS;
-const UART_BUF_SIZE = 1024;
-
+const UART_BUF_SIZE = 8192;
 // GLOBALS AND CONSTS ----------------------------------------------------------
 
 const BLOCKSIZE = 4096; // bytes per buffer of data sent from agent
@@ -24,14 +23,15 @@ BYTE_TIME <- 8.0 / (BAUD * 1.0);
 
 const PS_OUT_OF_SYNC = 0;
 const PS_TYPE_FIELD = 4;
-const PS_LEN_FIELD = 5;
-const PS_DATA_FIELD = 6;
+const PS_LEN_FIELD_HIGH = 5;
+const PS_LEN_FIELD_LOW = 6;
+const PS_DATA_FIELD = 7;
 const PS_PREAMBLE = "\xDE\xAD\xBE\xEF";
 const PKT_TYPE_SW_VERSION = 0x01;
 const PKT_TYPE_AUDIO = 0x10;
 const PKT_TYPE_SCAN = 0x20;
 //const PKT_TYPE_DTMF = 0x30;
-const MAX_AUDIO_PAYLOAD_LEN = 192;
+const MAX_AUDIO_PAYLOAD_LEN = 1000;
 const STM32_SW_VERSION = 1;
 const STM32_SW_REVISION = 19;
 const STM32_SW_BLOB_SIZE = 1024;
@@ -73,38 +73,29 @@ gInitTime <- {
 */
 local connection_available = false;
 
+
+/** hiku 004 pin configurations ****************************/
 is_hiku004 <- true;
 
-if (is_hiku004) {
-    CPU_INT             <- hardware.pinW;
-    CPU_INT_RESET       <- hardware.pinY;
-    EIMP_AUDIO_IN       <- hardware.pinN; // "EIMP-AUDIO_IN" in schematics
-    EIMP_AUDIO_OUT      <- hardware.pinC; // "EIMP-AUDIO_OUT" in schematics
-    IMON                <- hardware.pinE;
-    I2C_IF              <- hardware.i2cFG;
-    SCL_OUT             <- hardware.pinF;
-    SDA_OUT             <- hardware.pinG;
-    BATT_VOLT_MEASURE   <- hardware.pinH;
-    BTN_N               <- hardware.pinX;
-    ACCEL_INT           <- hardware.pinQ;
-    ACOK_N              <- hardware.pinA;
-    AUDIO_UART          <- hardware.uartUVGD;
-    IMP_ST_CLK          <- hardware.pinM;
-    NRST                <- hardware.pinS;
-    BOOT0               <- hardware.pinK;
-    VREF_EN             <- hardware.pinT;
-} else {
-    CPU_INT             <- hardware.pin1;
-    EIMP_AUDIO_IN       <- hardware.pin2; // "EIMP-AUDIO_IN" in schematics
-    EIMP_AUDIO_OUT      <- hardware.pin5; // "EIMP-AUDIO_OUT" in schematics
-    RXD_IN_FROM_SCANNER <- hardware.pin7;
-    I2C_IF              <- hardware.i2c89;
-    SCL_OUT             <- hardware.pin8;
-    SDA_OUT             <- hardware.pin9;
-    BATT_VOLT_MEASURE   <- hardware.pinB;
-    //CHARGE_DISABLE_H    <- hardware.pinC;
-    SCANNER_UART        <- hardware.uart57;
-}
+CPU_INT             <- hardware.pinW;
+CPU_INT_RESET       <- hardware.pinY;
+EIMP_AUDIO_IN       <- hardware.pinN; // "EIMP-AUDIO_IN" in schematics
+EIMP_AUDIO_OUT      <- hardware.pinC; // "EIMP-AUDIO_OUT" in schematics
+IMON                <- hardware.pinE;
+I2C_IF              <- hardware.i2cFG;
+SCL_OUT             <- hardware.pinF;
+SDA_OUT             <- hardware.pinG;
+BATT_VOLT_MEASURE   <- hardware.pinH;
+BTN_N               <- hardware.pinX;
+ACCEL_INT           <- hardware.pinQ;
+ACOK_N              <- hardware.pinA;
+AUDIO_UART          <- hardware.uartUVGD;
+IMP_ST_CLK          <- hardware.pinM;
+NRST                <- hardware.pinS;
+BOOT0               <- hardware.pinK;
+VREF_EN             <- hardware.pinT;
+
+/********************  END ************/
 
 VREF_EN.configure(DIGITAL_OUT);
 VREF_EN.write(1);
@@ -112,7 +103,7 @@ VREF_EN.write(1);
 BOOT0.configure(DIGITAL_OUT,0);
 
 NRST.configure(DIGITAL_OUT, 0);
-NRST.write(1);
+//NRST.write(1);
 
 CPU_INT_RESET.configure(DIGITAL_OUT);
 // clear interrupts
@@ -221,6 +212,13 @@ enum DeviceState
     PRE_SLEEP,        // 5: A state before it enters Sleep just after being IDLE
 }
 
+enum BTN_STATE
+{
+    IDLE,
+    PRESSED,
+    RELEASED
+}
+gButtonState <- BTN_STATE.IDLE;
 
 // Globals
 gDeviceState <- null; // Hiku device current state
@@ -246,15 +244,18 @@ gDeepSleepTimer <- null;
 // A-law sampler does not return partial buffers. This means that up to 
 // the last buffer size of data is dropped. Filed issue with IE here: 
 // http://forums.electricimp.com/discussion/780/. So keep buffers small. 
-buf1 <- blob(gAudioBufferSize);
-buf2 <- blob(gAudioBufferSize);
-buf3 <- blob(gAudioBufferSize);
-buf4 <- blob(gAudioBufferSize);
+//gAudioBuffer <- blob(gAudioBufferSize*16);
 
 // offline audio buffer
 local audio_start_address = AUDIO_MEM_BASE_START;
 local audio_end_address = AUDIO_MEM_BASE_START;
 spiFlash <- null;
+if ("spiflash" in hardware)
+{
+    spiFlash <- hardware.spiflash;
+}
+
+gPendingAudio <- false;
 
 lines_scanned <- 0;
 scan_byte_cnt <- 0;
@@ -464,8 +465,6 @@ class ConnectionManager
 // Class to handle all the Interrupts and Call Backs
 class InterruptHandler
 {
-    // Having a static interrupt handler object as a singleton will be
-    // better to handle all the IOExpander classes interrupts one this one object
     irqCallbacks = array(2); // start with this for now
     i2cDevice = null;
   
@@ -475,23 +474,9 @@ class InterruptHandler
     {
     	//gInitTime.inthandler = hardware.millis();
         this.irqCallbacks.resize(numFuncs);
-
-	if (is_hiku004) {
 	    // clear interrupts
 	    CPU_INT_RESET.write(0);
 	    CPU_INT_RESET.write(1);
-	} else{
-            this.i2cDevice = i2cDevice;
-            // Disable "Autoclear NINT on RegData read". This 
-            // could cause us to lose accelerometer interrupts
-            // if someone reads or writes any pin between when 
-            // an interrupt occurs and we handle it. 
-            i2cDevice.write(0x10, 0x01); // RegMisc
-	    
-            // Lower the output buffer drive, to reduce current consumption
-            i2cDevice.write(0x02, 0xFF); // RegLowDrive          
-	}
-	
         CPU_INT.configure(DIGITAL_IN_WAKEUP, handlePin1Int.bindenv(this));
     }
   
@@ -536,16 +521,9 @@ class InterruptHandler
         	return;
         }
         
-	if (is_hiku004) {
 	    // HACK replace ACOK_N.read() for charging start/stop with I2C call to LP3923 or monitoring of charging current (IMON)
 	    local ACOK_N_val = ACOK_N.read() ? 0 : 1;
 	    regInterruptSource = (ACOK_N_val << 7) | ((BTN_N.read() ? 0 : 1) << 2) | (ACOK_N_val << 1) | (ACCEL_INT.read() & 1);
-	} else 
-	    while (reg = i2cDevice.read(0x0C)) // RegInterruptSource
-		{
-	    clearAllIrqs();
-	    regInterruptSource =  regInterruptSource | reg;
-        }
 	
 
         // If no interrupts, just return. This occurs on every 
@@ -683,66 +661,6 @@ class Piezo
         } 
         return true;   
     }    
-    /*
-    function isPaging()
-    {
-    	return page_device;
-    }
-    
-    function stopPageTone()
-    {
-    	page_device = false;
-    }
-    
-    function playPageTone()
-    {
-		if( !validate_tone("device-page"))
-		{
-			return;
-		}
-    	
-    	page_device = true;
-    	
-    	// Play the first note
-        local params = tonesParamsList["device-page"][0];
-        pin.configure(PWM_OUT, params[0], params[1]);
-            
-    	// Play the next note after the specified delay
-        pageToneIdx = 1;
-        imp.wakeup(params[2], continuePageTone.bindenv(this));   	
-    	
-    }
-    
-    // Continue playing the device page tone until a button is pressed
-    function continuePageTone()
-    {
-        // Turn off the previous note
-        pin.write(0);
-        
-        if( !page_device )
-        {
-        	return;
-        }
-
-        // Play the next note, if any
-        if (tonesParamsList["device-page"].len() > pageToneIdx)
-        {
-            local params = tonesParamsList["device-page"][pageToneIdx];
-            pin.configure(PWM_OUT, params[0], params[1]);
-
-            pageToneIdx++;
-            imp.wakeup(params[2], continuePageTone.bindenv(this));
-        }
-        else 
-        {
-            pageToneIdx = 0;
-            if( page_device )
-            {
-            	playPageTone();
-            }
-        }
-    }
-    */
 
     //**********************************************************
     // Play a tone (a set of notes).  Defaults to asynchronous
@@ -948,89 +866,6 @@ class I2cDevice
 
 
 //======================================================================
-// Handles the SX1508 GPIO expander
-class IoExpanderDevice
-{
-
-    intHandler = null;
-
-    constructor(intHandler)
-    {
-        //base.constructor(port, address);
-		this.intHandler = intHandler;
-
-    }
-    
-    function getIntHandler()
-    {
-    	return this.intHandler;
-    }
-
-    // Write a bit to a register
-    function writeBit(register, bitn, level)
-    {
-        local value = intHandler.getI2CDevice().read(register);
-        value = (level == 0)?(value & ~(1<<bitn)):(value | (1<<bitn));
-        intHandler.getI2CDevice().write(register, value);
-    }
-
-    // Write a masked bit pattern
-    function writeMasked(register, data, mask)
-    {
-        local value = intHandler.getI2CDevice().read(register);
-        value = (value & ~mask) | (data & mask);
-        intHandler.getI2CDevice().write(register, value);
-    }
-
-    // Get a GPIO input pin level
-    function getPin(gpio)
-    {
-        return (intHandler.getI2CDevice().read(0x08)&(1<<(gpio&7)))?1:0;
-    }
-
-    // Set a GPIO level
-    function setPin(gpio, level)
-    {
-        writeBit(0x08, gpio&7, level?1:0);
-    }
-
-    // Set a GPIO direction
-    function setDir(gpio, input)
-    {
-        writeBit(0x07, gpio&7, input?1:0);
-    }
-
-    // Set a GPIO internal pull up
-    function setPullUp(gpio, enable)
-    {
-        writeBit(0x03, gpio&7, enable);
-    }
-
-    // Set a GPIO internal pull down
-    function setPullDown(gpio, enable)
-    {
-        writeBit(0x04, gpio&7, enable);
-    }
-
-    // Set GPIO interrupt mask
-    // "0" means disable interrupt, "1" means enable (opposite of datasheet)
-    function setIrqMask(gpio, enable)
-    {
-        writeBit(0x09, gpio&7, enable?0:1); 
-    }
-
-    // Set GPIO interrupt edges
-    function setIrqEdges(gpio, rising, falling)
-    {
-        local addr = 0x0B - (gpio>>2);
-        local mask = 0x03 << ((gpio&3)<<1);
-        local data = (2*falling + rising) << ((gpio&3)<<1);
-        writeMasked(addr, data, mask);
-    }
-}
-
-
-//======================================================================
 // Device state machine 
 
 //**********************************************************************
@@ -1131,53 +966,17 @@ class Scanner
         // Save assignments
         pin = triggerPin;
         reset = resetPin;
-
-	if (!is_hiku004) {
-            // Reset the scanner at each boot, just to be safe
-            ioExpander.setDir(reset, 0); // set as output
-            ioExpander.setPullUp(reset, 0); // disable pullup
-            ioExpander.setPin(reset, 0); // pull low to reset
-            imp.sleep(0.001); // wait for x seconds
-            ioExpander.setPin(reset, 1); // pull high to boot
-            imp.sleep(0.001);
-
-            // Configure trigger pin as output
-            ioExpander.setDir(pin, 0); // set as output
-            ioExpander.setPullUp(pin, 0); // disable pullup
-            ioExpander.setPin(pin, 1); // pull high to disable trigger
-
-            // Configure scanner UART (for RX only)
-	    // WARNING: Ensure pin5 is never accidentally configured as a UART TX output
-	    // and driven high. This triggers the buzzer and can cause device crashes
-            // on a low battery.	
-            SCANNER_UART.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
-                scannerCallback.bindenv(this));
-            //gInitTime.scanner = hardware.millis() - gInitTime.scanner;
-	}
     }
 
     // Disable for low power sleep mode
     function disable()
     {
-	if (!is_hiku004) {
-            ioExpander.setPin(reset, 0); // pull reset low 
-            ioExpander.setPin(pin, 0); // pull trigger low 
-            SCANNER_UART.disable();
-            RXD_IN_FROM_SCANNER.configure(DIGITAL_IN_PULLUP);
-            EIMP_AUDIO_IN.configure(DIGITAL_IN_PULLUP);
-	}
+
     }
 
     function trigger(on)
     {
-	if (is_hiku004)
-	    return;
-	else {
-            if (on)
-		ioExpander.setPin(pin, 0);
-            else
-		ioExpander.setPin(pin, 1);
-	}
+
     }
 
     //**********************************************************************
@@ -1185,52 +984,50 @@ class Scanner
     function startScanRecord() 
     {
         scannerOutput = "";
-        // Trigger the scanner
-        hwScanner.trigger(true);
 
         // Trigger the mic recording
         gAudioBufferOverran = false;
         gAudioChunkCount = 0;
         gLastSamplerBuffer = null; 
-        gLastSamplerBufLen = 0; 
-        agent.send("startAudioUpload", "");
-        if (is_hiku004) {
-            local pmic_val;
-            packet_state.state = PS_OUT_OF_SYNC;
-		    packet_state.char_string = "";
-            //hardware.spiflash.enable();
-            //server.log(format("Flash size: %d bytes", hardware.spiflash.size()));
-            // HACK requires SCAN_DEBUG_SAMPLES * FLASH_BLOCK to be a multiple of BLOCKSIZE
-            //for (local i=0; i<((SCAN_DEBUG_SAMPLES * FLASH_BLOCK)/BLOCKSIZE); i++)
-            //  hardware.spiflash.erasesector(i*BLOCKSIZE);
-            lines_scanned = 0;
-            scan_byte_cnt = 0;
-            scanner_error = false;
-            //IMP_ST_CLK.configure(PWM_OUT, 0.000000125, 0.5);
-            NRST.configure(DIGITAL_OUT);
-            NRST.write(0);
-            BOOT0.configure(DIGITAL_OUT);
-            BOOT0.write(0);
-            NRST.write(1);
-            // turn on voltage to STM32F0
-	        //pmic_val = pmic.read(0x00);
-	        //pmic.write(0x00, pmic_val | 0x08);
-            //buf1.seek(0, 'b');
-            //buf2.seek(0, 'b');
-            audio_pkt_blob.seek(0,'b');
-            AUDIO_UART.disable();
-            // assume that the STM32 software is not up to date,
-            // will be set to true once the STM32 sends a packet
-            // indicating the correct software version
-            nv.stm32_sw_uptodate = false;
-            //AUDIO_UART.setrxfifosize(IMAGE_COLUMNS);
-            AUDIO_UART.setrxfifosize(UART_BUF_SIZE);
-            //AUDIO_UART.configure(BAUD, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback);
-            AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback);
-            //AUDIO_UART.configure(1843200, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, scannerDebugCallback); 
-            gAudioTimer = hardware.millis();
-        } else
-            hardware.sampler.start();
+        gLastSamplerBufLen = 0;
+        if( connection_available )
+        {
+            agent.send("startAudioUpload", "");
+        }
+        local pmic_val;
+        packet_state.state = PS_OUT_OF_SYNC;
+	    packet_state.char_string = "";
+        //hardware.spiflash.enable();
+        //server.log(format("Flash size: %d bytes", hardware.spiflash.size()));
+        // HACK requires SCAN_DEBUG_SAMPLES * FLASH_BLOCK to be a multiple of BLOCKSIZE
+        //for (local i=0; i<((SCAN_DEBUG_SAMPLES * FLASH_BLOCK)/BLOCKSIZE); i++)
+        //  hardware.spiflash.erasesector(i*BLOCKSIZE);
+        lines_scanned = 0;
+        scan_byte_cnt = 0;
+        scanner_error = false;
+        //IMP_ST_CLK.configure(PWM_OUT, 0.000000125, 0.5);
+        NRST.configure(DIGITAL_OUT);
+        NRST.write(0);
+        BOOT0.configure(DIGITAL_OUT);
+        BOOT0.write(0);
+        NRST.write(1);
+        // turn on voltage to STM32F0
+        //pmic_val = pmic.read(0x00);
+        //pmic.write(0x00, pmic_val | 0x08);
+        //buf1.seek(0, 'b');
+        //buf2.seek(0, 'b');
+        audio_pkt_blob.seek(0,'b');
+        AUDIO_UART.disable();
+        // assume that the STM32 software is not up to date,
+        // will be set to true once the STM32 sends a packet
+        // indicating the correct software version
+        nv.stm32_sw_uptodate = false;
+        //AUDIO_UART.setrxfifosize(IMAGE_COLUMNS);
+        AUDIO_UART.setrxfifosize(UART_BUF_SIZE);
+        //AUDIO_UART.configure(BAUD, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback);
+        AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback);
+        //AUDIO_UART.configure(1843200, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, scannerDebugCallback); 
+        gAudioTimer = hardware.millis();
     }
 
     //**********************************************************************
@@ -1239,29 +1036,22 @@ class Scanner
     // it must support that. 
     function stopScanRecord()
     {
-        if (is_hiku004) {
-            // Put STM32F0 in reset mode
-            NRST.write(0);
-            if (gDeviceState != DeviceState.SCAN_CAPTURED) 
-                audioUartCallback();
-            AUDIO_UART.disable();
-            /*
-            lines_scanned = scan_byte_cnt/IMAGE_COLUMNS;
-            agent.send("scan_start", null);
-            server.log(format("Fetching %d lines", lines_scanned));
-            for (local i=0; i<lines_scanned; i++) {
-              agent.send("scan_line", hardware.spiflash.read(i*IMAGE_COLUMNS, IMAGE_COLUMNS));
-            }
-            server.log("Lines fetched!");
-            for (local i=0; i<((SCAN_DEBUG_SAMPLES * FLASH_BLOCK)/BLOCKSIZE); i++)
-              hardware.spiflash.erasesector(i*BLOCKSIZE);
-              */
-        } else
-            // Stop mic recording
-            hardware.sampler.stop();
-
-        // Release scanner trigger
-        hwScanner.trigger(false);
+        // Put STM32F0 in reset mode
+        NRST.write(0);
+        if (gDeviceState != DeviceState.SCAN_CAPTURED) 
+            audioUartCallback();
+        AUDIO_UART.disable();
+        /*
+        lines_scanned = scan_byte_cnt/IMAGE_COLUMNS;
+        agent.send("scan_start", null);
+        server.log(format("Fetching %d lines", lines_scanned));
+        for (local i=0; i<lines_scanned; i++) {
+          agent.send("scan_line", hardware.spiflash.read(i*IMAGE_COLUMNS, IMAGE_COLUMNS));
+        }
+        server.log("Lines fetched!");
+        for (local i=0; i<((SCAN_DEBUG_SAMPLES * FLASH_BLOCK)/BLOCKSIZE); i++)
+          hardware.spiflash.erasesector(i*BLOCKSIZE);
+          */
 
         // Reset for next scan
         scannerOutput = "";
@@ -1368,21 +1158,10 @@ class PushButton
 		
         // Save assignments
         pin = btnPin;
-
         // Set event handler for IRQ
         intHandler.setIrqCallback(btnPin, buttonCallback.bindenv(this));
-	if (is_hiku004)
 	    BTN_N.configure(DIGITAL_IN, buttonCallback.bindenv(this));
         connMgr.registerCallback(connectionStatusCb.bindenv(this));
-
-	if (!is_hiku004) {
-            // Configure pin as input, IRQ on both edges
-            ioExpander.setDir(pin, 1); // set as input
-            ioExpander.setPullUp(pin, 1); // enable pullup
-            ioExpander.setIrqMask(pin, 1); // enable IRQ
-            ioExpander.setIrqEdges(pin, 1, 1); // rising and falling
-	}
-        
         blinkTimer = CancellableTimer(BLINK_UP_TIME, this.cancelBlinkUpTimer.bindenv(this));
         
         connection = connection_available;
@@ -1402,10 +1181,7 @@ class PushButton
 
     function readState()
     {
-	if (is_hiku004) 
 	    return BTN_N.read() 
-	else
-            return ioExpander.getPin(pin);
     }
 
     //**********************************************************************
@@ -1470,10 +1246,16 @@ class PushButton
                 	return;
                 }
                 
+                if (gPendingAudio)
+                {
+                    return;
+                }
+                
                 //log(format("buttonPressCount=%d",buttonPressCount));                
                 
                 if (buttonState == ButtonState.BUTTON_UP)
                 {
+                    /*
                  	if(!connection)
                 	{
                 		// Here we play the no connection sound and return from the state machine
@@ -1484,7 +1266,8 @@ class PushButton
                 		//buttonState = ButtonState.BUTTON_DOWN;
                 		return;
                 	}
-		    agentSend("button","Pressed");
+                	*/
+		    //agentSend("button","Pressed");
                     updateDeviceState(DeviceState.SCAN_RECORD);
                     buttonState = ButtonState.BUTTON_DOWN;
                     //log("Button state change: DOWN");
@@ -1493,6 +1276,7 @@ class PushButton
 		else
 		{
 		    buttonState = ButtonState.BUTTON_DOWN;
+		    gButtonState = BTN_STATE.PRESSED;
 		}
                 
                 break;
@@ -1500,9 +1284,19 @@ class PushButton
                 // Button in released state
                 if (buttonState == ButtonState.BUTTON_DOWN)
                 {
-		    log("BUTTON RELEASED!");
-		    agentSend("button","Released");
+                    log("BUTTON RELEASED!");
+                    if(gPendingAudio && !connection_available)
+                    {
+                        //spin off the scheduler to do the pending data case
+                        imp.wakeup(0.0001, handlePendingAudio);
+                    }
+                    else
+                    {
+		                agentSend("button","Released");
+                    }
+                    
                     buttonState = ButtonState.BUTTON_UP;
+                    gButtonState = BTN_STATE.RELEASED;
                     //log("Button state change: UP");
 				    /*
 					if( !connection )
@@ -1525,7 +1319,10 @@ class PushButton
                         // must be kept separate, as only one onidle 
                         // callback is supported at a time. 
                         gSamplerStopping = true;
-                        imp.onidle(sendLastBuffer); 
+                        if (connection_available)
+                        {
+                            imp.onidle(sendLastBuffer); 
+                        }
                         hwScanner.stopScanRecord();
                     }
                     // No more work to do, so go to idle
@@ -1585,48 +1382,24 @@ class ChargeStatus
     {
         // Save assignments
         pin = chargePin;
-	pinStatus = 7;
+	    pinStatus = 7;
 
-    if (is_hiku004) {
 	    ACOK_N.configure(DIGITAL_IN, chargerDetectionCB.bindenv(this));
 	    IMON.configure(ANALOG_IN);
-	} else {
-        // Set event handler for IRQ
-        intHandler.setIrqCallback(pin, chargerCallback.bindenv(this));
-        intHandler.setIrqCallback(pinStatus, chargerDetectionCB.bindenv(this));
-	}
 	
-	BATT_VOLT_MEASURE.configure(ANALOG_IN);
+	    BATT_VOLT_MEASURE.configure(ANALOG_IN);
 
-	if (!is_hiku004) {
-            // Configure pin as input, IRQ on both edges
-            ioExpander.setDir(pin, 1); // set as input
-            ioExpander.setPullUp(pin, 1); // enable pullup
-            ioExpander.setIrqMask(pin, 1); // enable IRQ
-            ioExpander.setIrqEdges(pin, 1, 1); // rising and falling
-            
-            ioExpander.setDir(pinStatus, 1); // set as input
-            ioExpander.setPullUp(pinStatus, 1); // enable pullup
-            ioExpander.setIrqMask(pinStatus, 1); // enable IRQ
-            ioExpander.setIrqEdges(pinStatus, 1, 1); // rising and falling
-	}
-
-	chargerCallback(); // this will update the current state right away
+	    chargerCallback(); // this will update the current state right away
         imp.wakeup(5, batteryMeasurement.bindenv(this));
     }
     
     function isCharging()
     {
-	local charge_detect_n;
-
-	if (is_hiku004) {
+	    local charge_detect_n;
 	    // Register charging if USB voltage is present (ACOK_N),
 	    // register charging stop if either USB voltage is disconnected or the measured charging current is below CHARGE_CURRENT_MIN
 	    charge_detect_n = previous_state ? ACOK_N.read() || (CHARGE_CURRENT_FACTOR*IMON.read() < CHARGE_CURRENT_MIN) : ACOK_N.read();
 	    server.log(format("Current: %06fmA, %d, %d", CHARGE_CURRENT_FACTOR*IMON.read(), charge_detect_n ? 0 : 1, previous_state ? 1 : 0));
-	}
-	else
-	    charge_detect_n = ioExpander.getPin(pin);
 
         return (charge_detect_n ? false : true);
     }
@@ -1654,21 +1427,17 @@ class ChargeStatus
     function chargerDetectionCB()
     {
     	// the pin is high charger is attached and low is a removal
-	local charge_detect_n;
+	    local charge_detect_n;
 
-	if (is_hiku004)
 		charge_detect_n = ACOK_N.read();
-	    else
-		charge_detect_n = ioExpander.getPin(7);
 
-	local status = charge_detect_n ? "disconnected":"connected";
+	    local status = charge_detect_n ? "disconnected":"connected";
 
     	log(format("USB Detection CB: %s", status));
         log(format("USB Detection CB: %s", status));
-	agentSend("usbState",status);
-	
-	if (is_hiku004)
-	  chargerCallback();
+	    agentSend("usbState",status);
+
+    	chargerCallback();
     }
 
     //**********************************************************************
@@ -1679,12 +1448,6 @@ class ChargeStatus
         
         charging = isCharging()?1:0;
         
-        //Total time taken is (numSamples-1)*sleepSecs
-        if (!is_hiku004)
-            for (local i=1; i<5; i++)
-                charging += isCharging()?1:0;
-        //log(format("Charger: %s",charging?"charging":"not charging"));
-        
 		if( previous_state != (charging==0?false:true))
 		{
             hwPiezo.playSound(previous_state?"charger-attached":"charger-removed");
@@ -1693,17 +1456,11 @@ class ChargeStatus
         previous_state = (charging==0)? false:true; // update the previous state with the current state
         agentSend("chargerState", previous_state); // update the charger state
 
-	local charge_detect_n;
+	    local charge_detect_n= ACOK_N.read();
 
-	if (is_hiku004)
-		charge_detect_n = ACOK_N.read();
-	    else
-		charge_detect_n = ioExpander.getPin(7);
-
-	local status = charge_detect_n ? "disconnected":"connected";
+	    local status = charge_detect_n ? "disconnected":"connected";
 
         log(format("USB Detection: %s", status));
-	log(format("USB Detection: %s", status));
     }
 }
 
@@ -1714,6 +1471,7 @@ class ChargeStatus
 // Agent callback: upload complete
 agent.on("uploadCompleted", function(result) {
 	//log("uploadCompleted response");
+	pmic.write(0x02, 0x1b);
     hwPiezo.playSound(result);
 });
 
@@ -1723,140 +1481,36 @@ agent.on("devicePage", function(result){
 });*/
 
 
-class AudioUploader
-{
-    connection = false;
-    stop_requested = false;
 
-    constructor()
-    {   
-        connMgr.registerCallback(connectionStatusCb.bindenv(this));
-        connection = connection_available;
-    }
+function handlePendingAudio()
+{
     
-    function connectionStatusCb(status)
+    if(connection_available)
     {
-		connection = (status == SERVER_CONNECTED);
-    }
-    
-    function startAudio()
-    {
-        if (connection)
+        // now start uploading the data
+        agent.send("startAudioUpload", "");
+        gAudioChunkCount = 0;
+        if(gPendingAudio)
         {
-            startUpload();
-        }
-    }
-    
-    function startUpload()
-    {
-        
-        if (!stop_requested)
-        {
-            // this is where we add the login to start sending
-            // audio data
-            // if we have connection just send the blob to the agent
-            // otherwise wait for connection availability and send all at once
-            // It wasn't quite the last one, send normally
-            if (audio_end_address - audio_start_address >= 2048)
+            local totalSize = audio_end_address - audio_start_address;
+            local numPayload = totalSize/1000;
+            for(local i =0; i < numPayload; i++)
             {
-                local buffer = read_flash(audio_start_address, 2048);
-                audio_start_address +=2048;
+                local buffer = read_flash(audio_start_address, 1000);
+                audio_start_address +=1000;
+                agent.send("uploadAudioChunk", {buffer=buffer, length=buffer.tell()});
                 gAudioChunkCount++;
-                server.log(format("Audio: sending chunck: %d",gAudioChunkCount));
-                agent.send("uploadAudioChunk", {buffer=buffer, 
-                               							length=buffer.tell()});
             }
-            imp.wakeup(0.125, startUpload.bindenv(this));
+            
+            if (audio_end_address > audio_start_address)
+            {
+                local buffer = read_flash(audio_start_address, (audio_end_address - audio_start_address));
+                audio_start_address +=1000;
+                agent.send("uploadAudioChunk", {buffer=buffer, length=buffer.tell()});    
+                gAudioChunkCount++;
+            }
+            gPendingAudio = false;
         }
-        else
-        {
-            imp.wakeup(0.125, finishUpload.bindenv(this));
-        }
-    }
-    
-    function finishUpload()
-    {
-
-        // this is where we add the login to start sending
-        // audio data
-        // if we have connection just send the blob to the agent
-        // otherwise wait for connection availability and send all at once
-        // It wasn't quite the last one, send normally
-        local audio_remaining = (audio_end_address - audio_start_address) / 2048;
-        server.log(format("Remaining Audio(start_addr=%X, end_addr=%X, chunks=%d",audio_start_address, audio_end_address, audio_remaining));
-        for (local i=0; i < audio_remaining; i++)
-        {
-            local buffer = read_flash(audio_start_address, 2048);
-            audio_start_address +=2048;
-            gAudioChunkCount++;
-            server.log(format("Audio: sending chunck: %d",gAudioChunkCount));
-            agent.send("uploadAudioChunk", {buffer=buffer, 
-                           							length=buffer.tell()});           
-        }
-        
-        audio_remaining = (audio_end_address - audio_start_address);
-        if (audio_remaining > 0)
-        {
-            local buffer = read_flash(audio_start_address, audio_remaining);
-            audio_start_address +=audio_remaining;
-            gAudioChunkCount++;
-            server.log(format("Audio: sending chunck: %d",gAudioChunkCount));
-            agent.send("uploadAudioChunk", {buffer=buffer, 
-                           							length=buffer.tell()});             
-        }
-        
-        // This means we reached the end of the buffer, but we don't
-        // have anymore to send to the agent
-        if(agent.send("endAudioUpload", {
-                                  scandata="",
-                                  serial=hardware.getdeviceid(),
-                                  fw_version=cFirmwareVersion,
-                                  linkedrecord="",
-                                  audiodata="", // to be added by agent
-                                  scansize=gAudioChunkCount, 
-                                 }) == 0)
-        {
-            imp.wakeup(0.001, function(){hwPiezo.playSound("success-local");});
-        }
-        imp.wakeup(0.1, function(){ init_audio_memory(); })
-        stop_requested = false;
-    }
-    
-    function stopAudio()
-    {
-        stop_requested = true;
-    }
-}
-
-//**********************************************************************
-// Process the last buffer, if any, and tell the agent we are done. 
-// This function is called after sampler.stop in a way that 
-// ensures we have captured all sampled buffers. 
-function sendLastBuffer()
-{
-    // Send the last chunk to the server, if there is one
-    if (gLastSamplerBuffer != null && gLastSamplerBufLen > 0)
-    {
-       // agent.send("uploadAudioChunk", {buffer=gLastSamplerBuffer, 
-                 //  length=gLastSamplerBufLen});
-    }
-
-    // If there are less than x secs of audio, abandon the 
-    // recording. Else send the beep!
-    local secs;
-    if (is_hiku004)
-        secs = (hardware.millis()-gAudioTimer)/1000.0;
-    else
-        secs = gAudioChunkCount*gAudioBufferSize/
-               gAudioSampleRate.tofloat();
-
-    //Because we cannot guarantee network robustness, we allow 
-    // uploads even if an overrun occurred. Worst case it still
-    // fails to reco, and you'll get an equivalent error. 
-    //if (secs >= 0.4 && !gAudioBufferOverran)
-    if (secs >= 0.4)
-    {
-        /*
         if(agent.send("endAudioUpload", {
                                       scandata="",
                                       serial=hardware.getdeviceid(),
@@ -1868,10 +1522,48 @@ function sendLastBuffer()
         {
         	hwPiezo.playSound("success-local");
         }
-        */
-        imp.wakeup(0.001, function(){gAudioUploader.stopAudio();});
+    }
+    else
+    {
+        pmic.write(0x02, 0x1);
+        imp.wakeup(0.001,function(){hwPiezo.playSound("success-local")});
+        imp.wakeup(2, handlePendingAudio);
+    }
+}
+
+//**********************************************************************
+// Process the last buffer, if any, and tell the agent we are done. 
+// This function is called after sampler.stop in a way that 
+// ensures we have captured all sampled buffers. 
+function sendLastBuffer()
+{
+    // If there are less than x secs of audio, abandon the 
+    // recording. Else send the beep!
+    local secs;
+    secs = (hardware.millis()-gAudioTimer)/1000.0;
+
+    //Because we cannot guarantee network robustness, we allow 
+    // uploads even if an overrun occurred. Worst case it still
+    // fails to reco, and you'll get an equivalent error. 
+    //if (secs >= 0.4 && !gAudioBufferOverran)
+    if (secs >= 0.4)
+    {
+        
+        if(agent.send("endAudioUpload", {
+                                      scandata="",
+                                      serial=hardware.getdeviceid(),
+                                      fw_version=cFirmwareVersion,
+                                      linkedrecord="",
+                                      audiodata="", // to be added by agent
+                                      scansize=gAudioChunkCount, 
+                                     }) == 0)
+        {
+        	hwPiezo.playSound("success-local");
+        }
+        
+        //imp.wakeup(0.001, function(){gAudioUploader.stopAudio();});
     } else {
-        init_audio_memory();
+        //init_audio_memory();
         agent.send("abortAudioUpload", {
                                       scandata="",
                                       serial=hardware.getdeviceid(),
@@ -1905,7 +1597,7 @@ function sendLastBuffer()
 
 function samplerCallback(buffer, length)
 {
-    //log("SAMPLER CALLBACK: size " + length");
+    server.log("SAMPLER CALLBACK: size " + length);
     if (length <= 0)
     {
         gAudioBufferOverran = true;
@@ -1999,25 +1691,68 @@ function audioUartCallback()
       packet_state.state++;
       buf_ptr++;
    }
-   if ((buf_ptr < string_len) && (packet_state.state == PS_LEN_FIELD)) {
+   
+   if ((buf_ptr < string_len) && (packet_state.state == PS_LEN_FIELD_HIGH)) {
       // HACK HACK HACK
       // verify that length is not 0
-      packet_state.pay_len = packet_state.char_string[buf_ptr];
+      packet_state.pay_len = (packet_state.char_string[buf_ptr] & 0xFF) << 8;
       packet_state.state++;
-      buf_ptr++;
+      buf_ptr++; // Length is now 2 bytes
    }
+   
+   if ((buf_ptr < string_len) && (packet_state.state == PS_LEN_FIELD_LOW)) {
+      // HACK HACK HACK
+      // verify that length is not 0
+      packet_state.pay_len = (packet_state.pay_len & 0xFF00)|(packet_state.char_string[buf_ptr] & 0xFF);
+      packet_state.state++;
+      buf_ptr++; // Length is now 2 bytes
+      server.log(format("Audio Packet Length is: %d",packet_state.pay_len));
+   }   
+   
+   
    if ((string_len-buf_ptr >= packet_state.pay_len) && (packet_state.state == PS_DATA_FIELD)) {
        switch (packet_state.type) {
            case PKT_TYPE_AUDIO:
                if (audio_pkt_blob.len() - audio_pkt_blob.tell() < packet_state.pay_len) {
-                 //agent.send("uploadAudioChunk", {buffer=audio_pkt_blob, length=audio_pkt_blob.tell()});
-                 local firstTime = (audio_end_address == AUDIO_MEM_BASE_START);
-                 write_flash(audio_pkt_blob,audio_pkt_blob.tell());
-                 audio_pkt_blob.seek(0,'b');
+                   
+                     if (connection_available)
+                     {
+                        if(gPendingAudio)
+                        {
+                            local totalSize = audio_end_address - audio_start_address;
+                            local numPayload = totalSize/1000;
+                            for(local i =0; i < numPayload; i++)
+                            {
+                                local buffer = read_flash(audio_start_address, 1000);
+                                audio_start_address +=1000;
+                                agent.send("uploadAudioChunk", {buffer=buffer, length=buffer.tell()});
+                            }
+                            
+                            if (audio_end_address > audio_start_address)
+                            {
+                                local buffer = read_flash(audio_start_address, (audio_end_address - audio_start_address));
+                                audio_start_address +=1000;
+                                agent.send("uploadAudioChunk", {buffer=buffer, length=buffer.tell()});                              
+                            }
+                            gPendingAudio = false;
+                        }
+                        agent.send("uploadAudioChunk", {buffer=audio_pkt_blob, length=audio_pkt_blob.tell()});
+                     }
+                     else
+                     {
+                        write_flash(audio_pkt_blob,audio_pkt_blob.tell());
+                        gPendingAudio = true;
+                     }
+                    gAudioChunkCount++;
+                    audio_pkt_blob.seek(0,'b');
+                 //local firstTime = (audio_end_address == AUDIO_MEM_BASE_START);
+                 //write_flash(audio_pkt_blob,audio_pkt_blob.tell());
+                 /*
                  if (firstTime)
                  {
                     imp.wakeup(0.001,function(){gAudioUploader.startAudio()});   
                  }
+                 */
                }
                audio_pkt_blob.writestring(packet_state.char_string.slice(buf_ptr, buf_ptr+packet_state.pay_len));
                buf_ptr += packet_state.pay_len;
@@ -2113,20 +1848,21 @@ function scannerDebugCallback()
 
 function init_audio_memory()
 {
-    if ("spiflash" in hardware)
+    for (local i = AUDIO_MEM_BASE_START; i < AUDIO_MEM_END_ADDR; i +=4096)
     {
-        spiFlash <- hardware.spiflash;
-        spiFlash.enable();
-        server.log(format("Audio: SPI FLASH (ID: %d, SIZE: %d", spiFlash.chipid(), spiFlash.size()));
-        for (local i = AUDIO_MEM_BASE_START; i < AUDIO_MEM_END_ADDR; i +=4096)
-        {
-            server.log(format("Audio: Erasing Audio Sector: %X",i));
-            spiFlash.erasesector(i);
-        }
-        spiFlash.disable();
+        init_audio_sector(i);
     }
     audio_start_address = AUDIO_MEM_BASE_START;
     audio_end_address = AUDIO_MEM_BASE_START;    
+}
+
+function init_audio_sector(sector)
+{
+    local startTime = hardware.millis();
+    spiFlash.enable();
+    spiFlash.erasesector(sector);
+    spiFlash.disable();
+    server.log(format("Audio: Erase Sector: %X, latency=%d",sector,(hardware.millis() - startTime)));
 }
 // initialize the audio memory to use for record and queue to the agent
 init_audio_memory();
@@ -2228,25 +1964,16 @@ class Accelerometer extends I2cDevice
         // otherwise we get a spurious interrupt at boot. 
         clearAccelInterrupt();
 
-	if (!is_hiku004) {
-            // Configure pin as input, IRQ on both edges
-            ioExpander.setDir(pin, 1); // set as input
-            ioExpander.setPullDown(pin, 1); // enable pulldown
-            ioExpander.setIrqMask(pin, 1); // enable IRQ
-            ioExpander.setIrqEdges(pin, 1, 0); // rising only        
-	}
         // Set event handler for IRQ
         intHandler.setIrqCallback(pin, handleAccelInt.bindenv(this));
-	if (is_hiku004)
+
 	    ACCEL_INT.configure(DIGITAL_IN, handleAccelInt.bindenv(this));
     }
 
     function enableInterrupts()
     {
     	write(0x20, 0x2F); // power up first
-        if (!is_hiku004) {
-          write(0x22, 0x40); // CTRL_REG3: Enable AOI interrupts
-        }
+        write(0x22, 0x40); // CTRL_REG3: Enable AOI interrupts
     }
 
     function disableInterrupts()
@@ -2312,28 +2039,14 @@ function init_nv_items()
 
 function init_unused_pins(i2cDev)
 {
-	//gInitTime.init_unused = hardware.millis();
-	local value = 0;
-	
-	//1. Set Direction to Input for PIN 3 and 7
-	value = i2cDev.read(0x07);
-	i2cDev.write(0x07, (value | (1 << (3 & 7)) | (1 << ( 7 & 7))));
-	
-	//2. Set Pull up for PIN 3 and 7
-	value = i2cDev.read( 0x03 );
-	i2cDev.write(0x03, (value | (1 << (3 & 7)) | (1 << ( 7 & 7))));
-	
-	//3. setIRQ Mask to disable interrupts on 3 and 7
-	value = i2cDev.read( 0x09 );
-	i2cDev.write(0x09, value | ( 0xF8 ));
-	
+    /*
 	hardware.pinA.configure(DIGITAL_IN_PULLUP);
 	hardware.pin6.configure(DIGITAL_IN_PULLUP);
 	hardware.pinB.configure(DIGITAL_IN_PULLUP);
 	hardware.pinC.configure(DIGITAL_IN_PULLUP);
 	hardware.pinD.configure(DIGITAL_IN_PULLUP);
 	hardware.pinE.configure(DIGITAL_IN_PULLUP);
-	
+	*/
 	//gInitTime.init_unused = hardware.millis() - gInitTime.init_unused;
 }
 
@@ -2371,18 +2084,15 @@ function preSleepHandler() {
     	// that were not caught by handlePin1Int. Race condition? 
     	log("preSleepHandler: clear out all the pending accel interrupts");
     	hwAccelerometer.clearAccelInterruptUntilCleared();
-	if (!is_hiku004) {
-    	    log("preSleepHandler: clear out all the IOExpander Interrupts");
-    	    intHandler.clearAllIrqs(); 
-	} else {
+
 	    // perform STM32 software upgrade before going to sleep if software version doesn't match
 	    if (!nv.stm32_sw_uptodate) {
 	        AUDIO_UART.disable();
-	        updateSTM32();
+	        //TODO: remove it once done instant on dev work is done.
+	        //updateSTM32();
             // Put STM32F0 in reset mode to turn scanner off
             NRST.write(0);
 	    }
-	}
     
     	// When the timer below expires we will hit the sleepHandler function below
     	// only enter into the delay wait if the current state is either IDLE or PRE_SLEEP
@@ -2408,40 +2118,9 @@ function preSleepHandler() {
 
 function configurePinsBeforeSleep()
 {
-
     // Disable the scanner and its UART
     hwScanner.disable();
     hwPiezo.disable();
-     
-    if (!is_hiku004) {
-	// set all registers on the SX1508 pin expander to defined values before sleep
-
-	// set registers RegInputDisable, RegLongSlew, RegLowDrive to default values
-	i2cDev.write(0x00, 0x00);
-	i2cDev.write(0x01, 0x00);
-	i2cDev.write(0x02, 0x00);
-	// enable the pullup resistor for the button (BUTTON_L) and to disable 
-	// microphone and scanner (SW_VCC_EN_L)
-	i2cDev.write(0x03, 0x14);
-	// set registers RegPullDown, RegOpenDrain, and RegPolarity to default values
-	i2cDev.write(0x04, 0x00);
-	i2cDev.write(0x05, 0x00);
-	i2cDev.write(0x06, 0x00);
-	// set all pins on the SX1508 to inputs
-	i2cDev.write(0x07, 0xff);
-	// set output values in RegData to default values
-	i2cDev.write(0x08, 0xff);
-	// enable interrupts for button (BUTTON_L), accelerometer (ACCELEROMETER_INT), and charger (CHARGE_PGOOD_L)
-	i2cDev.write(0x09, 0x7a);
-	// set interrupt trigger to both edges for the enabled interrupts
-	i2cDev.write(0x0a, 0xc0);
-	i2cDev.write(0x0b, 0x33);
-	// clear all interrupts
-	i2cDev.write(0x0c, 0xff);    
-	i2cDev.write(0x0d, 0xff);
-
-	i2cDev.disable();
-    }
 }
 
 //**********************************************************************
@@ -2473,11 +2152,9 @@ function sleepHandler()
     
     configurePinsBeforeSleep();
     
-    if (is_hiku004) {
-    	// clear interrupts
-	    CPU_INT_RESET.write(0);
-	    CPU_INT_RESET.write(1);
-    }
+	// clear interrupts
+    CPU_INT_RESET.write(0);
+    CPU_INT_RESET.write(1);
 
     // NOTE: disabling blinkup before sleep is required for hiku-004
     // as the Imp otherwise starts flashing the LEDs green/red/yellow when
@@ -2540,32 +2217,34 @@ function agentSend(key, value)
 }
 
 triggerCount <- 0;
-function shippingMode(){
-    if (is_hiku004) 
-        NRST.write(triggerCount % 2);
-    else
-        hwScanner.trigger(triggerCount % 2 == 0);
+function shippingMode()
+{
+    NRST.write(triggerCount % 2);
     
     triggerCount++;
     if (triggerCount < 40)
-	imp.wakeup(0.05, shippingMode);
-    else {
-	   hwPiezo.playSound("blink-up-enabled", false);
-	   nv.setup_required = true;
-    	   nv.sleep_not_allowed = false;
-    	   gAccelInterrupted = false;
-	   gDeviceState = DeviceState.PRE_SLEEP;
-	   triggerCount = 0;
-	   imp.clearconfiguration();
-    	   sleepHandler();
+    {
+	    imp.wakeup(0.05, shippingMode);
+    }
+    else 
+    {
+	    hwPiezo.playSound("blink-up-enabled", false);
+	    nv.setup_required = true;
+    	nv.sleep_not_allowed = false;
+    	gAccelInterrupted = false;
+	    gDeviceState = DeviceState.PRE_SLEEP;
+	    triggerCount = 0;
+	    imp.clearconfiguration();
+        sleepHandler();
     }
 }
 
 
-agent.on("shippingMode", function(result) {
-	if (imp.getbssid() == FACTORY_BSSID) {
-	    if (is_hiku004)
-	      AUDIO_UART.disable();
+agent.on("shippingMode", function(result) 
+{
+	if (imp.getbssid() == FACTORY_BSSID) 
+	{
+	    AUDIO_UART.disable();
 	    shippingMode();
 	}
 });
@@ -2575,18 +2254,7 @@ function init()
     // We will always be in deep sleep unless button pressed, in which
     // case we need to be as responsive as possible. 
     imp.setpowersave(false);
-	//gInitTime.init_stage1 = hardware.millis();
-    // I2C bus addresses
-    //const cAddrAccelerometer = 0x18;
 
-    // IO expander pin assignments
-    //const cIoPinAccelerometerInt = 0;
-    //const cIoPinChargeStatus = 1;
-    //const cIoPinButton =  2;
-    //const cIoPin3v3Switch =  4;
-    //const cIoPinScannerTrigger =  5;
-    //const cIoPinScannerReset =  6;
-    if (is_hiku004) {
     local pmic_val;
 	i2cDev <- null;
 	// create device for LP3918 power management IC
@@ -2620,27 +2288,13 @@ function init()
 	pmic.write(0x12, 0x1d);
 	// wait 350ms after release of PS_HOLD before turning off power
 	pmic.write(0x1c, 0x1);
-    }
-    else 
-	// Create an I2cDevice to pass around
-	i2cDev <- I2cDevice(I2C_IF, 0x23);
+
 
     intHandler <- InterruptHandler(8, i2cDev);	
-    
-    if (!is_hiku004) {
-	ioExpander <- IoExpanderDevice(intHandler);
-	
+
 	// This is to default unused pins so that we consume less current
 	init_unused_pins(i2cDev);
-    
-	// 3v3 accessory switch config
-	// we donÕt need a class for this:	
-	// Configure pin 
-	ioExpander.setDir(4, 0); // set as output
-	ioExpander.setPullUp(4, 0); // disable pullup
-	ioExpander.setPin(4, 0); // pull low to turn switch on
-	ioExpander.setPin(4, 0); // enable the Switcher3v3
-    }
+
  
     // Charge status detect config
     chargeStatus <- ChargeStatus(1);
@@ -2656,9 +2310,6 @@ function init()
 
     // Microphone sampler config
     hwMicrophone <- EIMP_AUDIO_IN;
-    hardware.sampler.configure(hwMicrophone, gAudioSampleRate, 
-                               [buf1, buf2, buf3, buf4], 
-                               samplerCallback, NORMALISE | A_LAW_COMPRESS); 
                        
     local oldsize = imp.setsendbuffersize(sendBufferSize);
 	log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
@@ -2678,25 +2329,7 @@ function init()
     
     // Transition to the idle state
     updateDeviceState(DeviceState.IDLE);
-    // Print debug info
-    // WARNING: for some reason, if this is uncommented, the device
-    // will not wake up if there is motion while the device goes 
-    // to sleep!
-    //printStartupDebugInfo();
-	// free memory
-    //log(format("Free memory: %d bytes", imp.getmemoryfree()));
-    // Initialization complete notification
-    // TODO remove startup tone for final product
-    // initialize the nv items on a cold boot
 
-    // This means we had already went to sleep with the button presses
-    // to get the device back into blink up mode after the blink-up mode times out
-    // the user needs to manually enable it the next time it wakes up
-    //imp.enableblinkup(false); 
-    // We only wake due to an interrupt or after power loss.  If the 
-	// former, we need to handle any pending interrupts. 
-	//intHandler.handlePin1Int();     
-	//gInitTime.init_stage1 = hardware.millis() - gInitTime.init_stage1;
     init_completed = true;
 }
 
@@ -2764,7 +2397,6 @@ init_done();
 connMgr <- ConnectionManager();
 connMgr.registerCallback(onConnected.bindenv(this));
 connMgr.init_connections();	
-gAudioUploader <- AudioUploader();
 init();
 
 // STM32 microprocessor firmware updater

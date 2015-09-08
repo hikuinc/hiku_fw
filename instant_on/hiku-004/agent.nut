@@ -1039,7 +1039,7 @@ device.on("endAudioUpload", function(data) {
 device.on("uploadAudioChunk", function(data) {
     //agentLog(format("in device.on uploadAudioChunk"));
     //agentLog(format("chunk length=%d", data.length));
-    //dumpBlob(data.buffer);
+    dumpBlob(data.buffer);
     sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioChunkReceivedFromDevice"});
     //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioChunkReceivedFromDevice"}));
     // Add the new data to the audio buffer, truncating if necessary
@@ -1346,7 +1346,7 @@ function dumpBlob(data)
         // drop any current data, and exit the loop
         if (lines > linesToDump)
         {
-            agentLog("(truncated...)");
+            server.log("(truncated...)");
             elements = 0; 
             break;
         }
@@ -1358,7 +1358,7 @@ function dumpBlob(data)
         // If we have a full line, print it out 
         if (elements >= elementsPerLine)
         {
-            agentLog(str);
+            server.log(str);
             str = "";
             elements = 0;
             lines++;
@@ -1367,7 +1367,7 @@ function dumpBlob(data)
     if (elements > 0)
     {
         // Got to end of buffer with less than a full line. Print remainder. 
-        agentLog(str);
+        server.log(str);
     }
 }
 
