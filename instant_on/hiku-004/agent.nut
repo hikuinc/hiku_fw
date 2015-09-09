@@ -349,7 +349,7 @@ function sendBeepToHikuServer(data)
     local mySig = http.hash.sha256(gAuthData.app_id+gAuthData.secret+timeStr);
     mySig = BlobToHexString(mySig);
     
-    server.log(format("Current Impee Id=%s Valid ImpeeId=%s",nv.gImpeeId, data.serial));
+    server.log(format("Current Impee Id=%s Valid ImpeeId=%s, gAudioToken: %s, appId: %s",nv.gImpeeId, data.serial, gAudioToken, gAuthData.app_id));
     nv.gImpeeId = data.serial;
         
     // Special handling for audio beeps

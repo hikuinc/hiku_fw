@@ -212,16 +212,16 @@ enum DeviceState
     PRE_SLEEP,        // 5: A state before it enters Sleep just after being IDLE
 }
 
-enum BTN_STATE
+// Button
+enum ButtonState
 {
-    IDLE,
-    PRESSED,
-    RELEASED
+    BUTTON_UP,
+    BUTTON_DOWN,
 }
-gButtonState <- BTN_STATE.IDLE;
+gButtonState <- ButtonState.BUTTON_UP;
 
 // Globals
-gDeviceState <- null; // Hiku device current state
+gDeviceState <- DeviceState.IDLE; // Hiku device current state
 local init_completed = false;
 
 gAudioBufferOverran <- false; // True if an overrun occurred
@@ -239,6 +239,7 @@ gAudioTimer <- 0;
 gAccelInterrupted <- false;
 gIsConnecting <- false;
 gDeepSleepTimer <- null;
+gButtonTimer <- null;
 
 // Each 1k of buffer will hold 1/16 of a second of audio, or 63ms.
 // A-law sampler does not return partial buffers. This means that up to 
@@ -249,6 +250,7 @@ gDeepSleepTimer <- null;
 // offline audio buffer
 local audio_start_address = AUDIO_MEM_BASE_START;
 local audio_end_address = AUDIO_MEM_BASE_START;
+local erase_block_address = AUDIO_MEM_BASE_START;
 spiFlash <- null;
 if ("spiflash" in hardware)
 {
@@ -260,6 +262,348 @@ gPendingAudio <- false;
 lines_scanned <- 0;
 scan_byte_cnt <- 0;
 scanner_error <- false;
+
+
+// - SPI Flash Related functions for Audio ----
+
+
+function init_audio_memory()
+{
+    erase_block_address = AUDIO_MEM_BASE_START;
+    init_audio_sector(erase_block_address);
+    audio_start_address = AUDIO_MEM_BASE_START;
+    audio_end_address = AUDIO_MEM_BASE_START;    
+}
+
+function init_audio_sector(sector)
+{
+    if (erase_block_address >= AUDIO_MEM_END_ADDR)
+    {
+        server.log("Completed Erasing all the blocks for Audio");
+        erase_block_address = AUDIO_MEM_BASE_START;
+    }
+    else
+    {
+        local startTime = hardware.millis();
+        spiFlash.enable();
+        spiFlash.erasesector(sector);
+        spiFlash.disable();
+        erase_block_address += 4096;
+        server.log(format("Audio: Erase Sector: %X, latency=%d",sector,(hardware.millis() - startTime)));   
+        imp.wakeup(0.200, function(){init_audio_sector(erase_block_address);});
+    }
+}
+// initialize the audio memory to use for record and queue to the agent
+//init_audio_memory();
+
+// -- SPI Flash related to audio end --
+
+
+// --- Scanner Related Functions ---
+
+
+function audioUartCallback()
+{
+    local buf_ptr = 0;
+    local string_len;
+    local log_buf = false;
+    
+    packet_state.char_string += AUDIO_UART.readstring(UART_BUF_SIZE);
+    local flags = AUDIO_UART.flags();
+    if (flags != 0x40)
+        server.log(format("Flags 0x%x", flags));
+    string_len = packet_state.char_string.len();
+
+    while ((buf_ptr < string_len) && (packet_state.state < PS_TYPE_FIELD)) {
+        if (packet_state.char_string[buf_ptr] == PS_PREAMBLE[packet_state.state])
+          packet_state.state++;
+        else if (packet_state.char_string[buf_ptr] == PS_PREAMBLE[0])
+            packet_state.state = 1;
+          else {
+            packet_state.state = 0;
+            if (log_buf) {
+                server.log(packet_state.char_string);
+                log_buf = false;
+            }
+          }
+        buf_ptr++;
+    }
+   if ((buf_ptr < string_len) && (packet_state.state == PS_TYPE_FIELD)) {
+      packet_state.type = packet_state.char_string[buf_ptr];
+      packet_state.state++;
+      buf_ptr++;
+   }
+   
+   if ((buf_ptr < string_len) && (packet_state.state == PS_LEN_FIELD_HIGH)) {
+      // HACK HACK HACK
+      // verify that length is not 0
+      packet_state.pay_len = (packet_state.char_string[buf_ptr] & 0xFF) << 8;
+      packet_state.state++;
+      buf_ptr++; // Length is now 2 bytes
+   }
+   
+   if ((buf_ptr < string_len) && (packet_state.state == PS_LEN_FIELD_LOW)) {
+      // HACK HACK HACK
+      // verify that length is not 0
+      packet_state.pay_len = (packet_state.pay_len & 0xFF00)|(packet_state.char_string[buf_ptr] & 0xFF);
+      packet_state.state++;
+      buf_ptr++; // Length is now 2 bytes
+      server.log(format("Audio Packet Length is: %d",packet_state.pay_len));
+   }   
+   
+   
+   if ((string_len-buf_ptr >= packet_state.pay_len) && (packet_state.state == PS_DATA_FIELD)) {
+       switch (packet_state.type) {
+           case PKT_TYPE_AUDIO:
+               if (audio_pkt_blob.len() - audio_pkt_blob.tell() < packet_state.pay_len) {
+                   
+                     if (connection_available)
+                     {
+                        if(gPendingAudio)
+                        {
+                            local totalSize = audio_end_address - audio_start_address;
+                            local numPayload = totalSize/1000;
+                            for(local i =0; i < numPayload; i++)
+                            {
+                                local buffer = read_flash(audio_start_address, 1000);
+                                audio_start_address +=1000;
+                                agent.send("uploadAudioChunk", {buffer=buffer, length=buffer.tell()});
+                            }
+                            
+                            if (audio_end_address > audio_start_address)
+                            {
+                                local buffer = read_flash(audio_start_address, (audio_end_address - audio_start_address));
+                                audio_start_address +=1000;
+                                agent.send("uploadAudioChunk", {buffer=buffer, length=buffer.tell()});                              
+                            }
+                            gPendingAudio = false;
+                        }
+                        agent.send("uploadAudioChunk", {buffer=audio_pkt_blob, length=audio_pkt_blob.tell()});
+                     }
+                     else
+                     {
+                        write_flash(audio_pkt_blob,audio_pkt_blob.tell());
+                        gPendingAudio = true;
+                     }
+                    gAudioChunkCount++;
+                    audio_pkt_blob.seek(0,'b');
+                 //local firstTime = (audio_end_address == AUDIO_MEM_BASE_START);
+                 //write_flash(audio_pkt_blob,audio_pkt_blob.tell());
+                 /*
+                 if (firstTime)
+                 {
+                    imp.wakeup(0.001,function(){gAudioUploader.startAudio()});   
+                 }
+                 */
+               }
+               audio_pkt_blob.writestring(packet_state.char_string.slice(buf_ptr, buf_ptr+packet_state.pay_len));
+               buf_ptr += packet_state.pay_len;
+               break;
+           case PKT_TYPE_SCAN:
+                    local scannerOutput = "";
+                    // reset the packet state machine in case the scan packet is
+                    // invalid and the packet parser needs to re-sync to the preamble
+                    packet_state.state = PS_OUT_OF_SYNC;
+                    // If the scan came in late (e.g. after button up), 
+                    // discard it, to maintain the state machine. 
+                    if (gDeviceState != DeviceState.SCAN_RECORD)
+                      return;
+                    updateDeviceState(DeviceState.SCAN_CAPTURED);
+                    while ((buf_ptr < string_len) && (packet_state.char_string[buf_ptr] != '\r')) {
+                        scannerOutput += packet_state.char_string[buf_ptr].tochar();
+                        buf_ptr++;
+                    }
+                    if (packet_state.char_string[buf_ptr] != '\r')
+                      return;
+                    server.log(format("Scanned %s", scannerOutput));
+                    if(agent.send("uploadBeep", {
+                                              scandata=scannerOutput,
+                                              scansize=scannerOutput.len(),
+                                              serial=hardware.getdeviceid(),
+                                              fw_version=cFirmwareVersion,
+                                              linkedrecord="",
+                                              audiodata="",
+                                             }) == 0)
+                    	hwPiezo.playSound("success-local");
+                    // Stop collecting data
+                    stopScanRecord();
+                break;
+           //case PKT_TYPE_DTMF:
+           //   server.log(format("DTMF: %d", packet_state.char_string[buf_ptr]));
+           //    buf_ptr += packet_state.pay_len;
+           //   break;
+           case PKT_TYPE_SW_VERSION:
+                    local sw_version = packet_state.char_string[buf_ptr];
+                    local sw_revision = packet_state.char_string[buf_ptr+1];
+                    server.log(format("STM32 software version %d.%d", sw_version, sw_revision));
+                    if ((sw_version == STM32_SW_VERSION) && (sw_revision == STM32_SW_REVISION))
+                        nv.stm32_sw_uptodate = true;
+                    buf_ptr += 2;
+               break;
+           default:
+               buf_ptr += packet_state.pay_len;
+               break;
+       }
+      packet_state.state = PS_OUT_OF_SYNC;
+   }
+
+/*
+   if (packet_state.state == PS_LEN_FIELD+1) {
+       server.log("Preamble found!");
+       server.log(format("ptr 0x%x type 0x%x len 0x%x", buf_ptr, packet_state.type, packet_state.pay_len));
+       packet_state.state = 0;
+   }
+*/
+   packet_state.char_string = packet_state.char_string.slice(buf_ptr);
+}
+
+//**********************************************************************
+// Start the scanner and sampler
+function startScanRecord() 
+{
+
+    // Trigger the mic recording
+    gAudioBufferOverran = false;
+    gAudioChunkCount = 0;
+    gLastSamplerBuffer = null; 
+    gLastSamplerBufLen = 0;
+    if( connection_available )
+    {
+        agent.send("startAudioUpload", "");
+    }
+    local pmic_val;
+    packet_state.state = PS_OUT_OF_SYNC;
+    packet_state.char_string = "";
+    //hardware.spiflash.enable();
+    //server.log(format("Flash size: %d bytes", hardware.spiflash.size()));
+    // HACK requires SCAN_DEBUG_SAMPLES * FLASH_BLOCK to be a multiple of BLOCKSIZE
+    //for (local i=0; i<((SCAN_DEBUG_SAMPLES * FLASH_BLOCK)/BLOCKSIZE); i++)
+    //  hardware.spiflash.erasesector(i*BLOCKSIZE);
+    lines_scanned = 0;
+    scan_byte_cnt = 0;
+    scanner_error = false;
+    //IMP_ST_CLK.configure(PWM_OUT, 0.000000125, 0.5);
+    NRST.configure(DIGITAL_OUT);
+    NRST.write(0);
+    BOOT0.configure(DIGITAL_OUT);
+    BOOT0.write(0);
+    NRST.write(1);
+    // turn on voltage to STM32F0
+    //pmic_val = pmic.read(0x00);
+    //pmic.write(0x00, pmic_val | 0x08);
+    //buf1.seek(0, 'b');
+    //buf2.seek(0, 'b');
+    audio_pkt_blob.seek(0,'b');
+    AUDIO_UART.disable();
+    // assume that the STM32 software is not up to date,
+    // will be set to true once the STM32 sends a packet
+    // indicating the correct software version
+    nv.stm32_sw_uptodate = false;
+    //AUDIO_UART.setrxfifosize(IMAGE_COLUMNS);
+    AUDIO_UART.setrxfifosize(UART_BUF_SIZE);
+    //AUDIO_UART.configure(BAUD, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback);
+    AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback);
+    //AUDIO_UART.configure(1843200, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, scannerDebugCallback); 
+    gAudioTimer = hardware.millis();
+}
+
+
+//**********************************************************************
+// Stop the scanner and sampler
+// Note: this function may be called multiple times in a row, so
+// it must support that. 
+function stopScanRecord()
+{
+    // Put STM32F0 in reset mode
+    NRST.write(0);
+    if (gDeviceState != DeviceState.SCAN_CAPTURED) 
+        audioUartCallback();
+    AUDIO_UART.disable();
+    
+    /*
+    lines_scanned = scan_byte_cnt/IMAGE_COLUMNS;
+    agent.send("scan_start", null);
+    server.log(format("Fetching %d lines", lines_scanned));
+    for (local i=0; i<lines_scanned; i++) {
+      agent.send("scan_line", hardware.spiflash.read(i*IMAGE_COLUMNS, IMAGE_COLUMNS));
+    }
+    server.log("Lines fetched!");
+    for (local i=0; i<((SCAN_DEBUG_SAMPLES * FLASH_BLOCK)/BLOCKSIZE); i++)
+      hardware.spiflash.erasesector(i*BLOCKSIZE);
+      */
+}
+
+// -- end of scanner related functions ---
+
+
+// --- handle interrupts here --- 
+function handlePin1Int()
+{
+    //local regInterruptSource = 0;
+    //local reg = 0;
+    
+    local pinState = CPU_INT.read();
+
+    // Get the active interrupt sources
+    // Keep reading the interrupt source register and clearing 
+    // interrupts until it reads clean.  This catches any interrupts
+    // that occur between reading and clearing. 
+    
+    
+    //log(format("handlePin1Int: entry time=%d ms, hardware.pin1=%d", hardware.millis(),pinState));
+    if(0 == pinState)
+    {
+    	//log(format("handlePin1Int: fallEdge time=%d ms, hardware.pin1=%d", hardware.millis(),pinState));
+    	return;
+    }
+    
+    // HACK replace ACOK_N.read() for charging start/stop with I2C call to LP3923 or monitoring of charging current (IMON)
+    local ACOK_N_val = ACOK_N.read() ? 0 : 1;
+    
+    if (ACOK_N_val)
+    {
+        server.log("Charger Plugged In")
+    }
+    else
+    {
+        server.log("Charger Removed")
+    }
+    
+    
+    if (!BTN_N.read())
+    {
+        server.log("Button Interrupt Fired");
+        gButtonState = ButtonState.BUTTON_DOWN;
+        imp.wakeup(0.001,startScanRecord);
+    }
+    else
+    {
+        server.log("Button Interrupt did not fire");
+    }
+    
+    
+    if (ACCEL_INT.read())
+    {
+        server.log("Accelerometer Interrupt Fired");
+    }
+    else
+    {
+        server.log("Accelerometer Interrupt Fired");
+    }
+    
+    //regInterruptSource = (ACOK_N_val << 7) | ((BTN_N.read() ? 0 : 1) << 2) | (ACOK_N_val << 1) | (ACCEL_INT.read() & 1);
+}
+CPU_INT_RESET.write(0);
+CPU_INT_RESET.write(1);
+CPU_INT.configure(DIGITAL_IN_WAKEUP, handlePin1Int);
+handlePin1Int();
+
+// --- end of interrupt handling ---
+
+
+
+
+
 
 // Device Setup Related functions
 function determineSetupBarcode(barcode)
@@ -462,108 +806,6 @@ class ConnectionManager
 
 
 //======================================================================
-// Class to handle all the Interrupts and Call Backs
-class InterruptHandler
-{
-    irqCallbacks = array(2); // start with this for now
-    i2cDevice = null;
-  
-    // Want to keep the constructor private or protected so that it can only
-    // be initialized by the getInstance
-    constructor(numFuncs, i2cDevice)
-    {
-    	//gInitTime.inthandler = hardware.millis();
-        this.irqCallbacks.resize(numFuncs);
-	    // clear interrupts
-	    CPU_INT_RESET.write(0);
-	    CPU_INT_RESET.write(1);
-        CPU_INT.configure(DIGITAL_IN_WAKEUP, handlePin1Int.bindenv(this));
-    }
-  
-      // Set an interrupt handler callback for a particular pin
-  	function setIrqCallback(pin, func)
-  	{
-        if( pin > irqCallbacks.len() )
-        {
-          // someone tried to add a call back function to a pin that is greater
-          // than the size of the array
-          return;
-        }
-        irqCallbacks[pin] = func;
-    }
-	
-	
-    function clearHandlers()
-    {
-        for (local i = 0; i < irqCallbacks.len(); i++) {
-            irqCallbacks[i] = null;
-        }
-    }	
-
-    // Handle all expander callbacks
-    function handlePin1Int()
-    {
-        local regInterruptSource = 0;
-        local reg = 0;
-        
-        local pinState = CPU_INT.read();
-
-        // Get the active interrupt sources
-        // Keep reading the interrupt source register and clearing 
-        // interrupts until it reads clean.  This catches any interrupts
-        // that occur between reading and clearing. 
-        
-        
-        //log(format("handlePin1Int: entry time=%d ms, hardware.pin1=%d", hardware.millis(),pinState));
-        if(0 == pinState)
-        {
-        	//log(format("handlePin1Int: fallEdge time=%d ms, hardware.pin1=%d", hardware.millis(),pinState));
-        	return;
-        }
-        
-	    // HACK replace ACOK_N.read() for charging start/stop with I2C call to LP3923 or monitoring of charging current (IMON)
-	    local ACOK_N_val = ACOK_N.read() ? 0 : 1;
-	    regInterruptSource = (ACOK_N_val << 7) | ((BTN_N.read() ? 0 : 1) << 2) | (ACOK_N_val << 1) | (ACCEL_INT.read() & 1);
-	
-
-        // If no interrupts, just return. This occurs on every 
-        // pin 1 falling edge. 
-        if (!regInterruptSource) 
-        {
-        	//log(format("handlePin1Int: fallEdge time=%d ms, hardware.pin1=%d", hardware.millis(),hardware.pin1.read()));
-            return;
-        }
-
-        //printRegister(0x0C, "INTERRUPT");
-
-        // Call the interrupt handlers for all active interrupts
-        for(local pin=0; pin < 8; pin++){
-            if(regInterruptSource & (1 << pin)){
-                //log(format("-Calling irq callback for pin %d", pin));
-                nv.boot_up_reason = nv.boot_up_reason | (1 << pin);
-                if (irqCallbacks[pin]) irqCallbacks[pin]();
-            }
-        }
-       // log("handlePin1Int exit time: " + hardware.millis() + "ms");
-    } 
-    
-    // Clear all interrupts.  Must do this immediately after
-    // reading the interrupt register in the handler, otherwise
-    // we may get other interrupts in between and miss them. 
-    function clearAllIrqs()
-    {
-        i2cDevice.write(0x0C, 0xFF); // RegInterruptSource
-    }
-    
-    function getI2CDevice()
-    {
-    	return this.i2cDevice;
-    } 
-  
-}
-
-
-//======================================================================
 // Handles all audio output
 class Piezo
 {
@@ -638,9 +880,9 @@ class Piezo
     
     function disable()
     {
-	pin.write(0);
+	    pin.write(0);
     	pin.configure(DIGITAL_OUT);
-	pin.write(0);
+	    pin.write(0);
     }
     
     // utility futimeoutnction to validate that the tone is present
@@ -881,14 +1123,20 @@ function updateDeviceState(newState)
     {
         if (oldState != DeviceState.IDLE)
         {
-            gDeepSleepTimer.enable();
+            if (gDeepSleepTimer)
+            {
+                gDeepSleepTimer.enable();
+            }
         }
     }
     else
     {
         // Disable deep sleep timer
-        gDeepSleepTimer.disable();
-        gAccelHysteresis.disable();
+        if (gDeepSleepTimer)
+        {
+            gDeepSleepTimer.disable();
+            gAccelHysteresis.disable();
+        }
     }
 
     // If we are transitioning to SCAN_RECORD, start the button timer. 
@@ -900,21 +1148,27 @@ function updateDeviceState(newState)
         if (oldState != DeviceState.SCAN_RECORD)
         {
             // Start timing button press
-            gButtonTimer.enable();
+            if (gButtonTimer)
+            {
+                gButtonTimer.enable();
+            }
         }
     }
     else
     {
         // Stop timing button press
-        gButtonTimer.disable();
+        if (gButtonTimer)
+        {
+            gButtonTimer.disable();
+        }
     }
 
     // Log the state change, for debugging
-    /*
+    
     local os = (oldState==null) ? "null" : oldState.tostring();
     local ns = (newState==null) ? "null" : newState.tostring();
     log(format("State change: %s -> %s", os, ns));
-    */
+    
     // Verify state machine is in order 
     switch (newState) 
     {
@@ -951,194 +1205,10 @@ function updateDeviceState(newState)
 
 
 //======================================================================
-// Scanner
-class Scanner
-{
-    pin = null; // IO expander pin assignment (trigger)
-    reset = null; // IO expander pin assignment (reset)
-    scannerOutput = "";  // Stores the current barcode characters
-    
-
-    constructor(triggerPin, resetPin)
-    {   
-        //gInitTime.scanner = hardware.millis();
-
-        // Save assignments
-        pin = triggerPin;
-        reset = resetPin;
-    }
-
-    // Disable for low power sleep mode
-    function disable()
-    {
-
-    }
-
-    function trigger(on)
-    {
-
-    }
-
-    //**********************************************************************
-    // Start the scanner and sampler
-    function startScanRecord() 
-    {
-        scannerOutput = "";
-
-        // Trigger the mic recording
-        gAudioBufferOverran = false;
-        gAudioChunkCount = 0;
-        gLastSamplerBuffer = null; 
-        gLastSamplerBufLen = 0;
-        if( connection_available )
-        {
-            agent.send("startAudioUpload", "");
-        }
-        local pmic_val;
-        packet_state.state = PS_OUT_OF_SYNC;
-	    packet_state.char_string = "";
-        //hardware.spiflash.enable();
-        //server.log(format("Flash size: %d bytes", hardware.spiflash.size()));
-        // HACK requires SCAN_DEBUG_SAMPLES * FLASH_BLOCK to be a multiple of BLOCKSIZE
-        //for (local i=0; i<((SCAN_DEBUG_SAMPLES * FLASH_BLOCK)/BLOCKSIZE); i++)
-        //  hardware.spiflash.erasesector(i*BLOCKSIZE);
-        lines_scanned = 0;
-        scan_byte_cnt = 0;
-        scanner_error = false;
-        //IMP_ST_CLK.configure(PWM_OUT, 0.000000125, 0.5);
-        NRST.configure(DIGITAL_OUT);
-        NRST.write(0);
-        BOOT0.configure(DIGITAL_OUT);
-        BOOT0.write(0);
-        NRST.write(1);
-        // turn on voltage to STM32F0
-        //pmic_val = pmic.read(0x00);
-        //pmic.write(0x00, pmic_val | 0x08);
-        //buf1.seek(0, 'b');
-        //buf2.seek(0, 'b');
-        audio_pkt_blob.seek(0,'b');
-        AUDIO_UART.disable();
-        // assume that the STM32 software is not up to date,
-        // will be set to true once the STM32 sends a packet
-        // indicating the correct software version
-        nv.stm32_sw_uptodate = false;
-        //AUDIO_UART.setrxfifosize(IMAGE_COLUMNS);
-        AUDIO_UART.setrxfifosize(UART_BUF_SIZE);
-        //AUDIO_UART.configure(BAUD, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback);
-        AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback);
-        //AUDIO_UART.configure(1843200, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, scannerDebugCallback); 
-        gAudioTimer = hardware.millis();
-    }
-
-    //**********************************************************************
-    // Stop the scanner and sampler
-    // Note: this function may be called multiple times in a row, so
-    // it must support that. 
-    function stopScanRecord()
-    {
-        // Put STM32F0 in reset mode
-        NRST.write(0);
-        if (gDeviceState != DeviceState.SCAN_CAPTURED) 
-            audioUartCallback();
-        AUDIO_UART.disable();
-        /*
-        lines_scanned = scan_byte_cnt/IMAGE_COLUMNS;
-        agent.send("scan_start", null);
-        server.log(format("Fetching %d lines", lines_scanned));
-        for (local i=0; i<lines_scanned; i++) {
-          agent.send("scan_line", hardware.spiflash.read(i*IMAGE_COLUMNS, IMAGE_COLUMNS));
-        }
-        server.log("Lines fetched!");
-        for (local i=0; i<((SCAN_DEBUG_SAMPLES * FLASH_BLOCK)/BLOCKSIZE); i++)
-          hardware.spiflash.erasesector(i*BLOCKSIZE);
-          */
-
-        // Reset for next scan
-        scannerOutput = "";
-    }
-
-    //**********************************************************************
-    // Scanner data ready callback, called whenever there is data from scanner.
-    // Reads the bytes, and detects and handles a full barcode string.
-    function scannerCallback()
-    {
-        // Read the first byte
-        local data = SCANNER_UART.read();
-        while (data != -1)  
-        {
-            //log("char " + data + " \"" + data.tochar() + "\"");
-
-            // Handle the data
-            switch (data) 
-            {
-                case '\n':
-                    // Scan complete. Discard the line ending,
-                    // upload the beep, and reset state.
-
-                    // If the scan came in late (e.g. after button up), 
-                    // discard it, to maintain the state machine. 
-                    if (gDeviceState != DeviceState.SCAN_RECORD)
-                    {
-                    	/*
-                        log(format(
-                                   "Got capture too late. Dropping scan %d",
-                                   gDeviceState)); */
-                        scannerOutput = "";
-                        return;
-                    }
-                    updateDeviceState(DeviceState.SCAN_CAPTURED);
-                    /*log("Code: \"" + scannerOutput + "\" (" + 
-                               scannerOutput.len() + " chars)");*/
-                    //determineSetupBarcode(scannerOutput);
-                    if(0!= agent.send("uploadBeep", {
-                                              scandata=scannerOutput,
-                                              scansize=scannerOutput.len(),
-                                              serial=hardware.getdeviceid(),
-                                              fw_version=cFirmwareVersion,
-                                              linkedrecord="",
-                                              audiodata="",
-                                             }))
-                    {
-
-                    }
-                    else
-                    {
-                    	hwPiezo.playSound("success-local");
-                    }
-                    
-                    // Stop collecting data
-                    stopScanRecord();
-                    break;
-
-                case '\r':
-                    // Discard line endings
-                    break;
-
-                default:
-                    // Store the character
-                    scannerOutput = scannerOutput + data.tochar();
-                    break;
-            }
-
-            // Read the next byte
-            data = SCANNER_UART.read();
-        } 
-    }
-}
-
-
-//======================================================================
-// Button
-enum ButtonState
-{
-    BUTTON_UP,
-    BUTTON_DOWN,
-}
 
 class PushButton
 {
     pin = null; // IO expander pin assignment
-    buttonState = ButtonState.BUTTON_UP; // Button current state
     
     buttonPressCount = 0;
     previousTime = 0;
@@ -1157,9 +1227,13 @@ class PushButton
 		//gInitTime.button = hardware.millis();
 		
         // Save assignments
+        if (gButtonState == ButtonState.BUTTON_DOWN)
+        {
+            updateDeviceState(DeviceState.SCAN_RECORD);
+        }
+        
         pin = btnPin;
         // Set event handler for IRQ
-        intHandler.setIrqCallback(btnPin, buttonCallback.bindenv(this));
 	    BTN_N.configure(DIGITAL_IN, buttonCallback.bindenv(this));
         connMgr.registerCallback(connectionStatusCb.bindenv(this));
         blinkTimer = CancellableTimer(BLINK_UP_TIME, this.cancelBlinkUpTimer.bindenv(this));
@@ -1170,12 +1244,12 @@ class PushButton
     function connectionStatusCb(status)
     {
 		connection = (status == SERVER_CONNECTED);
-    	if((connection) && ( buttonState == ButtonState.BUTTON_DOWN ) )
+    	if((connection) && ( gButtonState == ButtonState.BUTTON_DOWN ) )
     	{
-            updateDeviceState(DeviceState.SCAN_RECORD);
-            buttonState = ButtonState.BUTTON_DOWN;
+            //updateDeviceState(DeviceState.SCAN_RECORD);
+            //gButtonState = ButtonState.BUTTON_DOWN;
             //log("Button state change: DOWN");
-            hwScanner.startScanRecord();    		
+            //startScanRecord();    		
     	}
     }
 
@@ -1190,7 +1264,7 @@ class PushButton
     function handleButtonTimeout()
     {
         updateDeviceState(DeviceState.BUTTON_TIMEOUT);
-        hwScanner.stopScanRecord();
+        stopScanRecord();
         hwPiezo.playSound("timeout");
         log("Timeout reached. Aborting scan and record.");
     }
@@ -1253,7 +1327,7 @@ class PushButton
                 
                 //log(format("buttonPressCount=%d",buttonPressCount));                
                 
-                if (buttonState == ButtonState.BUTTON_UP)
+                if (gButtonState == ButtonState.BUTTON_UP)
                 {
                     /*
                  	if(!connection)
@@ -1269,20 +1343,19 @@ class PushButton
                 	*/
 		    //agentSend("button","Pressed");
                     updateDeviceState(DeviceState.SCAN_RECORD);
-                    buttonState = ButtonState.BUTTON_DOWN;
+                    gButtonState = ButtonState.BUTTON_DOWN;
                     //log("Button state change: DOWN");
-                    hwScanner.startScanRecord();
+                    startScanRecord();
                 }
 		else
 		{
-		    buttonState = ButtonState.BUTTON_DOWN;
-		    gButtonState = BTN_STATE.PRESSED;
+		    gButtonState = ButtonState.BUTTON_DOWN;
 		}
                 
                 break;
             case 2:
                 // Button in released state
-                if (buttonState == ButtonState.BUTTON_DOWN)
+                if (gButtonState == ButtonState.BUTTON_DOWN)
                 {
                     log("BUTTON RELEASED!");
                     if(gPendingAudio && !connection_available)
@@ -1295,8 +1368,7 @@ class PushButton
 		                agentSend("button","Released");
                     }
                     
-                    buttonState = ButtonState.BUTTON_UP;
-                    gButtonState = BTN_STATE.RELEASED;
+                    gButtonState = ButtonState.BUTTON_UP;
                     //log("Button state change: UP");
 				    /*
 					if( !connection )
@@ -1323,7 +1395,7 @@ class PushButton
                         {
                             imp.onidle(sendLastBuffer); 
                         }
-                        hwScanner.stopScanRecord();
+                        stopScanRecord();
                     }
                     // No more work to do, so go to idle
                     updateDeviceState(DeviceState.IDLE);
@@ -1374,16 +1446,10 @@ class PushButton
 // Charge status pin
 class ChargeStatus
 {
-    pin = null; // IO expander pin assignment
     previous_state = false; // the previous state of the charger
-    pinStatus = null; // IO Expander Pin 7 for Charger Status
 
     constructor(chargePin)
     {
-        // Save assignments
-        pin = chargePin;
-	    pinStatus = 7;
-
 	    ACOK_N.configure(DIGITAL_IN, chargerDetectionCB.bindenv(this));
 	    IMON.configure(ANALOG_IN);
 	
@@ -1489,6 +1555,7 @@ function handlePendingAudio()
     {
         // now start uploading the data
         agent.send("startAudioUpload", "");
+        imp.sleep(0.300);
         gAudioChunkCount = 0;
         if(gPendingAudio)
         {
@@ -1499,6 +1566,7 @@ function handlePendingAudio()
                 local buffer = read_flash(audio_start_address, 1000);
                 audio_start_address +=1000;
                 agent.send("uploadAudioChunk", {buffer=buffer, length=buffer.tell()});
+                imp.sleep(0.100);
                 gAudioChunkCount++;
             }
             
@@ -1511,6 +1579,9 @@ function handlePendingAudio()
             }
             gPendingAudio = false;
         }
+        
+        imp.sleep(0.100);
+        
         if(agent.send("endAudioUpload", {
                                       scandata="",
                                       serial=hardware.getdeviceid(),
@@ -1660,161 +1731,6 @@ function updateSTM32() {
     nv.stm32_sw_uptodate = true;
 }
 
-function audioUartCallback()
-{
-    local buf_ptr = 0;
-    local string_len;
-    local log_buf = false;
-    
-    packet_state.char_string += AUDIO_UART.readstring(UART_BUF_SIZE);
-    local flags = AUDIO_UART.flags();
-    if (flags != 0x40)
-        server.log(format("Flags 0x%x", flags));
-    string_len = packet_state.char_string.len();
-
-    while ((buf_ptr < string_len) && (packet_state.state < PS_TYPE_FIELD)) {
-        if (packet_state.char_string[buf_ptr] == PS_PREAMBLE[packet_state.state])
-          packet_state.state++;
-        else if (packet_state.char_string[buf_ptr] == PS_PREAMBLE[0])
-            packet_state.state = 1;
-          else {
-            packet_state.state = 0;
-            if (log_buf) {
-                server.log(packet_state.char_string);
-                log_buf = false;
-            }
-          }
-        buf_ptr++;
-    }
-   if ((buf_ptr < string_len) && (packet_state.state == PS_TYPE_FIELD)) {
-      packet_state.type = packet_state.char_string[buf_ptr];
-      packet_state.state++;
-      buf_ptr++;
-   }
-   
-   if ((buf_ptr < string_len) && (packet_state.state == PS_LEN_FIELD_HIGH)) {
-      // HACK HACK HACK
-      // verify that length is not 0
-      packet_state.pay_len = (packet_state.char_string[buf_ptr] & 0xFF) << 8;
-      packet_state.state++;
-      buf_ptr++; // Length is now 2 bytes
-   }
-   
-   if ((buf_ptr < string_len) && (packet_state.state == PS_LEN_FIELD_LOW)) {
-      // HACK HACK HACK
-      // verify that length is not 0
-      packet_state.pay_len = (packet_state.pay_len & 0xFF00)|(packet_state.char_string[buf_ptr] & 0xFF);
-      packet_state.state++;
-      buf_ptr++; // Length is now 2 bytes
-      server.log(format("Audio Packet Length is: %d",packet_state.pay_len));
-   }   
-   
-   
-   if ((string_len-buf_ptr >= packet_state.pay_len) && (packet_state.state == PS_DATA_FIELD)) {
-       switch (packet_state.type) {
-           case PKT_TYPE_AUDIO:
-               if (audio_pkt_blob.len() - audio_pkt_blob.tell() < packet_state.pay_len) {
-                   
-                     if (connection_available)
-                     {
-                        if(gPendingAudio)
-                        {
-                            local totalSize = audio_end_address - audio_start_address;
-                            local numPayload = totalSize/1000;
-                            for(local i =0; i < numPayload; i++)
-                            {
-                                local buffer = read_flash(audio_start_address, 1000);
-                                audio_start_address +=1000;
-                                agent.send("uploadAudioChunk", {buffer=buffer, length=buffer.tell()});
-                            }
-                            
-                            if (audio_end_address > audio_start_address)
-                            {
-                                local buffer = read_flash(audio_start_address, (audio_end_address - audio_start_address));
-                                audio_start_address +=1000;
-                                agent.send("uploadAudioChunk", {buffer=buffer, length=buffer.tell()});                              
-                            }
-                            gPendingAudio = false;
-                        }
-                        agent.send("uploadAudioChunk", {buffer=audio_pkt_blob, length=audio_pkt_blob.tell()});
-                     }
-                     else
-                     {
-                        write_flash(audio_pkt_blob,audio_pkt_blob.tell());
-                        gPendingAudio = true;
-                     }
-                    gAudioChunkCount++;
-                    audio_pkt_blob.seek(0,'b');
-                 //local firstTime = (audio_end_address == AUDIO_MEM_BASE_START);
-                 //write_flash(audio_pkt_blob,audio_pkt_blob.tell());
-                 /*
-                 if (firstTime)
-                 {
-                    imp.wakeup(0.001,function(){gAudioUploader.startAudio()});   
-                 }
-                 */
-               }
-               audio_pkt_blob.writestring(packet_state.char_string.slice(buf_ptr, buf_ptr+packet_state.pay_len));
-               buf_ptr += packet_state.pay_len;
-               break;
-           case PKT_TYPE_SCAN:
-                    local scannerOutput = "";
-                    // reset the packet state machine in case the scan packet is
-                    // invalid and the packet parser needs to re-sync to the preamble
-                    packet_state.state = PS_OUT_OF_SYNC;
-                    // If the scan came in late (e.g. after button up), 
-                    // discard it, to maintain the state machine. 
-                    if (gDeviceState != DeviceState.SCAN_RECORD)
-                      return;
-                    updateDeviceState(DeviceState.SCAN_CAPTURED);
-                    while ((buf_ptr < string_len) && (packet_state.char_string[buf_ptr] != '\r')) {
-                        scannerOutput += packet_state.char_string[buf_ptr].tochar();
-                        buf_ptr++;
-                    }
-                    if (packet_state.char_string[buf_ptr] != '\r')
-                      return;
-                    server.log(format("Scanned %s", scannerOutput));
-                    if(agent.send("uploadBeep", {
-                                              scandata=scannerOutput,
-                                              scansize=scannerOutput.len(),
-                                              serial=hardware.getdeviceid(),
-                                              fw_version=cFirmwareVersion,
-                                              linkedrecord="",
-                                              audiodata="",
-                                             }) == 0)
-                    	hwPiezo.playSound("success-local");
-                    // Stop collecting data
-                    hwScanner.stopScanRecord();
-                break;
-           //case PKT_TYPE_DTMF:
-           //   server.log(format("DTMF: %d", packet_state.char_string[buf_ptr]));
-           //    buf_ptr += packet_state.pay_len;
-           //   break;
-           case PKT_TYPE_SW_VERSION:
-                    local sw_version = packet_state.char_string[buf_ptr];
-                    local sw_revision = packet_state.char_string[buf_ptr+1];
-                    server.log(format("STM32 software version %d.%d", sw_version, sw_revision));
-                    if ((sw_version == STM32_SW_VERSION) && (sw_revision == STM32_SW_REVISION))
-                        nv.stm32_sw_uptodate = true;
-                    buf_ptr += 2;
-               break;
-           default:
-               buf_ptr += packet_state.pay_len;
-               break;
-       }
-      packet_state.state = PS_OUT_OF_SYNC;
-   }
-
-/*
-   if (packet_state.state == PS_LEN_FIELD+1) {
-       server.log("Preamble found!");
-       server.log(format("ptr 0x%x type 0x%x len 0x%x", buf_ptr, packet_state.type, packet_state.pay_len));
-       packet_state.state = 0;
-   }
-*/
-   packet_state.char_string = packet_state.char_string.slice(buf_ptr);
-}
-
 function scannerDebugCallback()
 {
     if (scan_byte_cnt < SCAN_MAX_BYTES) {
@@ -1845,27 +1761,6 @@ function scannerDebugCallback()
     }
 }
 
-
-function init_audio_memory()
-{
-    for (local i = AUDIO_MEM_BASE_START; i < AUDIO_MEM_END_ADDR; i +=4096)
-    {
-        init_audio_sector(i);
-    }
-    audio_start_address = AUDIO_MEM_BASE_START;
-    audio_end_address = AUDIO_MEM_BASE_START;    
-}
-
-function init_audio_sector(sector)
-{
-    local startTime = hardware.millis();
-    spiFlash.enable();
-    spiFlash.erasesector(sector);
-    spiFlash.disable();
-    server.log(format("Audio: Erase Sector: %X, latency=%d",sector,(hardware.millis() - startTime)));
-}
-// initialize the audio memory to use for record and queue to the agent
-init_audio_memory();
 
 function write_flash(buffer, length)
 {
@@ -1965,7 +1860,6 @@ class Accelerometer extends I2cDevice
         clearAccelInterrupt();
 
         // Set event handler for IRQ
-        intHandler.setIrqCallback(pin, handleAccelInt.bindenv(this));
 
 	    ACCEL_INT.configure(DIGITAL_IN, handleAccelInt.bindenv(this));
     }
@@ -2076,7 +1970,7 @@ function preSleepHandler() {
 
     	// Handle any last interrupts before we clear them all and go to sleep
     	log("preSleepHandler: handle any pending interrupts");
-    	intHandler.handlePin1Int(); 
+    	handlePin1Int(); 
 		log("preSleepHandler: handled pending interrupts");
     	// Clear any accelerometer interrupts, then clear the IO expander. 
     	// We found this to be necessary to not hang on sleep, as we were
@@ -2118,8 +2012,6 @@ function preSleepHandler() {
 
 function configurePinsBeforeSleep()
 {
-    // Disable the scanner and its UART
-    hwScanner.disable();
     hwPiezo.disable();
 }
 
@@ -2172,7 +2064,7 @@ function init_done()
 {
 	if( init_completed )
 	{
-		intHandler.handlePin1Int(); 
+		handlePin1Int(); 
 		//log(format("init_stage1: %d\n", gInitTime.init_stage1));
 		
 		// Since the blinkup is always enabled, there is no need to enable
@@ -2290,8 +2182,6 @@ function init()
 	pmic.write(0x1c, 0x1);
 
 
-    intHandler <- InterruptHandler(8, i2cDev);	
-
 	// This is to default unused pins so that we consume less current
 	init_unused_pins(i2cDev);
 
@@ -2300,13 +2190,7 @@ function init()
     chargeStatus <- ChargeStatus(1);
 
     // Button config
-    hwButton <- PushButton(2);
-
-    // Piezo config
-    //hwPiezo <- Piezo(hardware.pin5);
-
-    // Scanner config
-    hwScanner <-Scanner(5,6);
+    hwButton <- PushButton(BTN_N);
 
     // Microphone sampler config
     hwMicrophone <- EIMP_AUDIO_IN;
@@ -2318,7 +2202,7 @@ function init()
                                      0);
 
     // Create our timers
-    gButtonTimer <- CancellableTimer(cButtonTimeout, 
+    gButtonTimer = CancellableTimer(cButtonTimeout, 
                                      hwButton.handleButtonTimeout.bindenv(
                                          hwButton)
                                     );
@@ -2328,7 +2212,7 @@ function init()
     
     
     // Transition to the idle state
-    updateDeviceState(DeviceState.IDLE);
+   // updateDeviceState(DeviceState.IDLE);
 
     init_completed = true;
 }
