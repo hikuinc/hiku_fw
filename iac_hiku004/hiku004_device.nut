@@ -81,13 +81,13 @@ if (is_hiku004) {
     SDA_OUT             <- hardware.pinG;
     BATT_VOLT_MEASURE   <- hardware.pinH;
     BTN_N               <- hardware.pinX;
-    ACCEL_INT           <- hardware.pinQ;
+    ACCEL_INT           <- hardware.pinT;
     ACOK_N              <- hardware.pinA;
     AUDIO_UART          <- hardware.uartUVGD;
     IMP_ST_CLK          <- hardware.pinM;
     NRST                <- hardware.pinS;
     BOOT0               <- hardware.pinK;
-    VREF_EN             <- hardware.pinT;
+    VREF_EN             <- hardware.pinN;
 } else {
     CPU_INT             <- hardware.pin1;
     EIMP_AUDIO_IN       <- hardware.pin2; // "EIMP-AUDIO_IN" in schematics
