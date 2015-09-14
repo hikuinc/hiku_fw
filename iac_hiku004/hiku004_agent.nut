@@ -39,7 +39,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "2.0.00"; // All the hiku-004 agent base will start with 2.0.XX
+gAgentVersion <- "2.0.01"; // All the hiku-004 agent base will start with 2.0.XX
 
 gExtendTimer <- null;
 
@@ -1064,7 +1064,6 @@ device.on("shutdownRequestReason", function(status){
 
 http.onrequest(function (req, res)
 {
-    server.log(format("Request camethrough for: %s, method: %s",req.path, req.method));
     // Handle supported requests
     try {
       if ( req.method == "GET") { 
@@ -1077,7 +1076,6 @@ http.onrequest(function (req, res)
           // HACK
           // safer implementation should require the device to call back the 
           // backend confirming that it is entering shipping mode
-          server.log("Shipping Mode Requested!!");
           device.send("shippingMode",1);
     	  res.send(200, "OK");
         } 
@@ -1282,7 +1280,7 @@ device.on("init_status", function(data) {
 		      os_version = data.osVersion,
 		      connectTime = data.time_to_connect,
 			  ssid = data.ssid,
-			  agent_url = http.agenturl(),
+			  agent_url = http.agenturl()
     		    };
     sendDeviceEvents(dataToSend);
     sendMixPanelEvent(MIX_PANEL_EVENT_STATUS,dataToSend);
