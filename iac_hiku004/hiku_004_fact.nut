@@ -12,6 +12,9 @@ testList <- array(0);
 
 TEST_CONTROLLERS <- ["0c2a6908ae09", "0c2a69090d9b", "0c2a6909342a", /* at hiku */
                      "0c2a69092f8d", "0c2a69090783", "0c2a69090dd2", "0c2a69093434", "0c2a6908b054", "0c2a6908c47b", "0c2a6908ae0c" /* at IAC */];
+                     
+is_hiku004_rev10 <- true;
+
 /*
 INA219_ADDRS <- [0x80, 0x81, 0x88, 0x8a];
 INA219_CONFIG <- ["\x00", "\x"]
@@ -1027,23 +1030,25 @@ class Piezo
         tonesParamsList = {
             // [[period, duty cycle, duration], ...]
             // 1kHz for 1s
-            "one-khz": [[0.001, 0.5, 1.5]],
+            //"one-khz": [[0.001, 0.5, 1.5]],
+            // 3045Hz
+            "box-default": [[0.000328407224958, 0.5, 1.5]],
 	    //955Hz
         //"box0": [[0.001047120418848, 0.5, 1.5]],
-        //2865Hz
-            "box0": [[0.000349040139616, 0.5, 1.5]],
+        //2685Hz
+            "box0": [[0.000372439478584, 0.5, 1.5]],
 	    //985Hz
         //    "box1": [[0.001015228426396, 0.5, 1.5]],
-	    //2955Hz
-            "box1": [[0.000338409475465, 0.5, 1.5]],
+	    //2775Hz
+            "box1": [[0.000360360360360, 0.5, 1.5]],
 	    //1015Hz
         //"box2": [[0.000985221674877, 0.5, 1.5]],
-	    //3045Hz
-            "box2": [[0.000328407224959, 0.5, 1.5]],
+        //2865Hz
+            "box2": [[0.000349040139616, 0.5, 1.5]],
 	    //1045Hz
         //"box3": [[0.000956937799043, 0.5, 1.5]],
-	    //3135Hz
-            "box3": [[0.000318979266347, 0.5, 1.5]],
+	    //2955Hz
+            "box3": [[0.000338409475465, 0.5, 1.5]],
             "test-fail": [[noteB4, 0.85, 0.5]],
             "test-pass": [[noteE6, 0.85, 0.5]],
             "test-start": [[noteB4, 0.85, longTone], [noteE5, 0.15, shortTone]]
@@ -1946,7 +1951,7 @@ function audioUartCallback()
 		// test charger interrupt here
 
 	    // wait for the battery voltage to stabilize with charger switched on
-	    imp.sleep(0.1);
+	    imp.sleep(1.0);
 	    
 	    local charge_current_acc = 0;
 	    for (local i = 0; i < CHARGE_CURRENT_SAMPLES; i++)
@@ -2008,7 +2013,7 @@ function audioUartCallback()
 	audioMax = array(AUDIO_NUM_VALUES, 0);
 	//testBox=3;
 	if (testBox == null)
-	    hwPiezo.playSound("one-khz");
+	    hwPiezo.playSound("box-default");
 	else
 	    hwPiezo.playSound(format("box%u", testBox));
 	    
@@ -2180,7 +2185,7 @@ function audioUartCallback()
 		    test_flush();
 		    server.flush(SERVER_FLUSH_TIME);
 		    if (testBox == null)
-			hwPiezo.playSound("one-khz");
+			hwPiezo.playSound("box-default");
 		    else
 			hwPiezo.playSound(format("box%u", testBox));
 		    break;
@@ -2249,9 +2254,6 @@ function audioUartCallback()
 	// HACK
 	// retest automatically for software dev
 	imp.enableblinkup(true);
-	
-	// HACK HACK HACK
-	test_ok = true;
 	
 	imp.setcountry(COUNTRY_US);
     
@@ -2488,13 +2490,18 @@ function init()
     SDA_OUT             <- hardware.pinG;
     BATT_VOLT_MEASURE   <- hardware.pinH;
     BTN_N               <- hardware.pinX;
-    ACCEL_INT           <- hardware.pinT;
     ACOK_N              <- hardware.pinA;
     AUDIO_UART          <- hardware.uartUVGD;
     IMP_ST_CLK          <- hardware.pinM;
     NRST                <- hardware.pinS;
     BOOT0               <- hardware.pinK;
-    VREF_EN             <- hardware.pinN;
+    if (is_hiku004_rev10) {
+        ACCEL_INT           <- hardware.pinT;
+        VREF_EN             <- hardware.pinN;
+    } else {
+        ACCEL_INT           <- hardware.pinQ;
+        VREF_EN             <- hardware.pinT;
+    }
 
 	// Piezo config
 	hwPiezo <- Piezo(EIMP_AUDIO_OUT);
