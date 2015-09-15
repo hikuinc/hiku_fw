@@ -2115,7 +2115,7 @@ function sleepHandler()
     // going to sleep
     imp.enableblinkup(false);
     //imp.setpoweren(false);
-    imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);  
+    imp.onidle(function() {imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration)});  
 }
 
 
