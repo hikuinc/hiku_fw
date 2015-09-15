@@ -69,6 +69,7 @@ gInitTime <- {
 local connection_available = false;
 
 is_hiku004 <- true;
+is_hiku004_rev10 <- true;
 
 if (is_hiku004) {
     CPU_INT             <- hardware.pinW;
@@ -81,13 +82,18 @@ if (is_hiku004) {
     SDA_OUT             <- hardware.pinG;
     BATT_VOLT_MEASURE   <- hardware.pinH;
     BTN_N               <- hardware.pinX;
-    ACCEL_INT           <- hardware.pinT;
     ACOK_N              <- hardware.pinA;
     AUDIO_UART          <- hardware.uartUVGD;
     IMP_ST_CLK          <- hardware.pinM;
     NRST                <- hardware.pinS;
     BOOT0               <- hardware.pinK;
-    VREF_EN             <- hardware.pinN;
+    if (is_hiku004_rev10) {
+        ACCEL_INT           <- hardware.pinT;
+        VREF_EN             <- hardware.pinN;
+    } else {
+        ACCEL_INT           <- hardware.pinQ;
+        VREF_EN             <- hardware.pinT;
+    }
 } else {
     CPU_INT             <- hardware.pin1;
     EIMP_AUDIO_IN       <- hardware.pin2; // "EIMP-AUDIO_IN" in schematics
