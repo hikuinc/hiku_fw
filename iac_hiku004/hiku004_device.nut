@@ -159,7 +159,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.0.02" // hiku-004 code base starts with 2.0.XX
+const cFirmwareVersion = "2.0.03" // hiku-004 code base starts with 2.0.XX
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -189,7 +189,7 @@ const SETUP_BARCODE_PREFIX = "4H1KU5"
 // on the hiku box only works in the factory
 // HACK find correct BSSID at IAC
 //const FACTORY_BSSID = "c83a351e5680";
-FACTORY_BSSIDS <- ["94b40f1cb7a6" /* CISCO router at IAC? */, "c83a35587e00" /* Tenda router at IAC */, "c83a351e5680" /* Tenda router at hiku */];
+FACTORY_BSSIDS <- ["94b40f1cb7a6", "94b40fc9cb56", "94b40fc9cbba" /* All the 3 macs infront is on an Aruba thin AP */, "c83a35587e00" /* Tenda router at IAC */, "c83a351e5680" /* Tenda router at hiku */];
 enum DeviceState
 /*
                            ---> SCAN_CAPTURED ------>
