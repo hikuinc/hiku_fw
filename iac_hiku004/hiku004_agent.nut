@@ -40,7 +40,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "2.0.02"; // All the hiku-004 agent base will start with 2.0.XX
+gAgentVersion <- "2.0.03"; // All the hiku-004 agent base will start with 2.0.XX
 
 gExtendTimer <- null;
 
