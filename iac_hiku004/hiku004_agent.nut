@@ -23,6 +23,7 @@ if (!("nv" in getroottable()))
 			gFwVersion = 0.0,
 			at_factory = false,
 	        macAddress = null,
+	        countryCode = null,
 			extendTimeout = 0.0
     	  };
 }
@@ -39,7 +40,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "2.0.01"; // All the hiku-004 agent base will start with 2.0.XX
+gAgentVersion <- "2.0.02"; // All the hiku-004 agent base will start with 2.0.XX
 
 gExtendTimer <- null;
 
@@ -1267,6 +1268,7 @@ device.on("init_status", function(data) {
     nv.gSleepDuration = data.sleep_duration;
     nv.at_factory = data.at_factory;
     nv.macAddress = data.macAddress;
+    nv.countryCode = data.countryCode;
     
     //server.log(format("Device to Agent Time: %dms", (time()*1000 - data.time_stamp)));
     server.log(format("Device OS Version: %s", data.osVersion));
