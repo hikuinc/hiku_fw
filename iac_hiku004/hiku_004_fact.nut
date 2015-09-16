@@ -1683,13 +1683,13 @@ function audioUartCallback()
     local uart_flags = AUDIO_UART.flags();
     
 	if (uart_flags & NOISE_ERROR & ~uart_errors_reported)
-	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_ERROR, "NOISE_ERROR bit set on UART", TEST_ID_SCANNER_UART_NOISE_ERROR);
+	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_WARNING, "NOISE_ERROR bit set on UART", TEST_ID_SCANNER_UART_NOISE_ERROR);
 	if (uart_flags & FRAME_ERROR & ~uart_errors_reported)
-	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_ERROR, "FRAME_ERROR bit set on UART", TEST_ID_SCANNER_UART_FRAME_ERROR);
+	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_WARNING, "FRAME_ERROR bit set on UART", TEST_ID_SCANNER_UART_FRAME_ERROR);
 	if (uart_flags & PARITY_ERROR & ~uart_errors_reported)
-	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_ERROR, "PARITY_ERROR bit set on UART", TEST_ID_SCANNER_UART_PARITY_ERROR);
+	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_WARNING, "PARITY_ERROR bit set on UART", TEST_ID_SCANNER_UART_PARITY_ERROR);
 	if (uart_flags & OVERRUN_ERROR & ~uart_errors_reported)
-	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_ERROR, "OVERRUN_ERROR bit set on UART", TEST_ID_SCANNER_UART_OVERRUN_ERROR);
+	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_WARNING, "OVERRUN_ERROR bit set on UART", TEST_ID_SCANNER_UART_OVERRUN_ERROR);
 
 	if (uart_flags & LINE_IDLE & ~uart_errors_reported)
 	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_INFO, "LINE_IDLE bit set on UART", TEST_ID_SCANNER_UART_LINE_IDLE);
