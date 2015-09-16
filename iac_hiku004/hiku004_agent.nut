@@ -40,7 +40,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "2.0.03"; // All the hiku-004 agent base will start with 2.0.XX
+gAgentVersion <- "2.0.04"; // All the hiku-004 agent base will start with 2.0.XX
 
 gExtendTimer <- null;
 
@@ -554,10 +554,10 @@ function handleSpecialBarcodes(data)
 		local json_data = http.jsonencode (dataToSend);
 		server.log(json_data);
 		// HACK HACK HACK
-		local printer_req = http.get("https://agent.electricimp.com/WQ8othFzM2Zm/printMAC?mac="+nv.macAddress, {});
+		local printer_req = http.get("https://agent.electricimp.com/WQ8othFzM2Zm/printMAC?mac="+nv.macAddress+"countryCode="+nv.countryCode, {});
 		printer_req.sendasync(onMacPrintReturn);
 		// Goes to test controller 20000c2a69093434
-		local iac_printer_req = http.get("https://agent.electricimp.com/TvVLVemS7PR9/printMAC?mac="+nv.macAddress, {});
+		local iac_printer_req = http.get("https://agent.electricimp.com/TvVLVemS7PR9/printMAC?mac="+nv.macAddress+"countryCode="+nv.countryCode, {});
 		iac_printer_req.sendasync(onMacPrintReturn);
 		req = http.post(
 		    gSpecialBarcodePrefixes[i]["url"],
@@ -1272,6 +1272,7 @@ device.on("init_status", function(data) {
     
     //server.log(format("Device to Agent Time: %dms", (time()*1000 - data.time_stamp)));
     server.log(format("Device OS Version: %s", data.osVersion));
+    server.log(format("Device Country: %s", nv.countryCode));
     local dataToSend =  {  	  
 		      fw_version=nv.gFwVersion,
 		      wakeup_reason = xlate_bootreason_to_string(nv.gWakeUpReason),

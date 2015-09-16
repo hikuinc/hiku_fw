@@ -159,7 +159,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.0.03" // hiku-004 code base starts with 2.0.XX
+const cFirmwareVersion = "2.0.04" // hiku-004 code base starts with 2.0.XX
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -2542,11 +2542,12 @@ function onConnected(status)
         				sleep_duration = nv.sleep_duration,
         				osVersion = imp.getsoftwareversion(),
 						time_to_connect = timeToConnect,
-                                                at_factory = (FACTORY_BSSIDS.find(imp.getbssid()) != null),
-	                                        macAddress = imp.getmacaddress(),
-	                                        countryCode = imp.getcountry(),
+                        at_factory = (FACTORY_BSSIDS.find(imp.getbssid()) != null),
+	                    macAddress = imp.getmacaddress(),
+	                    countryCode =(imp.getcountry() == "00005355" ? "NA":"EU"),
 						ssid = imp.getssid()
         			};
+        			
         agentSend("init_status", data);
         
         if( nv.setup_required )
