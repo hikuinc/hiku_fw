@@ -40,7 +40,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "2.0.05"; // All the hiku-004 agent base will start with 2.0.XX
+gAgentVersion <- "2.0.06"; // All the hiku-004 agent base will start with 2.0.XX
 
 gExtendTimer <- null;
 
@@ -554,10 +554,10 @@ function handleSpecialBarcodes(data)
 		local json_data = http.jsonencode (dataToSend);
 		server.log(json_data);
 		// HACK HACK HACK
-		local printer_req = http.get("https://agent.electricimp.com/WQ8othFzM2Zm/printMAC?mac="+nv.macAddress+"countryCode="+nv.countryCode, {});
+		local printer_req = http.get("https://agent.electricimp.com/WQ8othFzM2Zm/printMAC?mac="+nv.macAddress+"&countryCode="+nv.countryCode, {});
 		printer_req.sendasync(onMacPrintReturn);
 		// Goes to test controller 20000c2a69093434
-		local iac_printer_req = http.get("https://agent.electricimp.com/TvVLVemS7PR9/printMAC?mac="+nv.macAddress+"countryCode="+nv.countryCode, {});
+		local iac_printer_req = http.get("https://agent.electricimp.com/TvVLVemS7PR9/printMAC?mac="+nv.macAddress+"&countryCode="+nv.countryCode, {});
 		iac_printer_req.sendasync(onMacPrintReturn);
 		req = http.post(
 		    gSpecialBarcodePrefixes[i]["url"],
