@@ -1,7 +1,7 @@
 // Copyright 2014 hiku labs inc. All rights reserved. Confidential.
 // Setup the server to behave when we have the no-wifi condition
-//server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
-local sendBufferSize = 24*1024; // 16K send buffer size
+server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
+local sendBufferSize = 32*1024; // 16K send buffer size
 
 local oldsize = imp.setsendbuffersize(sendBufferSize);
 server.log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes."); 
@@ -62,7 +62,7 @@ BLINKUP_IMP_MACS <- ["0c2a69090d9b", "0c2a6908c47b", "0c2a6908b054"];
 // timer handle for timing out devices that did not complete the button test
 // after the charging test is done
 testIncompleteTimer <- null;
-const TEST_INCOMPLETE_TIMEOUT = 40;
+const TEST_INCOMPLETE_TIMEOUT = 30;
 
 // watchdog timer for flushing data to server if test gets stuck
 flushTimer <- null;
@@ -607,7 +607,7 @@ class Stm32 {
     }
     
     // Reset the STM32 and bring it up in USART bootloader mode
-    // Applies "pattern1" from "STM32 system memory boot mode” application note (AN2606)
+    // Applies "pattern1" from "STM32 system memory boot modeÓ application note (AN2606)
     // Note that the USARTs available for bootloader vary between STM32 parts
     // Input: None
     // Return: None
@@ -676,7 +676,7 @@ class Stm32 {
     
     // Read a section of device memory
     // Input: 
-    //      addr: 4-byte address. Refer to “STM32 microcontroller system memory boot mode” application note (AN2606) for valid addresses
+    //      addr: 4-byte address. Refer to ÒSTM32 microcontroller system memory boot modeÓ application note (AN2606) for valid addresses
     //      len: number of bytes to read. 0-255.
     // Return: 
     //      memory contents from addr to addr+len (blob)
@@ -1682,6 +1682,7 @@ function audioUartCallback()
     
     local uart_flags = AUDIO_UART.flags();
     
+    
 	if (uart_flags & NOISE_ERROR & ~uart_errors_reported)
 	    test_log(TEST_CLASS_SCANNER, TEST_RESULT_WARNING, "NOISE_ERROR bit set on UART", TEST_ID_SCANNER_UART_NOISE_ERROR);
 	if (uart_flags & FRAME_ERROR & ~uart_errors_reported)
@@ -1700,6 +1701,8 @@ function audioUartCallback()
     //if (flags != 0x40)
     //    server.log(format("Flags 0x%x", flags));
     string_len = packet_state.char_string.len();
+    
+    //server.log(format("audioUartCallback called, flags=%X read length=%d",uart_flags, string_len));
 
     while ((buf_ptr < string_len) && (packet_state.state < PS_TYPE_FIELD)) {
         if (packet_state.char_string[buf_ptr] == PS_PREAMBLE[packet_state.state])
@@ -1789,7 +1792,6 @@ function audioUartCallback()
 	                    } 
                         //barcode_match = true;
                         //testBox = 1;
-
 	                    if (barcode_match) 
 	                        test_log(TEST_CLASS_SCANNER, TEST_RESULT_SUCCESS, format("Scanned %s", scannerOutput), TEST_ID_SCANNER_BARCODE, {barcode=scannerOutput});
 	                    else
@@ -1989,8 +1991,9 @@ function audioUartCallback()
 */
 	    
 	    test_flush();
+	    server.flush(SERVER_FLUSH_TIME);
 	    //test_log(TEST_CLASS_CHARGER, TEST_RESULT_INFO, "**** CHARGER TESTS DONE ****");
-	    audioTest();
+	    imp.wakeup(0.05, audioTest.bindenv(this));
 	}
     }
 
@@ -1999,8 +2002,7 @@ function audioUartCallback()
 	//test_log(TEST_CLASS_AUDIO, TEST_RESULT_INFO, "**** AUDIO TESTS STARTING ****");
 	// Flush all data to the server to not introduce WiFi
 	// noise into audio recording.
-	test_flush();
-	server.flush(SERVER_FLUSH_TIME);
+
 	//hardware.sampler.reset();
 	// record uncompressed 12-bit samples (vs. 8-bit a-law) to simplify
 	// data interpretation
@@ -2011,14 +2013,7 @@ function audioUartCallback()
 	audioBufCount = 0;
 	audioMin = array(AUDIO_NUM_VALUES, ADC_MAX);
 	audioMax = array(AUDIO_NUM_VALUES, 0);
-	//testBox=3;
-	if (testBox == null)
-	    hwPiezo.playSound("box-default");
-	else
-	    hwPiezo.playSound(format("box%u", testBox));
-	    
-    // configure the UART
-    AUDIO_UART.disable();
+	
 
     packet_state.state=PS_OUT_OF_SYNC;
     packet_state.char_string = "";
@@ -2026,11 +2021,21 @@ function audioUartCallback()
     packet_state.pay_len = 0;
     packet_state.run_test = 3;
     
+	// enable STM32F0
+	NRST.write(0);
+	imp.sleep(0.01);
+	// configure the UART
+    AUDIO_UART.disable();
     AUDIO_UART.setrxfifosize(UART_BUF_SIZE);
     AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback.bindenv(this));
-	// enable STM32F0
-	NRST.write(1);
-
+    NRST.write(1);
+    
+    //testBox=3;
+	if (testBox == null)
+	    hwPiezo.playSound("box-default");
+	else
+	    hwPiezo.playSound(format("box%u", testBox));
+    
     // flush all data to the server using a watchdog timer in case the
     // test gets stuck and there is data remaining
     flushTimer = imp.wakeup(WATCHDOG_FLUSH, test_flush);
@@ -2055,7 +2060,7 @@ function audioUartCallback()
 	}
 
     function audioCallback(buffer, length) {
-
+       // server.log(format("audioCallback called, length=%d",length));
 	if (length <= 0) {
 	    test_log(TEST_CLASS_AUDIO, TEST_RESULT_ERROR, "Audio sampler buffer overrun.", TEST_ID_AUDIO_BUFFER_OVERRUN);
 	    audioCurrentTest = AUDIO_TEST_DONE;
