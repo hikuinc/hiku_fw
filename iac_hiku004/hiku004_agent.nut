@@ -40,7 +40,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "2.0.06"; // All the hiku-004 agent base will start with 2.0.XX
+gAgentVersion <- "2.0.07"; // All the hiku-004 agent base will start with 2.0.XX
 
 gExtendTimer <- null;
 
@@ -121,9 +121,11 @@ const BATT_0_PERCENT = 43726.16;
 const PREFIX_IMP_MAC = "0c2a69";
 const PREFIX_IMP_LABELING = ".HCMGETMAC";
 const PREFIX_GENERAL = ".HFB";
+const PREFIX_OBA_CHECK = ".HCOBACHECK";
 
 const TEST_CMD_PACKAGE = "package";
 const TEST_CMD_PRINT_LABEL = "label";
+const TEST_CMD_OBA_CHECK = "obacheck";
 
 const IMAGE_COLUMNS = 1016;
 scanned_image <- "";
@@ -140,7 +142,12 @@ gSpecialBarcodePrefixes <- [{
 	prefix = PREFIX_IMP_LABELING,
 	min_len = 10,
 	max_len = 10,
-	url = gFactoryUrl + "/factory"},{
+	url = gFactoryUrl + "/factory"}, {
+	// this is to check the mac address at the oba station
+	prefix = PREFIX_OBA_CHECK,
+	min_len = 11,
+	max_len = 11,
+	url = gFactoryUrl + "/factory"}, {
 	// general special barcodes
 	prefix = PREFIX_GENERAL,
 	min_len = 5,
@@ -565,6 +572,28 @@ function handleSpecialBarcodes(data)
 			"Accept": "application/json"}, 
 		    json_data);
 		break;
+		case PREFIX_OBA_CHECK:
+		  server.log(format("Scanned label code %s", barcode));
+		  if (!nv.at_factory) {
+			  return false;
+		  }
+		  is_special = true;
+		  dataToSend = {
+			  "macAddress": nv.macAddress,
+			  "serialNumber": nv.gImpeeId,
+			  "agentUrl": http.agenturl(),
+			  "command": TEST_CMD_OBA_CHECK
+			  };
+		  sendMixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend);
+		  //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend));
+		  local json_data = http.jsonencode (dataToSend);
+		  server.log(json_data);
+		  req = http.post(
+			  gSpecialBarcodePrefixes[i]["url"],
+			  {"Content-Type": "application/json", 
+			  "Accept": "application/json"}, 
+			  json_data);
+		  break;		  
 	    case PREFIX_GENERAL :
 		server.log(format("Scanned special barcode %s", barcode));
 		is_special = true;

@@ -159,7 +159,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.0.05" // hiku-004 code base starts with 2.0.XX
+const cFirmwareVersion = "2.0.06" // hiku-004 code base starts with 2.0.XX
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -2366,7 +2366,7 @@ function shippingMode(){
     
     triggerCount++;
     if (triggerCount < 40)
-	imp.wakeup(0.05, shippingMode);
+	    imp.wakeup(0.05, shippingMode);
     else {
 	   hwPiezo.playSound("blink-up-enabled", false);
 	   nv.setup_required = true;
@@ -2375,7 +2375,7 @@ function shippingMode(){
 	   gDeviceState = DeviceState.PRE_SLEEP;
 	   triggerCount = 0;
 	   imp.clearconfiguration();
-    	   sleepHandler();
+       sleepHandler();
     }
 }
 
