@@ -1,5 +1,61 @@
+is_hiku004 <- true;
+is_hiku004_rev10 <- false;
+
+if (is_hiku004) {
+    CPU_INT             <- hardware.pinW;
+    CPU_INT_RESET       <- hardware.pinY;
+    EIMP_AUDIO_IN       <- hardware.pinN; // "EIMP-AUDIO_IN" in schematics
+    EIMP_AUDIO_OUT      <- hardware.pinC; // "EIMP-AUDIO_OUT" in schematics
+    IMON                <- hardware.pinE;
+    I2C_IF              <- hardware.i2cFG;
+    SCL_OUT             <- hardware.pinF;
+    SDA_OUT             <- hardware.pinG;
+    BATT_VOLT_MEASURE   <- hardware.pinH;
+    BTN_N               <- hardware.pinX;
+    ACOK_N              <- hardware.pinA;
+    AUDIO_UART          <- hardware.uartUVGD;
+    IMP_ST_CLK          <- hardware.pinM;
+    NRST                <- hardware.pinS;
+    BOOT0               <- hardware.pinK;
+    if (is_hiku004_rev10) {
+        ACCEL_INT           <- hardware.pinT;
+        VREF_EN             <- hardware.pinN;
+    } else {
+        ACCEL_INT           <- hardware.pinQ;
+        VREF_EN             <- hardware.pinT;
+    }
+} else {
+    CPU_INT             <- hardware.pin1;
+    EIMP_AUDIO_IN       <- hardware.pin2; // "EIMP-AUDIO_IN" in schematics
+    EIMP_AUDIO_OUT      <- hardware.pin5; // "EIMP-AUDIO_OUT" in schematics
+    RXD_IN_FROM_SCANNER <- hardware.pin7;
+    I2C_IF              <- hardware.i2c89;
+    SCL_OUT             <- hardware.pin8;
+    SDA_OUT             <- hardware.pin9;
+    BATT_VOLT_MEASURE   <- hardware.pinB;
+    //CHARGE_DISABLE_H    <- hardware.pinC;
+    SCANNER_UART        <- hardware.uart57;
+}
+
+/********************  END ************/
+
+// enable clock to STM32F0, set to 8MHz
+IMP_ST_CLK.configure(PWM_OUT, 0.000000125, 0.5);
+VREF_EN.configure(DIGITAL_OUT, 1);
+BOOT0.configure(DIGITAL_OUT,0);
+NRST.configure(DIGITAL_OUT, 1);
+CPU_INT_RESET.configure(DIGITAL_OUT, 0);
+CPU_INT_RESET.write(1);
+
 // Copyright 2015 Katmandu Technology, Inc. All rights reserved. Confidential.
 // Setup the server to behave when we have the no-wifi condition
+server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
+imp.wakeup(0.00001, function(){server.connect(null, 30);});
+//server.connect(null, 30);
+
+// Always enable blinkup to keep LED flashing; power costs are negligible
+imp.enableblinkup(true);
+
 local entryTime = hardware.millis();
 responseTime <- 0;
 gStartScanRecord <- 0;
@@ -71,65 +127,6 @@ gInitTime <- {
 			}; 
 */
 local connection_available = server.isconnected();
-
-
-is_hiku004 <- true;
-is_hiku004_rev10 <- true;
-
-if (is_hiku004) {
-    CPU_INT             <- hardware.pinW;
-    CPU_INT_RESET       <- hardware.pinY;
-    EIMP_AUDIO_IN       <- hardware.pinN; // "EIMP-AUDIO_IN" in schematics
-    EIMP_AUDIO_OUT      <- hardware.pinC; // "EIMP-AUDIO_OUT" in schematics
-    IMON                <- hardware.pinE;
-    I2C_IF              <- hardware.i2cFG;
-    SCL_OUT             <- hardware.pinF;
-    SDA_OUT             <- hardware.pinG;
-    BATT_VOLT_MEASURE   <- hardware.pinH;
-    BTN_N               <- hardware.pinX;
-    ACOK_N              <- hardware.pinA;
-    AUDIO_UART          <- hardware.uartUVGD;
-    IMP_ST_CLK          <- hardware.pinM;
-    NRST                <- hardware.pinS;
-    BOOT0               <- hardware.pinK;
-    if (is_hiku004_rev10) {
-        ACCEL_INT           <- hardware.pinT;
-        VREF_EN             <- hardware.pinN;
-    } else {
-        ACCEL_INT           <- hardware.pinQ;
-        VREF_EN             <- hardware.pinT;
-    }
-} else {
-    CPU_INT             <- hardware.pin1;
-    EIMP_AUDIO_IN       <- hardware.pin2; // "EIMP-AUDIO_IN" in schematics
-    EIMP_AUDIO_OUT      <- hardware.pin5; // "EIMP-AUDIO_OUT" in schematics
-    RXD_IN_FROM_SCANNER <- hardware.pin7;
-    I2C_IF              <- hardware.i2c89;
-    SCL_OUT             <- hardware.pin8;
-    SDA_OUT             <- hardware.pin9;
-    BATT_VOLT_MEASURE   <- hardware.pinB;
-    //CHARGE_DISABLE_H    <- hardware.pinC;
-    SCANNER_UART        <- hardware.uart57;
-}
-
-
-/********************  END ************/
-
-// enable clock to STM32F0, set to 8MHz
-IMP_ST_CLK.configure(PWM_OUT, 0.000000125, 0.5);
-
-VREF_EN.configure(DIGITAL_OUT);
-VREF_EN.write(1);
-
-BOOT0.configure(DIGITAL_OUT,0);
-
-NRST.configure(DIGITAL_OUT, 1);
-
-CPU_INT_RESET.configure(DIGITAL_OUT);
-// clear interrupts
-CPU_INT_RESET.write(0);
-CPU_INT_RESET.write(1);
-
 
 /*
 // BOOT UP REASON MASK
@@ -247,6 +244,21 @@ enum ButtonState
     BUTTON_DOWN,
 }
 gButtonState <- ButtonState.BUTTON_UP;
+
+BTN_N.configure(DIGITAL_IN);
+if (!BTN_N.read())
+{
+    //server.log("Button IS Pressed at boot!");
+    gButtonState = ButtonState.BUTTON_DOWN;
+    //NRST.configure(DIGITAL_OUT, 1);
+    //VREF_EN.write(0);
+    //AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS, audioUartCallback);
+    //VREF_EN.write(0);
+    AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS);
+    //imp.sleep(0.002);
+    AUDIO_UART.write("N");
+    AUDIO_UART.flush();
+}
 
 // offline audio buffer
 local audio_start_address = AUDIO_MEM_BASE_START;
@@ -432,23 +444,6 @@ function audioUartCallback()
 */
    packet_state.char_string = packet_state.char_string.slice(buf_ptr);
 }
-
-BTN_N.configure(DIGITAL_IN);
-if (!BTN_N.read())
-{
-    //server.log("Button IS Pressed at boot!");
-    gButtonState = ButtonState.BUTTON_DOWN;
-    //NRST.configure(DIGITAL_OUT, 1);
-    AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS, audioUartCallback);
-    //imp.sleep(0.002);
-    AUDIO_UART.write("N");
-    AUDIO_UART.flush();
-}
-
-server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
-imp.wakeup(0.001, function(){server.connect(null, 30);});
-// Always enable blinkup to keep LED flashing; power costs are negligible
-imp.enableblinkup(true);
 
 // Globals
 gDeviceState <- DeviceState.IDLE; // Hiku device current state
