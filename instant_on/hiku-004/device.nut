@@ -1,3 +1,6 @@
+// Copyright 2015 Katmandu Technology, Inc. All rights reserved. Confidential.
+// Setup the server to behave when we have the no-wifi condition
+
 is_hiku004 <- true;
 is_hiku004_rev10 <- false;
 
@@ -47,8 +50,6 @@ NRST.configure(DIGITAL_OUT, 1);
 CPU_INT_RESET.configure(DIGITAL_OUT, 0);
 CPU_INT_RESET.write(1);
 
-// Copyright 2015 Katmandu Technology, Inc. All rights reserved. Confidential.
-// Setup the server to behave when we have the no-wifi condition
 server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 imp.wakeup(0.00001, function(){server.connect(null, 30);});
 //server.connect(null, 30);
@@ -404,16 +405,27 @@ function audioUartCallback()
                     if (packet_state.char_string[buf_ptr] != '\r')
                       return;
                     log(format("Scanned %s", scannerOutput));
-                    if(agent.send("uploadBeep", {
-                                              scandata=scannerOutput,
-                                              scansize=scannerOutput.len(),
-                                              serial=hardware.getdeviceid(),
-                                              fw_version=cFirmwareVersion,
-                                              linkedrecord="",
-                                              audiodata="",
-                                             }) == 0)
-                    	hwPiezo.playSound("success-local");
-                    // Stop collecting data
+					if (connection_available)
+					{
+                      if(agent.send("uploadBeep", {
+					                    scandata=scannerOutput,
+                                        scansize=scannerOutput.len(),
+                                        serial=hardware.getdeviceid(),
+                                        fw_version=cFirmwareVersion,
+                                        linkedrecord="",
+                                        audiodata="",
+                                        }) == 0)
+										{
+										   hwPiezo.playSound("success-local");
+										}					
+					}
+					else
+					{
+					  gPendingBarcode = scannerOutput;
+					  gPendingAudio = 0;
+					  imp.wakeup(0.001, handlePendingBarcode);
+					}
+					// Stop collecting data
                     stopScanRecord();
                 break;
            //case PKT_TYPE_DTMF:
@@ -478,6 +490,7 @@ if ("spiflash" in hardware)
 }
 
 gPendingAudio <- 0;
+gPendingBarcode <- null;
 gStopScanRecord <- false;
 
 lines_scanned <- 0;
@@ -1452,9 +1465,9 @@ class PushButton
                 	return;
                 }
                 
-                if (gPendingAudio)
+                if (gPendingAudio || gPendingBarcode)
                 {
-                    log("Returning as pending audio recording audio is in progress");
+                    log("Returning as pending audio recording or barcode is in progress");
                     return;
                 }
                 
@@ -1496,7 +1509,7 @@ class PushButton
                         //spin off the scheduler to do the pending data case
                         imp.wakeup(0.0001, handlePendingAudio);
                     }
-                    else
+					else
                     {
 		                agentSend("button","Released");
                     }
@@ -1739,6 +1752,32 @@ function handlePendingAudio()
         pmic.write(0x02, 0x1);
         imp.wakeup(0.001,function(){hwPiezo.playSound("success-local")});
         imp.wakeup(2, handlePendingAudio);
+    }
+}
+
+function handlePendingBarcode()
+{
+    if(connection_available)
+    {
+        if(agent.send("uploadBeep", {
+				  scandata=gPendingBarcode,
+				  scansize=gPendingBarcode.len(),
+				  serial=hardware.getdeviceid(),
+				  fw_version=cFirmwareVersion,
+				  linkedrecord="",
+				  audiodata="",
+				  }) == 0)
+				  {
+					 hwPiezo.playSound("success-local");
+				  }
+        gPendingBarcode = null;
+		init_audio_memory();
+    }
+    else
+    {
+        pmic.write(0x02, 0x1);
+        imp.wakeup(0.001,function(){hwPiezo.playSound("success-local")});
+        imp.wakeup(2, handlePendingBarcode);
     }
 }
 
