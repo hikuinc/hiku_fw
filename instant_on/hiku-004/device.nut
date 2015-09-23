@@ -1,5 +1,8 @@
 // Copyright 2015 Katmandu Technology, Inc. All rights reserved. Confidential.
 // Setup the server to behave when we have the no-wifi condition
+server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
+//imp.wakeup(0.0001, function() {server.connect(null, 0.01);});
+server.connect(null, 0.0);
 
 is_hiku004 <- true;
 is_hiku004_rev10 <- false;
@@ -49,10 +52,6 @@ BOOT0.configure(DIGITAL_OUT,0);
 NRST.configure(DIGITAL_OUT, 1);
 CPU_INT_RESET.configure(DIGITAL_OUT, 0);
 CPU_INT_RESET.write(1);
-
-server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
-imp.wakeup(0.00001, function(){server.connect(null, 30);});
-//server.connect(null, 30);
 
 // Always enable blinkup to keep LED flashing; power costs are negligible
 imp.enableblinkup(true);
@@ -142,7 +141,7 @@ const BOOT_UP_REASON_SCAN_RST =    1 << 6; // 0x0040h
 const BOOT_UP_REASON_CHRG_DET =    1 << 7; // 0x0080h
 */
 const IMP_LOG_ENABLED = 1;
-const IMP_SERVER_LOG_ENABLED = 1;
+const IMP_SERVER_LOG_ENABLED = 0;
 
 // set this flag to disable the UART logging
 const DEBUG_UART_ENABLED = 0;
@@ -238,29 +237,6 @@ enum DeviceState
     PRE_SLEEP,        // 5: A state before it enters Sleep just after being IDLE
 }
 
-// Button
-enum ButtonState
-{
-    BUTTON_UP,
-    BUTTON_DOWN,
-}
-gButtonState <- ButtonState.BUTTON_UP;
-
-BTN_N.configure(DIGITAL_IN);
-if (!BTN_N.read())
-{
-    //server.log("Button IS Pressed at boot!");
-    gButtonState = ButtonState.BUTTON_DOWN;
-    //NRST.configure(DIGITAL_OUT, 1);
-    //VREF_EN.write(0);
-    //AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS, audioUartCallback);
-    //VREF_EN.write(0);
-    AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS);
-    //imp.sleep(0.002);
-    AUDIO_UART.write("N");
-    AUDIO_UART.flush();
-}
-
 // offline audio buffer
 local audio_start_address = AUDIO_MEM_BASE_START;
 local audio_end_address = AUDIO_MEM_BASE_START;
@@ -341,7 +317,7 @@ function audioUartCallback()
                         if(gPendingAudio)
                         {
                             agent.send("startAudioUpload", "");
-                            //imp.sleep(0.100);
+                            imp.sleep(0.100); // we need this to leave enough time to get a valid audio token!
                             local totalSize = audio_end_address - audio_start_address;
                             local numPayload = totalSize/1000;
                             local buffer = blob();
@@ -352,7 +328,7 @@ function audioUartCallback()
                                 audio_start_address +=buffer.tell();
                                 agent.send("uploadAudioChunk", {buffer=buffer, length=buffer.tell()});
                                 buffer.seek(0,'b');
-                                //imp.sleep(0.100);
+                                imp.sleep(0.100);
                             }
                             
                             if (audio_end_address > audio_start_address)
@@ -363,7 +339,7 @@ function audioUartCallback()
                                 buffer.seek(0,'b');
                             }
                             gPendingAudio = 0;
-                            //imp.sleep(0.100);
+                            imp.sleep(0.100);
                         }
                         log(format("Sending Audio Chunks=%d",gAudioChunkCount));
                         agent.send("uploadAudioChunk", {buffer=audio_pkt_blob, length=audio_pkt_blob.tell()});
@@ -456,6 +432,32 @@ function audioUartCallback()
 */
    packet_state.char_string = packet_state.char_string.slice(buf_ptr);
 }
+
+// Button
+enum ButtonState
+{
+    BUTTON_UP,
+    BUTTON_DOWN,
+}
+gButtonState <- ButtonState.BUTTON_UP;
+
+BTN_N.configure(DIGITAL_IN);
+
+
+if (!BTN_N.read())
+{
+    //server.log("Button IS Pressed at boot!");
+    gButtonState = ButtonState.BUTTON_DOWN;
+    //NRST.configure(DIGITAL_OUT, 1);
+    //VREF_EN.write(0);
+    //AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS, audioUartCallback);
+    //VREF_EN.write(0);
+    AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS, audioUartCallback);
+    //imp.sleep(0.04);
+    AUDIO_UART.write("NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN");
+    AUDIO_UART.flush();       
+}
+
 
 // Globals
 gDeviceState <- DeviceState.IDLE; // Hiku device current state
@@ -715,6 +717,17 @@ function getUTCTime()
 	local d=date();
     str = format("%04d-%02d-%02d %02d:%02d:%02d.000000", d.year, d.month+1, d.day, d.hour, d.min, d.sec);
     return str;
+}
+
+function agentSend(key, value)
+{
+      if(server.isconnected())
+      {
+        if(agent.send(key,value) != 0)
+        {
+           log(format("agentSend: failed for %s",key));
+    	}
+    }
 }
 
 // This is the log function wrapper
@@ -2170,17 +2183,6 @@ function init_done()
 	{
 		imp.wakeup(1, init_done );
 	}
-}
-
-function agentSend(key, value)
-	{
-  if(server.isconnected())
-  {
-    if(agent.send(key,value) != 0)
-    {
-       log(format("agentSend: failed for %s",key));
-	}
-}
 }
 
 triggerCount <- 0;
