@@ -24,8 +24,9 @@ BYTE_TIME <- 8.0 / (BAUD * 1.0);
 
 const PS_OUT_OF_SYNC = 0;
 const PS_TYPE_FIELD = 4;
-const PS_LEN_FIELD = 5;
-const PS_DATA_FIELD = 6;
+const PS_LEN_FIELD_HIGH = 5;
+const PS_LEN_FIELD_LOW = 6;
+const PS_DATA_FIELD = 7;
 const PS_PREAMBLE = "\xDE\xAD\xBE\xEF";
 const PKT_TYPE_SW_VERSION = 0x01;
 const PKT_TYPE_AUDIO = 0x10;
@@ -159,7 +160,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.0.06" // hiku-004 code base starts with 2.0.XX
+const cFirmwareVersion = "2.0.07" // hiku-004 code base starts with 2.0.XX
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -1208,8 +1209,10 @@ class Scanner
             //AUDIO_UART.setrxfifosize(IMAGE_COLUMNS);
             AUDIO_UART.setrxfifosize(UART_BUF_SIZE);
             //AUDIO_UART.configure(BAUD, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback);
-            AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback);
-            //AUDIO_UART.configure(1843200, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, scannerDebugCallback); 
+            AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS, audioUartCallback);
+            //AUDIO_UART.configure(1843200, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, scannerDebugCallback);
+            imp.sleep(0.002);
+            AUDIO_UART.write("N");
             gAudioTimer = hardware.millis();
         } else
             hardware.sampler.start();
@@ -1962,7 +1965,7 @@ function audioUartCallback()
 										}					
 					}
 					// Stop collecting data
-                    stopScanRecord();
+                    hwScanner.stopScanRecord();
                 break;
            //case PKT_TYPE_DTMF:
            //   server.log(format("DTMF: %d", packet_state.char_string[buf_ptr]));
