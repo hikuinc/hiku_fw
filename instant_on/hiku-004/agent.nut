@@ -97,7 +97,7 @@ const MIX_PANEL_EVENT_CONFIG = "DeviceConfig";
 const MIX_PANEL_EVENT_STATUS = "DeviceStatus";
 
 // Heroku server base URL	
-gBaseUrl <- "https://hiku.herokuapp.com/api/v1";
+gBaseUrl <- "https://app.hiku.us/api/v1";
 gFactoryUrl <- "https://hiku-mfgdb.herokuapp.com/api/v1";
 
 gServerUrl <- gBaseUrl + "/list";	
@@ -370,32 +370,33 @@ function sendBeepToHikuServer(data)
     
     if ( data.scandata == "" )
     {
-    	newData = {
-    		        "audioToken": gAudioToken,
-    			      "audioType": "alaw",
-    			      "token": nv.gImpeeId,
-                "sig": mySig,
-                "app_id": gAuthData.app_id,
-                "time": timeStr,
-    		  };  
-    	if (gAudioState != AudioStates.AudioError) {
-	  gAudioState = AudioStates.AudioFinished;
-	  sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFinished"});
-	  //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFinished"}));
-	}
+        	newData = {
+        		        "audioToken": gAudioToken,
+        			      "audioType": "alaw",
+        			      "token": nv.gImpeeId,
+                    "sig": mySig,
+                    "app_id": gAuthData.app_id,
+                    "time": timeStr,
+        		  };  
+        	if (gAudioState != AudioStates.AudioError) {
+    	  gAudioState = AudioStates.AudioFinished;
+    	  sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFinished"});
+    	  //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFinished"}));
+    	}
     }
     else 
     {
-      if (is_superscan) {
-	  newData = {
-	    "ean":format("%s",data.scandata),
-	    "audioToken": gAudioToken,
-	    "audioType": "alaw",    			
-	    "token": nv.gImpeeId,
-	    "sig": mySig,
-	    "app_id": gAuthData.app_id,
-	    "time": timeStr,
-	  };   
+      if (is_superscan) 
+      {
+    	  newData = {
+    	    "ean":format("%s",data.scandata),
+    	    "audioToken": gAudioToken,
+    	    "audioType": "alaw",    			
+    	    "token": nv.gImpeeId,
+    	    "sig": mySig,
+    	    "app_id": gAuthData.app_id,
+    	    "time": timeStr,
+    	  };   
 	if (gAudioState != AudioStates.AudioError) {
 	  gAudioState = AudioStates.AudioFinished;
 	  sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"CrowdSourced","barcode":data.scandata});
