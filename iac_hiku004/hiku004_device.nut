@@ -70,7 +70,10 @@ gInitTime <- {
 local connection_available = false;
 
 is_hiku004 <- true;
-is_hiku004_rev10 <- true;
+hardware.pinQ.configure(DIGITAL_IN_PULLUP);
+local is_hiku004_rev10 = (hardware.pinQ.read() == 1);
+hardware.pinQ.configure(DIGITAL_IN_PULLDOWN);
+is_hiku004_rev10 = is_hiku004_rev10 && (hardware.pinQ.read() == 0);
 
 if (is_hiku004) {
     CPU_INT             <- hardware.pinW;
@@ -160,7 +163,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.0.08" // hiku-004 code base starts with 2.0.XX
+const cFirmwareVersion = "2.0.09" // hiku-004 code base starts with 2.0.XX
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
