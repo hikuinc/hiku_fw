@@ -160,7 +160,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.0.07" // hiku-004 code base starts with 2.0.XX
+const cFirmwareVersion = "2.0.08" // hiku-004 code base starts with 2.0.XX
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -2450,39 +2450,39 @@ function init()
     //const cIoPinScannerTrigger =  5;
     //const cIoPinScannerReset =  6;
     if (is_hiku004) {
-    local pmic_val;
-	i2cDev <- null;
-	// create device for LP3918 power management IC
-	pmic <- I2cDevice(I2C_IF, 0x7e);
-
-	// Enable LDO1, LDO2 and LDO7. Disable LDO8, and buck converter.
-	pmic.write(0x00, 0x07);
-	// LDO1: set to 3.0V (charging LED) 
-	pmic.write(0x01, 0x1b);
-	// LDO2: set to 3.0V for buzzer volume 
-	pmic.write(0x02, 0x1b);
-	// LDO3: set to 3.0V for VCC_LDO3 (I2C)
-	pmic.write(0x03, 0x1b);
-	// LDO4: set to 2.7V for VCC_VREF (microphone)
-	pmic.write(0x04, 0x15);
-	// LDO5: set to 3.0V (unused) 
-	pmic.write(0x05, 0x1b);
-	// LDO6: set to 3.0V for SCAN_LED  
-	pmic.write(0x06, 0x1b);
-	// LDO7: set to 3.3V for VCC_STM32  
-	pmic.write(0x07, 0x1f);
-	// LDO8: set to 3.0V (unused)
-	pmic.write(0x08, 0x1b);
-	// enable charging, enable EOC termination, set charging timer to 5h
-	pmic.write(0x10, 0x11);
-	// set charging current to 500mA
-	pmic.write(0x11, 0x9);
-	// set charging termination voltage to 4.2V, 
-	// charging restart voltage to 4.1V,
-	// termination current to 0.2C=100mA
-	pmic.write(0x12, 0x1d);
-	// wait 350ms after release of PS_HOLD before turning off power
-	pmic.write(0x1c, 0x1);
+        local pmic_val;
+    	i2cDev <- null;
+    	// create device for LP3918 power management IC
+    	pmic <- I2cDevice(I2C_IF, 0x7e);
+    
+    	// Enable LDO1, LDO2 and LDO7. Disable LDO8, and buck converter.
+    	pmic.write(0x00, 0x07);
+    	// LDO1: set to 3.0V (charging LED) 
+    	pmic.write(0x01, 0x1b);
+    	// LDO2: set to 3.0V for buzzer volume 
+    	pmic.write(0x02, 0x1b);
+    	// LDO3: set to 3.0V for VCC_LDO3 (I2C)
+    	pmic.write(0x03, 0x1b);
+    	// LDO4: set to 3.0V for VCC_VREF (microphone)
+    	pmic.write(0x04, 0x1b);
+    	// LDO5: set to 3.0V (unused) 
+    	pmic.write(0x05, 0x1b);
+    	// LDO6: set to 3.3V for SCAN_LED  
+    	pmic.write(0x06, 0x1f);
+    	// LDO7: set to 3.0V for VCC_STM32  
+    	pmic.write(0x07, 0x1b);
+    	// LDO8: set to 3.0V (unused)
+    	pmic.write(0x08, 0x1b);
+    	// enable charging, enable EOC termination, set charging timer to 5h
+    	pmic.write(0x10, 0x11);
+    	// set charging current to 500mA
+    	pmic.write(0x11, 0x9);
+    	// set charging termination voltage to 4.2V, 
+    	// charging restart voltage to 4.1V,
+    	// termination current to 0.2C=100mA
+    	pmic.write(0x12, 0x1d);
+    	// wait 350ms after release of PS_HOLD before turning off power
+    	pmic.write(0x1c, 0x1);
     }
     else 
 	// Create an I2cDevice to pass around
