@@ -9,7 +9,7 @@ local oldsize = imp.setsendbuffersize(sendBufferSize);
 imp.setpoweren(true);
 hardware.spiflash.enable();
 
-imp.wakeup(0.000001, function() {server.connect(null, 2);});
+//imp.wakeup(0.000001, function() {server.connect(null, 2);});
 
 gPendingTimer <- null;
 
@@ -82,7 +82,7 @@ const SCAN_DEBUG_SAMPLES = 1024;
 const IMAGE_COLUMNS = 1016;
 const FLASH_BLOCK = 1024;
 SCAN_MAX_BYTES <- SCAN_DEBUG_SAMPLES*IMAGE_COLUMNS;
-const UART_BUF_SIZE = 12288;
+const UART_BUF_SIZE = 2048;
 // GLOBALS AND CONSTS ----------------------------------------------------------
 
 const BLOCKSIZE = 4096; // bytes per buffer of data sent from agent
@@ -158,7 +158,7 @@ const IMP_LOG_ENABLED = 1;
 const IMP_SERVER_LOG_ENABLED = 0;
 
 // set this flag to disable the UART logging
-const DEBUG_UART_ENABLED = 0;
+const DEBUG_UART_ENABLED = 1;
 debug_uart <- hardware.uartQRPW;
 if (DEBUG_UART_ENABLED)
 {
@@ -492,10 +492,10 @@ function audioUartCallback()
 function audioUartCallBackTemp()
 {
     log("Audio callback Temp is called!");
-    audioUartCallback();
+    imp.wakeup(0.001,audioUartCallback);
     if (!gStopScanRecord)
     {
-        imp.wakeup(0.100, audioUartCallBackTemp);   
+        imp.wakeup(0.800, audioUartCallBackTemp);   
     }
 }
 
@@ -689,13 +689,14 @@ if (!BTN_N.read())
     
     imp.sleep(0.002);
     */
-    imp.wakeup(0.001,function(){
+    imp.wakeup(0.00001,function(){
         //AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX);
         log(format("gPendingAudio: %d",gPendingAudio));
-        AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS|NO_TX, audioUartCallback); 
+        AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS|NO_TX, audioUartCallback);
+       // audioUartCallBackTemp();
     });
     
-    server.connect(null, 0.0);
+    server.connect(null, 2.0);
 
 /*
     imp.wakeup(0.001, function(){
@@ -740,6 +741,9 @@ class Piezo
     static shortTone = 0.15; // duration in seconds
         // rmk experimenting with a new extrashort tone
     static extraShortTone = 0.1; // duration in seconds
+    
+    queue = [];
+    busy = false;
 
     //**********************************************************
     constructor(hwPin)
@@ -756,6 +760,7 @@ class Piezo
             //"success-local": [[noteE5, 0.15, longTone]],
             //"start-local": [[noteE6, 0.15, longTone]],
             //"success-server": [[noteE6, 0.85, shortTone]],
+            "pending": [[noteE6,0.08,0.10]],
             "success": [[noteE5, 0.15, longTone], [noteE6, 0.85, shortTone]],
             "success-local": [[noteE5, dc, longTone]],
             "start-local": [[noteE5, 0.15, longTone]],
@@ -783,6 +788,8 @@ class Piezo
             "software-update": [[noteB4, 0.85, shortTone], [noteE5, 0, extraShortTone], [noteE5, 0.85, shortTone], [noteB4, 0, extraShortTone]]
         };
 
+
+        busy = false;
         //gInitTime.piezo = hardware.millis() - gInitTime.piezo;
     }
     
@@ -822,7 +829,24 @@ class Piezo
 		{
 			return;
 		}
-
+		
+		log(format("tone queue: %s",tone));
+		
+		queue.push(tone);
+		
+		if (busy)
+		{
+		    log("busy returning!!");
+		    return;
+		}
+		
+		busy = true;
+		
+		playSound_internal(queue.remove(0));
+    }
+    
+    function playSound_internal(tone=null, async=true)
+    {
         if (async)
         {
             // Play the first note
@@ -842,7 +866,13 @@ class Piezo
                 imp.sleep(params[2]);
             }
             pin.write(0);
-        }
+        }        
+    }
+    
+    
+    function playNextInQueue()
+    {
+        playSound_internal(queue.remove(0));       
     }
         
     //**********************************************************
@@ -875,8 +905,17 @@ class Piezo
         }
         else 
         {
+            log("else block going to play the next item in the queue");
             currentToneIdx = 0;
             currentTone = null;
+            if (queue.len() >= 1)
+            {
+                imp.wakeup(0.001, playNextInQueue.bindenv(this));
+            }
+            else
+            {
+                busy = false;
+            }
         }
     }
 }
@@ -946,10 +985,12 @@ function stopScanRecord()
     if(gPendingAudio)
     {
         //spin off the scheduler to do the pending data case
+        //hwPiezo.playSound("success-local");
         handlePendingAudio();
     }
 	else
     {
+        //imp.onidle(sendLastBuffer);
         agentSend("button","Released");
     }        
     
@@ -1656,6 +1697,7 @@ class PushButton
                         // the IDLE state and one when not idle.  They 
                         // must be kept separate, as only one onidle 
                         // callback is supported at a time. 
+                        log("calling stopScanRecrod");
                         imp.wakeup(0.200,stopScanRecord);
                         if (connection_available && !gPendingAudio)
                         {
@@ -1803,7 +1845,7 @@ class ChargeStatus
 // Agent callback: upload complete
 agent.on("uploadCompleted", function(result) {
 	//log("uploadCompleted response");
-	pmic.write(0x02, 0x1b);
+    pmic.write(0x02, 0x1b);
     hwPiezo.playSound(result);
 });
 
@@ -1819,12 +1861,18 @@ function handlePendingAudio()
     
     if(connection_available)
     {
+        if (gPendingTimer)
+        {
+            imp.cancelwakeup(gPendingTimer);
+        }
         // now start uploading the data
+        log(format("startAudioUpload, gPendingAudio=%d",gPendingAudio));
         agent.send("startAudioUpload", "");
         imp.sleep(0.200);
         gAudioChunkCount = 0;
         if(gPendingAudio)
         {
+            gPendingAudio = 0;
             local totalSize = audio_end_address - audio_start_address;
             local numPayload = totalSize/1000;
             for(local i =0; i < numPayload; i++)
@@ -1832,24 +1880,23 @@ function handlePendingAudio()
                 local buffer = blob();
                 buffer.writeblob(read_flash(audio_start_address, 1000));
                 audio_start_address +=buffer.tell();
-                server.log(format("uploadingPendingAudioChunk: pendingChunk=%d, chunk=%d, size=%d",gPendingAudio,gAudioChunkCount, buffer.tell()));
+                log(format("uploadingPendingAudioChunk: pendingChunk=%d, chunk=%d, size=%d",gPendingAudio,gAudioChunkCount, buffer.tell()));
                 agent.send("uploadAudioChunk", {buffer=buffer, length=buffer.tell()});
                 imp.sleep(0.100);
                 gAudioChunkCount++;
             }
             
-            server.log(format("uploadingPendingAudioChunk: audio_start_addr=%X audio_end_addr=%X", audio_start_address, audio_end_address));
+            log(format("uploadingPendingAudioChunk: audio_start_addr=%X audio_end_addr=%X", audio_start_address, audio_end_address));
             
             if (audio_end_address > audio_start_address)
             {
                 local buffer = blob();
                 buffer.writeblob(read_flash(audio_start_address, (audio_end_address - audio_start_address)));
                 audio_start_address +=buffer.tell();
-                server.log(format("uploadngPendingAudioChunk: chunk=%d size=%d",gAudioChunkCount, buffer.tell()));
+                log(format("uploadngPendingAudioChunk: chunk=%d size=%d",gAudioChunkCount, buffer.tell()));
                 agent.send("uploadAudioChunk", {buffer=buffer, length=buffer.tell()});    
                 gAudioChunkCount++;
             }
-            gPendingAudio = 0;
         }
 
         
@@ -1862,22 +1909,23 @@ function handlePendingAudio()
                                       scansize=gAudioChunkCount, 
                                      }) == 0)
         {
-            server.log(format("AudioLocal Success is playing!!, chunks=%d",gAudioChunkCount));
+            log(format("AudioLocal Success is playing!!, chunks=%d",gAudioChunkCount));
         	hwPiezo.playSound("success-local");
         	gAudioChunkCount=0;
-        	init_audio_memory();
+        	//init_audio_memory();
         }
     }
     else
     {
-        //pmic.write(0x02, 0x1);
-        imp.wakeup(0.00001,function(){hwPiezo.playSound("success-local");});
         if (gPendingTimer)
         {
             imp.cancelwakeup(gPendingTimer);
             gPendingTimer = null;
         }
         gPendingTimer = imp.wakeup(1.5, handlePendingAudio);
+        
+        pmic.write(0x02, 0x1);
+        hwPiezo.playSound("pending");
     }
 }
 
@@ -1934,6 +1982,7 @@ function sendLastBuffer()
                                       scansize=gAudioChunkCount, 
                                      }) == 0)
         {
+            log("Sendlast buffer is executed!!!");
         	hwPiezo.playSound("success-local");
         }
         
@@ -2432,6 +2481,8 @@ function init()
 function onConnected(status)
 {	
     if (status == SERVER_CONNECTED) {
+        log("Connected!!!!!!!!!! fuck!!!!");
+        /*
         if (gPendingTimer)
         {
             imp.cancelwakeup(gPendingTimer);
@@ -2441,6 +2492,7 @@ function onConnected(status)
             });
             handlePendingAudio();
         }
+        */
 	if (imp.getbssid() == FACTORY_BSSID) {
 	    if (gDeepSleepTimer) 
 		gDeepSleepTimer.disable();
