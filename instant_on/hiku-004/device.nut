@@ -158,7 +158,7 @@ const IMP_LOG_ENABLED = 1;
 const IMP_SERVER_LOG_ENABLED = 0;
 
 // set this flag to disable the UART logging
-const DEBUG_UART_ENABLED = 1;
+const DEBUG_UART_ENABLED = 0;
 debug_uart <- hardware.uartQRPW;
 if (DEBUG_UART_ENABLED)
 {
