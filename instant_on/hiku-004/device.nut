@@ -9,7 +9,9 @@ local oldsize = imp.setsendbuffersize(sendBufferSize);
 imp.setpoweren(true);
 hardware.spiflash.enable();
 
-//imp.wakeup(0.500, function() {server.connect(null, 0.01);});
+imp.wakeup(0.000001, function() {server.connect(null, 2);});
+
+gPendingTimer <- null;
 
 is_hiku004 <- true;
 
@@ -1819,7 +1821,7 @@ function handlePendingAudio()
     {
         // now start uploading the data
         agent.send("startAudioUpload", "");
-        imp.sleep(0.300);
+        imp.sleep(0.200);
         gAudioChunkCount = 0;
         if(gPendingAudio)
         {
@@ -1868,9 +1870,14 @@ function handlePendingAudio()
     }
     else
     {
-        pmic.write(0x02, 0x1);
-        imp.wakeup(0.001,function(){hwPiezo.playSound("success-local")});
-        imp.wakeup(2, handlePendingAudio);
+        //pmic.write(0x02, 0x1);
+        imp.wakeup(0.00001,function(){hwPiezo.playSound("success-local");});
+        if (gPendingTimer)
+        {
+            imp.cancelwakeup(gPendingTimer);
+            gPendingTimer = null;
+        }
+        gPendingTimer = imp.wakeup(1.5, handlePendingAudio);
     }
 }
 
@@ -2425,6 +2432,15 @@ function init()
 function onConnected(status)
 {	
     if (status == SERVER_CONNECTED) {
+        if (gPendingTimer)
+        {
+            imp.cancelwakeup(gPendingTimer);
+            gPendingTimer = null;
+            imp.wakeup(0.0001, function (){
+                hwPiezo.playSound("success-local");
+            });
+            handlePendingAudio();
+        }
 	if (imp.getbssid() == FACTORY_BSSID) {
 	    if (gDeepSleepTimer) 
 		gDeepSleepTimer.disable();
