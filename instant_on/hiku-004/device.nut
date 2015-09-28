@@ -985,7 +985,7 @@ function stopScanRecord()
     if(gPendingAudio)
     {
         //spin off the scheduler to do the pending data case
-        //hwPiezo.playSound("success-local");
+        hwPiezo.playSound("success-local");
         handlePendingAudio();
     }
 	else
@@ -1910,7 +1910,7 @@ function handlePendingAudio()
                                      }) == 0)
         {
             log(format("AudioLocal Success is playing!!, chunks=%d",gAudioChunkCount));
-        	hwPiezo.playSound("success-local");
+        	//hwPiezo.playSound("success-local");
         	gAudioChunkCount=0;
         	//init_audio_memory();
         }
