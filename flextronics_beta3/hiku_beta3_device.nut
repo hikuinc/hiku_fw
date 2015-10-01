@@ -2,15 +2,19 @@
 // Setup the server to behave when we have the no-wifi condition
 server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 
-local sendBufferSize = 24*1024; // 24K send buffer size
+local sendBufferSize = 16*1024; // 24K send buffer size
 
 local oldsize = imp.setsendbuffersize(sendBufferSize);
 
 // Always enable blinkup to keep LED flashing; power costs are negligible
 imp.enableblinkup(true);
 
-imp.wakeup(0.001, function(){server.connect(null, 2.0);});
-
+imp.wakeup(0.001, function(){
+    if(imp.getssid() != "")
+    {
+        server.connect(null, 2.0);
+    }
+});
 
 local entryTime = hardware.millis();
 
@@ -88,7 +92,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.3.11" // Beta3 firmware starts with 1.3.00
+const cFirmwareVersion = "1.3.12" // Beta3 firmware starts with 1.3.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -164,7 +168,6 @@ buf1 <- blob(gAudioBufferSize);
 buf2 <- blob(gAudioBufferSize);
 buf3 <- blob(gAudioBufferSize);
 buf4 <- blob(gAudioBufferSize);
-
 
 // Device Setup Related functions
 function determineSetupBarcode(barcode)
@@ -1335,10 +1338,10 @@ class PushButton
                 		{
                 			hwPiezo.playSound("no-connection");
                 		}
-                		//buttonState = ButtonState.BUTTON_DOWN;
+                		buttonState = ButtonState.BUTTON_DOWN;
                 		return;
                 	}
-		    agentSend("button","Pressed");
+		            agentSend("button","Pressed");
                     updateDeviceState(DeviceState.SCAN_RECORD);
                     buttonState = ButtonState.BUTTON_DOWN;
                     //log("Button state change: DOWN");
@@ -1354,16 +1357,16 @@ class PushButton
                 // Button in released state
                 if (buttonState == ButtonState.BUTTON_DOWN)
                 {
-		    log("BUTTON RELEASED!");
-		    agentSend("button","Released");
+		            log("BUTTON RELEASED!");
+		            agentSend("button","Released");
                     buttonState = ButtonState.BUTTON_UP;
                     //log("Button state change: UP");
-				    /*
+				    
 					if( !connection )
 					{
 						return;
 					}
-				    */
+				    
                     local oldState = gDeviceState;
                     updateDeviceState(DeviceState.BUTTON_RELEASED);
 
@@ -2248,7 +2251,7 @@ function heartBeat()
     if(DEBUG_UART_ENABLED)
     {
         imp.wakeup(5,heartBeat);
-	log("heart beat!!");
+	    log("heart beat!!");
     }
 }
 
