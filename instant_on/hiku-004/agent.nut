@@ -38,7 +38,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "1.3.XX";
+gAgentVersion <- "2.0.00";
 
 gAudioState <- AudioStates.AudioError;
 gAudioAbort <- false;
@@ -1031,6 +1031,10 @@ device.on("endAudioUpload", function(data) {
 
         return;
     } */
+    if( gAudioToken == "")
+    {
+        imp.sleep(0.100);
+    }
     sendBeepToHikuServer(data);  
 });
 
@@ -1064,6 +1068,7 @@ http.onrequest(function (req, res)
 {
     // Handle supported requests
     try {
+        server.log(format("Request Path: %s",req.path));
       if ( req.method == "GET") { 
         if (req.path == "/getImpeeId") 
         {
