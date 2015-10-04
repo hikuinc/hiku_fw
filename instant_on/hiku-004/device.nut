@@ -9,7 +9,7 @@ local oldsize = imp.setsendbuffersize(sendBufferSize);
 imp.setpoweren(true);
 hardware.spiflash.enable();
 
-//imp.wakeup(0.000001, function() {server.connect(null, 2);});
+imp.wakeup(0.000001, function() {server.connect(null, 2);});
 
 gPendingTimer <- null;
 
@@ -202,7 +202,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.0.00" // hiku-v2 firmware starts with 2.0.00
+const cFirmwareVersion = "2.0.01" // hiku-v2 firmware starts with 2.0.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 15.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -396,7 +396,7 @@ function audioUartCallback()
            case PKT_TYPE_AUDIO:
                if (audio_pkt_blob.len() - audio_pkt_blob.tell() < packet_state.pay_len) {
                    
-                     if (connection_available && !gPendingAudio)
+                     if ((connection_available || server.isconnected() ) && !gPendingAudio)
                      {
                         log("Sending audio chunks");
                         /*
@@ -469,7 +469,7 @@ function audioUartCallback()
                     if (packet_state.char_string[buf_ptr] != '\r')
                       return;
                     log(format("Scanned %s", scannerOutput));
-					if (connection_available)
+					if (connection_available || server.isconnected())
 					{
 					  if (gPendingAudio)
 					  {
@@ -554,7 +554,7 @@ function startScanRecord()
     gAudioChunkCount = 0;
     gLastSamplerBuffer = null; 
     gLastSamplerBufLen = 0;
-    if( connection_available )
+    if( connection_available || server.isconnected() )
     {
         log("Starting Audio Upload");
         agent.send("startAudioUpload", "");
@@ -731,7 +731,7 @@ if (pressed == 0)
     gAudioChunkCount = 0;
     gLastSamplerBuffer = null; 
     gLastSamplerBufLen = 0;
-    if( connection_available )
+    if( connection_available || server.isconnected() )
     {
         log("Starting Audio Upload");
         agent.send("startAudioUpload", "");
@@ -787,7 +787,7 @@ if (pressed == 0)
        // audioUartCallBackTemp();
     });
     
-    server.connect(null, 2.0);
+    //server.connect(null, 2.0);
 
     /*
     imp.wakeup(0.001, function(){
@@ -1193,7 +1193,7 @@ function stopScanRecord()
     if (gPendingBarcode)
     {
         hwPiezo.playSound("success-local");
-        imp.wakeup(0.001, handlePendingBarcode);
+        imp.wakeup(0.5, handlePendingBarcode);
     }
     else if(gPendingAudio)
     {
@@ -1912,7 +1912,7 @@ class PushButton
                         {
                             imp.wakeup(0.200,stopScanRecord);
                         }
-                        if (connection_available && !gPendingAudio)
+                        if ((connection_available || server.isconnected()) && !gPendingAudio)
                         {
                             stopScanRecord();
                             imp.onidle(sendLastBuffer); 
@@ -2072,7 +2072,7 @@ agent.on("devicePage", function(result){
 function handlePendingAudio()
 {
     
-    if(connection_available)
+    if(connection_available || server.isconnected())
     {
         if (gPendingTimer)
         {
@@ -2147,7 +2147,7 @@ function handlePendingAudio()
 
 function handlePendingBarcode()
 {
-    if(connection_available)
+    if(connection_available || server.isconnected())
     {
         if(gPendingAudio)
         {
@@ -2173,7 +2173,7 @@ function handlePendingBarcode()
 					 //hwPiezo.playSound("success-local");
 				  }
         gPendingBarcode = null;
-		init_audio_memory();
+		//init_audio_memory();
     }
     else
     {
