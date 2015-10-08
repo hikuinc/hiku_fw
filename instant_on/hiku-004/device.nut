@@ -202,7 +202,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.0.01" // hiku-v2 firmware starts with 2.0.00
+const cFirmwareVersion = "2.1.00" // hiku-v2 firmware starts with 2.0.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 15.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -690,42 +690,7 @@ for(local i=0; i<15; i++)
     imp.sleep(0.001);
 }
 
-// set debounce delay to 50ms
-// set last button state = button_up
 
-// current state = read button state
-// check to see if current state != last button state 
-// if not, then record current time
-
-// on next loop, current state is updated
-// check to see that it's the same
-// if still same, then check to see if time elapsed is > 50ms
-// if yes, then button is being held down and we can move one. 
-
-/*local debounceTime = 50;
-local buttonLapse = 0;
-gButtonState <- ButtonState.BUTTON_UP;
-lastButtonState <- ButtonState.BUTTON_UP;
-
-//loop here
-
-//read current button state
-if (BTN_N.read() == 1) {
-    gButtonState = ButtonState.BUTTON_UP;    
-} else {
-    gButtonState = ButtonState.BUTTON_DOWN;    
-}
-
-if (gButtonState != lastButtonState){
-    buttonLapse = millis();
-    lastButtonState = gButtonState;
-} 
-
-if ((millis() - buttonLapse) > debounceTime) {
-    
-} */
-
-//loop back 
 
 
 log(format("Press Count: %d",pressed));
