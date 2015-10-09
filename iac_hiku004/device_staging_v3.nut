@@ -2,10 +2,6 @@
 // Setup the server to behave when we have the no-wifi condition
 server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 
-local sendBufferSize = 16*1024; // 24K send buffer size
-
-local oldsize = imp.setsendbuffersize(sendBufferSize);
-
 // Always enable blinkup to keep LED flashing; power costs are negligible
 imp.enableblinkup(true);
 
@@ -64,7 +60,6 @@ if (!("nv" in getroottable()))
     	    boot_up_reason = 0,
     	    voltage_level = 0.0,
     	    sleep_duration = 0.0,
-			extend_timeout = false
     	  };
 }
 
@@ -85,7 +80,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.3.13" // Beta3 firmware starts with 1.3.00
+const cFirmwareVersion = "1.3.MP" // Beta3 firmware starts with 1.3.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -113,7 +108,7 @@ const SETUP_BARCODE_PREFIX = "4H1KU5"
 
 // use the factory BSSID to ensure scanning the special barcodes
 // on the hiku box only works in the factory
-// HACK
+// HACK find correct BSSID at IAC
 const FACTORY_BSSID = "20aa4b532731";
 
 enum DeviceState
@@ -142,6 +137,7 @@ gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
 const gAudioBufferSize = 2000; // Size of each audio buffer 
 const gAudioSampleRate = 8000; // in Hz
+local sendBufferSize = 24*1024; // 16K send buffer size
 
 // Workaround to capture last buffer after sampler is stopped
 gSamplerStopping <- false; 
@@ -161,6 +157,7 @@ buf1 <- blob(gAudioBufferSize);
 buf2 <- blob(gAudioBufferSize);
 buf3 <- blob(gAudioBufferSize);
 buf4 <- blob(gAudioBufferSize);
+
 
 // Device Setup Related functions
 function determineSetupBarcode(barcode)
@@ -1152,8 +1149,8 @@ class Scanner
                         return;
                     }
                     updateDeviceState(DeviceState.SCAN_CAPTURED);
-                    log("Code: \"" + scannerOutput + "\" (" + 
-                               scannerOutput.len() + " chars)");
+                    /*log("Code: \"" + scannerOutput + "\" (" + 
+                               scannerOutput.len() + " chars)");*/
                     //determineSetupBarcode(scannerOutput);
                     if(0!= agent.send("uploadBeep", {
                                               scandata=scannerOutput,
@@ -1331,10 +1328,10 @@ class PushButton
                 		{
                 			hwPiezo.playSound("no-connection");
                 		}
-                		buttonState = ButtonState.BUTTON_DOWN;
+                		//buttonState = ButtonState.BUTTON_DOWN;
                 		return;
                 	}
-		            agentSend("button","Pressed");
+		    agentSend("button","Pressed");
                     updateDeviceState(DeviceState.SCAN_RECORD);
                     buttonState = ButtonState.BUTTON_DOWN;
                     //log("Button state change: DOWN");
@@ -1350,16 +1347,16 @@ class PushButton
                 // Button in released state
                 if (buttonState == ButtonState.BUTTON_DOWN)
                 {
-		            log("BUTTON RELEASED!");
-		            agentSend("button","Released");
+		    log("BUTTON RELEASED!");
+		    agentSend("button","Released");
                     buttonState = ButtonState.BUTTON_UP;
                     //log("Button state change: UP");
-				    
+				    /*
 					if( !connection )
 					{
 						return;
 					}
-				    
+				    */
                     local oldState = gDeviceState;
                     updateDeviceState(DeviceState.BUTTON_RELEASED);
 
@@ -1494,7 +1491,7 @@ class ChargeStatus
     	// every 15 seconds wake up and read the battery level
     	// TODO: change the period of measurement so that it doesn’t drain the
     	// battery
-    	log(format("Battery Level: %d, Input Voltage: %.2f", nv.voltage_level, hardware.voltage()));
+    	//log(format("Battery Level: %d, Input Voltage: %.2f", nv.voltage_level, hardware.voltage()));
     	imp.wakeup(1, function() {
     		agentSend("batteryLevel", nv.voltage_level)
     	});
@@ -1523,7 +1520,7 @@ class ChargeStatus
         {
             charging += isCharging()?1:0;
         }
-        log(format("Charger: %s",charging?"charging":"not charging"));
+        //log(format("Charger: %s",charging?"charging":"not charging"));
         
 		if( previous_state != (charging==0?false:true))
 		{
@@ -1533,6 +1530,7 @@ class ChargeStatus
         previous_state = (charging==0)? false:true; // update the previous state with the current state
         agentSend("chargerState", previous_state); // update the charger state
         log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
+	    log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
     }
 }
 
@@ -1586,11 +1584,6 @@ agent.on("uploadCompleted", function(result) {
 agent.on("devicePage", function(result){
 	hwPiezo.playPageTone();
 });*/
-
-agent.on("stayAwake" function(result){
-  server.log("stayAwake called!!");
-  nv.extend_timeout = result;
-});
 
 
 //**********************************************************************
@@ -1878,7 +1871,7 @@ function preSleepHandler() {
 	// previous_state before going to sleep 
 	chargeStatus.chargerCallback();
 	
-	if( nv.sleep_not_allowed || chargeStatus.previous_state || nv.extend_timeout )
+	if( nv.sleep_not_allowed || chargeStatus.previous_state )
 	{
 		//Just for testing but we should remove it later
 		//hwPiezo.playSound("device-page");
@@ -1962,9 +1955,6 @@ function configurePinsBeforeSleep()
     i2cDev.write(0x0d, 0xff);
 
     i2cDev.disable();
-	
-	// Reconfigure pin1 before sleep
-	hardware.pin1.configure(DIGITAL_IN_WAKEUP);
 }
 
 //**********************************************************************
@@ -1972,7 +1962,7 @@ function configurePinsBeforeSleep()
 // further accelerometer interrupts
 function sleepHandler()
 {
- 	log("sleepHandler: enter");
+ 	log("sleepHandler: enter");   
     if( gAccelInterrupted )
     {
 		log("sleepHandler: aborting sleep due to Accelerometer Interrupt");
@@ -1988,15 +1978,15 @@ function sleepHandler()
     
     assert(gDeviceState == DeviceState.PRE_SLEEP);
     log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", hardware.pin1.read()));
-	server.expectonlinein(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);
+    server.expectonlinein(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);
     nv.sleep_count++;
     nv.boot_up_reason = 0x0;
     nv.sleep_duration = time();
-	
     server.disconnect();
+    
     configurePinsBeforeSleep();
-	// We don't need to wrap this in imp.onidle() as per Electric Imp.
-    imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);
+    
+    imp.onidle(function() {imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);});   
 }
 
 
@@ -2085,7 +2075,7 @@ function shippingMode(){
 }
 
 agent.on("shippingMode", function(result) {
-	if (imp.getbssid() == FACTORY_BSSID)
+	if (true /* HACK imp.getbssid() == FACTORY_BSSID */)
 	    shippingMode();
 });
 
@@ -2118,15 +2108,10 @@ function init()
     // we don’t need a class for this:
     
     // Configure pin 
-    ioExpander.setPin(4, 1); // start as logic 1
     ioExpander.setDir(4, 0); // set as output
     ioExpander.setPullUp(4, 0); // disable pullup
-    ioExpander.setPullDown(4, 1); // enable pulldown
-    ioExpander.setDir(4, 1); // set as input
-    
-    // 25ms later set as output and later drive hard
-    imp.wakeup(0.025, function() { ioExpander.setPin(4, 0); ioExpander.setDir(4, 0); } ); 
-
+    ioExpander.setPin(4, 0); // pull low to turn switch on
+    ioExpander.setPin(4, 0); // enable the Switcher3v3
     //sw3v3 <- Switch3v3Accessory(4);
     //sw3v3.enable();
  
@@ -2148,6 +2133,7 @@ function init()
                                [buf1, buf2, buf3, buf4], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
                        
+    local oldsize = imp.setsendbuffersize(sendBufferSize);
 	log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
     // Accelerometer config
     hwAccelerometer <- Accelerometer(I2C_89, 0x18, 
@@ -2190,7 +2176,7 @@ function init()
 function onConnected(status)
 {	
     if (status == SERVER_CONNECTED) {
-	if (imp.getbssid() == FACTORY_BSSID) {
+	if (true /* HACK imp.getbssid() == FACTORY_BSSID */) {
 	    if (gDeepSleepTimer) 
 		gDeepSleepTimer.disable();
 	    gDeepSleepTimer = CancellableTimer(cDelayBeforeDeepSleepFactory, preSleepHandler);
@@ -2211,9 +2197,8 @@ function onConnected(status)
         				sleep_duration = nv.sleep_duration,
         				osVersion = imp.getsoftwareversion(),
 						time_to_connect = timeToConnect,
-                        at_factory = (imp.getbssid() == FACTORY_BSSID),
-	                    macAddress = imp.getmacaddress(),
-						ssid = imp.getssid()
+                                                at_factory = (true /* HACK imp.getbssid() == FACTORY_BSSID */),
+	                                        macAddress = imp.getmacaddress()
         			};
         agentSend("init_status", data);
         
@@ -2244,7 +2229,7 @@ function heartBeat()
     if(DEBUG_UART_ENABLED)
     {
         imp.wakeup(5,heartBeat);
-	    log("heart beat!!");
+	log("heart beat!!");
     }
 }
 
@@ -2255,7 +2240,7 @@ if (imp.getssid() == "" && !("first_boot" in nv)) {
     log("entered first boot check");
     nv.first_boot <- 1;
     nv.setup_required = true;
-    imp.deepsleepfor(1);
+    imp.onidle(function () {imp.deepsleepfor(1);});
 }
 
 init_done();

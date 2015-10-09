@@ -1,15 +1,44 @@
-// Copyright 2015 hiku labs, inc. All rights reserved. Confidential.
+// Copyright 2013 Katmandu Technology, Inc. All rights reserved. Confidential.
 // Setup the server to behave when we have the no-wifi condition
+imp.setpoweren(true);
 server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
 
-local sendBufferSize = 16*1024; // 24K send buffer size
-
-local oldsize = imp.setsendbuffersize(sendBufferSize);
-
-// Always enable blinkup to keep LED flashing; power costs are negligible
+// Always enable blinkup to keep LED flashing; power costs are negligibles
 imp.enableblinkup(true);
 
 local entryTime = hardware.millis();
+
+const SCAN_DEBUG_SAMPLES = 1024;
+const IMAGE_COLUMNS = 1016;
+const FLASH_BLOCK = 1024;
+SCAN_MAX_BYTES <- SCAN_DEBUG_SAMPLES*IMAGE_COLUMNS;
+const UART_BUF_SIZE = 1024;
+
+// GLOBALS AND CONSTS ----------------------------------------------------------
+
+const BLOCKSIZE = 4096; // bytes per buffer of data sent from agent
+const STM32_SECTORSIZE = 0x4000;
+const BAUD = 115200; // any standard baud between 9600 and 115200 is allowed
+                    
+BYTE_TIME <- 8.0 / (BAUD * 1.0);
+
+const PS_OUT_OF_SYNC = 0;
+const PS_TYPE_FIELD = 4;
+const PS_LEN_FIELD = 5;
+const PS_DATA_FIELD = 6;
+const PS_PREAMBLE = "\xDE\xAD\xBE\xEF";
+const PKT_TYPE_AUDIO = 0x10;
+const PKT_TYPE_SCAN = 0x20;
+const AUDIO_PAYLOAD_LEN = 192;
+
+audio_pkt_blob <- blob(AUDIO_PAYLOAD_LEN);
+
+packet_state <- {
+				 state=PS_OUT_OF_SYNC,
+				 char_string = "",
+				 type=0,
+				 pay_len=0
+                }
 
 /*
 gInitTime <- { 
@@ -27,6 +56,40 @@ gInitTime <- {
 */
 local connection_available = false;
 
+is_hiku004 <- true;
+
+if (is_hiku004) {
+    CPU_INT             <- hardware.pinW;
+    EIMP_AUDIO_IN       <- hardware.pinN; // "EIMP-AUDIO_IN" in schematics
+    EIMP_AUDIO_OUT      <- hardware.pinC; // "EIMP-AUDIO_OUT" in schematics
+    //RXD_IN_FROM_SCANNER <- hardware.pin7;
+    I2C_IF              <- hardware.i2cFG;
+    SCL_OUT             <- hardware.pinF;
+    SDA_OUT             <- hardware.pinG;
+    BATT_VOLT_MEASURE   <- hardware.pinH;
+    //CHARGE_DISABLE_H    <- hardware.pinC;
+    //SCANNER_UART        <- hardware.uart57;
+    BTN_N               <- hardware.pinX;
+    ACCEL_INT           <- hardware.pinQ;
+    CHARGER_INT_N       <- hardware.pinA;
+    AUDIO_UART          <- hardware.uartUVGD;
+    IMP_ST_CLK          <- hardware.pinM;
+    nrst                <- hardware.pinS;
+    boot0               <- hardware.pinJ;
+} else {
+    CPU_INT             <- hardware.pin1;
+    EIMP_AUDIO_IN       <- hardware.pin2; // "EIMP-AUDIO_IN" in schematics
+    EIMP_AUDIO_OUT      <- hardware.pin5; // "EIMP-AUDIO_OUT" in schematics
+    RXD_IN_FROM_SCANNER <- hardware.pin7;
+    I2C_IF              <- hardware.i2c89;
+    SCL_OUT             <- hardware.pin8;
+    SDA_OUT             <- hardware.pin9;
+    BATT_VOLT_MEASURE   <- hardware.pinB;
+    //CHARGE_DISABLE_H    <- hardware.pinC;
+    SCANNER_UART        <- hardware.uart57;
+}
+
+
 /*
 // BOOT UP REASON MASK
 const BOOT_UP_REASON_COLD_BOOT= 0x0000h;
@@ -39,15 +102,6 @@ const BOOT_UP_REASON_SCAN_TRIG=    1 << 5; // 0x0020h
 const BOOT_UP_REASON_SCAN_RST =    1 << 6; // 0x0040h
 const BOOT_UP_REASON_CHRG_DET =    1 << 7; // 0x0080h
 */
-// set this flag to disable the UART logging
-const DEBUG_UART_ENABLED = 0;
-debug_uart <- hardware.uart6E;
-if (DEBUG_UART_ENABLED)
-{
-    debug_uart.configure(115200, 8, PARITY_NONE, 1, NO_CTSRTS|NO_RX);
-}
-
-const IMP_SERVER_LOG_ENABLED = 1;
 
 // This NV persistence is only good for warm boot
 // if we get a cold boot, all of this goes away
@@ -56,7 +110,7 @@ const IMP_SERVER_LOG_ENABLED = 1;
 if (!("nv" in getroottable()))
 {
     nv <- { 
-            sleep_count = 0, 
+        	sleep_count = 0, 
     	    setup_required=true, 
     	    setup_count = 0,
     	    disconnect_reason=0, 
@@ -64,7 +118,6 @@ if (!("nv" in getroottable()))
     	    boot_up_reason = 0,
     	    voltage_level = 0.0,
     	    sleep_duration = 0.0,
-			extend_timeout = false
     	  };
 }
 
@@ -85,9 +138,10 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.3.13" // Beta3 firmware starts with 1.3.00
+const cFirmwareVersion = "1.3.02" // Beta3 firmware starts with 1.3.00
 const cButtonTimeout = 6;  // in seconds
-const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
+//const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
+const cDelayBeforeDeepSleepHome = 10000.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
 // The two variables below here are to use a hysteresis for the Accelerometer to stop
 // moving, and if the accelerometer doesn’t stop moving within the cDelayBeforeAccelClear
@@ -142,6 +196,7 @@ gAudioBufferOverran <- false; // True if an overrun occurred
 gAudioChunkCount <- 0; // Number of audio buffers (chunks) captured
 const gAudioBufferSize = 2000; // Size of each audio buffer 
 const gAudioSampleRate = 8000; // in Hz
+local sendBufferSize = 24*1024; // 16K send buffer size
 
 // Workaround to capture last buffer after sampler is stopped
 gSamplerStopping <- false; 
@@ -162,6 +217,11 @@ buf2 <- blob(gAudioBufferSize);
 buf3 <- blob(gAudioBufferSize);
 buf4 <- blob(gAudioBufferSize);
 
+
+lines_scanned <- 0;
+scan_byte_cnt <- 0;
+scanner_error <- false;
+
 // Device Setup Related functions
 function determineSetupBarcode(barcode)
 {
@@ -169,12 +229,12 @@ function determineSetupBarcode(barcode)
     local pattern = regexp(@"\b4H1KU");
     local res = pattern.search(barcode);
 	local tempBarcode = barcode;
-	log(format("Barcode to Match: %s",barcode));
-	log("result: "+res);
+	server.log(format("Barcode to Match: %s",barcode));
+	server.log("result: "+res);
 	// result is null which means its not the setup barcode
 	if( res == null)
 	{
-	   log("regex didn't fint a setup barcode");
+	   server.log("regex didn't fint a setup barcode");
 	   return false;
 	}
 	
@@ -197,7 +257,7 @@ function determineSetupBarcode(barcode)
 	}
 	
 	
-	log(" setupCode: "+setupCode+" type: "+barcodeType);
+	server.log(" setupCode: "+setupCode+" type: "+barcodeType);
 	
 	if(setup.ssid !="" && setup.pass !="")
 	{
@@ -211,7 +271,7 @@ function determineSetupBarcode(barcode)
 }
 
 function ChangeWifi(ssid, password) {
-    log("device disconnecting");
+    server.log("device disconnecting");
     // wait for wifi buffer to empty before disconnecting
     server.flush(60);
     server.disconnect();
@@ -221,7 +281,7 @@ function ChangeWifi(ssid, password) {
     server.connect();
     
     // log that we're connected to make sure it worked
-    log("device reconnected to " + ssid);
+    server.log("device reconnected to " + ssid);
 }
 
 
@@ -233,31 +293,10 @@ class ConnectionManager
 {
 	_connCb = array(2);
 	numCb = 0;
-	_retryTimer = null;
 	
 	constructor()
 	{
 	}
-	
-   function connect(callback, timeout)
-   {
-       // Check if we're connected before calling server.connect()
-       // to avoid race condition
-  
-      if (server.isconnected()) 
-      {
-	     log("connect called, but we are already connected");
-	     gIsConnecting = false;
-	     // We're already connected, so execute the callback
-	     callback(SERVER_CONNECTED);
-      } 
-      else 
-      {
-	     // Otherwise, proceed as normal
-         log("connect called!!");
-	     server.connect(callback, timeout);
-      }
-    }	
 	
 	function registerCallback(func)
 	{
@@ -271,19 +310,24 @@ class ConnectionManager
 	
 	function init_connections()
 	{
-		//hwPiezo.playSound("no-connection");
-		server.onunexpecteddisconnect(onUnexpectedDisconnect.bindenv(this));
-		server.onshutdown(onShutdown.bindenv(this));
-		//connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME)
-		tryToConnect();
+ 		if( server.isconnected() )
+		{
+			notifyConnectionStatus(SERVER_CONNECTED);
+		}
+		else
+		{
+			server.connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
+		}
+
+    	//hwPiezo.playSound("no-connection");
+    	server.onunexpecteddisconnect(onUnexpectedDisconnect.bindenv(this));
+		server.onshutdown(onShutdown.bindenv(this));    	
+    	
 	}
 	
 	function notifyConnectionStatus(status)
 	{
 		local i = 0;
-		
-		log(format("Notifying Connection Status: %d",status));
-		
 		for( i = 0; i < numCb; i++ )
 		{
 			_connCb[i](status);
@@ -297,49 +341,37 @@ class ConnectionManager
 	// otherwise its going to beep left and right which is nasty!
 	function onConnectedResume(status)
 	{
-		if( status != SERVER_CONNECTED )
+		if( status != SERVER_CONNECTED && !nv.setup_required )
 		{
 			nv.disconnect_reason = status;
-			//imp.wakeup(2, tryToConnect.bindenv(this) );
+			imp.wakeup(2, tryToConnect.bindenv(this) );
 			//hwPiezo.playSound("no-connection");
 			connection_available = false;
 		}
 		else
 		{
 			connection_available = true;
-			gIsConnecting = false;
 			notifyConnectionStatus(status);
 		}
 	}
 
 	function tryToConnect()
 	{
-	        if (_retryTimer )
-		{
-		  imp.cancelwakeup(_retryTimer);
-		}
-		if (!server.isconnected() ) {
-			gIsConnecting = true;
-			log("Trying to reconnect!!");
-			connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
-			_retryTimer = imp.wakeup(CONNECT_RETRY_TIME+2, tryToConnect.bindenv(this));
-		}
-		else
-		{
-		    log("Trying to reconnect called but fell in the else block");
-		    onConnectedResume(SERVER_CONNECTED);
-		}
+    	if (!server.isconnected() && !gIsConnecting && !nv.setup_required ) {
+    		gIsConnecting = true;
+        	server.connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
+        	imp.wakeup(CONNECT_RETRY_TIME+2, tryToConnect.bindenv(this));
+    	}
 	}
 
 	function onUnexpectedDisconnect(status)
 	{
-		log(format("onUnexpectedDisconnect: %d",status));
-		nv.disconnect_reason = status;
-		connection_available = false;
-		notifyConnectionStatus(status);
-		if( !gIsConnecting )
-		{
-		      imp.wakeup(0.5, tryToConnect.bindenv(this));
+    	nv.disconnect_reason = status;
+    	connection_available = false;
+    	notifyConnectionStatus(status);
+    	if( !gIsConnecting )
+    	{
+   			imp.wakeup(0.5, tryToConnect.bindenv(this));
    		}
 	}
 	
@@ -377,18 +409,20 @@ class InterruptHandler
     {
     	//gInitTime.inthandler = hardware.millis();
         this.irqCallbacks.resize(numFuncs);
-          this.i2cDevice = i2cDevice;
-        // Disable "Autoclear NINT on RegData read". This 
-        // could cause us to lose accelerometer interrupts
-        // if someone reads or writes any pin between when 
-        // an interrupt occurs and we handle it. 
-        i2cDevice.write(0x10, 0x01); // RegMisc
 
-        // Lower the output buffer drive, to reduce current consumption
-        i2cDevice.write(0x02, 0xFF); // RegLowDrive          
-        //log("--------Setting interrupt handler for pin1--------");
-        hardware.pin1.configure(DIGITAL_IN_WAKEUP, handlePin1Int.bindenv(this));
-        //gInitTime.inthandler = hardware.millis() - gInitTime.inthandler;
+	if (!is_hiku004) {
+            this.i2cDevice = i2cDevice;
+            // Disable "Autoclear NINT on RegData read". This 
+            // could cause us to lose accelerometer interrupts
+            // if someone reads or writes any pin between when 
+            // an interrupt occurs and we handle it. 
+            i2cDevice.write(0x10, 0x01); // RegMisc
+	    
+            // Lower the output buffer drive, to reduce current consumption
+            i2cDevice.write(0x02, 0xFF); // RegLowDrive          
+	}
+	
+        CPU_INT.configure(DIGITAL_IN_WAKEUP, handlePin1Int.bindenv(this));
     }
   
       // Set an interrupt handler callback for a particular pin
@@ -417,7 +451,7 @@ class InterruptHandler
         local regInterruptSource = 0;
         local reg = 0;
         
-        local pinState = hardware.pin1.read();
+        local pinState = CPU_INT.read();
 
         // Get the active interrupt sources
         // Keep reading the interrupt source register and clearing 
@@ -432,13 +466,17 @@ class InterruptHandler
         	return;
         }
         
-        while (reg = i2cDevice.read(0x0C)) // RegInterruptSource
-        {
-            clearAllIrqs();
-            regInterruptSource = regInterruptSource | reg;
+	if (is_hiku004) {
+	    // HACK replace CHARGER_INT_N.read() for charging start/stop with I2C call to LP3918 or monitoring of charging current (IMON)
+	    local charger_int_n_val = CHARGER_INT_N.read() ? 0 : 1;
+	    regInterruptSource = (charger_int_n_val << 7) | ((BTN_N.read() ? 0 : 1) << 2) | (charger_int_n_val << 1) | (ACCEL_INT.read() & 1);
+	} else 
+	    while (reg = i2cDevice.read(0x0C)) // RegInterruptSource
+		{
+	    clearAllIrqs();
+	    regInterruptSource =  regInterruptSource | reg;
         }
-        //log("handlePin1Int after int sources time: " + hardware.millis() + "ms");
-
+	
 
         // If no interrupts, just return. This occurs on every 
         // pin 1 falling edge. 
@@ -739,7 +777,7 @@ class CancellableTimer
 	// just create a timer and set it
     function enable() 
     {
-        log("Timer enable called");
+        server.log("Timer enable called");
 		
 		if(_timerHandle)
 		{
@@ -754,14 +792,14 @@ class CancellableTimer
 	// and set the handle to null
     function disable() 
     {
-        log("Timer disable called!");
+        server.log("Timer disable called!");
         // if the timerHandle is not null, then the timer is enabled and active
 		if(_timerHandle)
 		{
 		  //just cancel the wakeup timer and set the handle to null
 		  imp.cancelwakeup(_timerHandle);
 		  _timerHandle = null;
-		  log("Timer canceled wakeup!");
+		  server.log("Timer canceled wakeup!");
 		}
     }
     
@@ -781,7 +819,7 @@ class CancellableTimer
     // Internal function to manage cancelation and expiration
     function _timerCallback()
     {
-        log("timer fired!");
+        server.log("timer fired!");
 		actionFn();
 		_timerHandle = null;
     }
@@ -797,22 +835,7 @@ class I2cDevice
 
     constructor(port, address)
     {
-        if(port == I2C_12)
-        {
-            // Configure I2C bus on pins 1 & 2
-            hardware.configure(I2C_12);
-            i2cPort = hardware.i2c12;
-        }
-        else if(port == I2C_89)
-        {
-            // Configure I2C bus on pins 8 & 9
-            hardware.configure(I2C_89);
-            i2cPort = hardware.i2c89;
-        }
-        else
-        {
-            log(format("Error: invalid I2C port specified: %c", port));
-        }
+        i2cPort = port;
 
         // Use the fastest supported clock speed
         i2cPort.configure(CLOCK_SPEED_400_KHZ);
@@ -838,8 +861,8 @@ class I2cDevice
     
     function disable()
     {
-    	hardware.pin8.configure(DIGITAL_IN_PULLUP);
-    	hardware.pin9.configure(DIGITAL_IN_PULLUP);
+    	SCL_OUT.configure(DIGITAL_IN_PULLUP);
+    	SDA_OUT.configure(DIGITAL_IN_PULLUP);
     }
 
     // Write a byte
@@ -851,6 +874,32 @@ class I2cDevice
         }
     }
 
+    // Write a byte string
+    function writeByteString(data)
+    {
+        
+        if( i2cPort.write(i2cAddress, data) != 0)
+        {
+        	log("Error: I2C byte string write failure");
+        }
+    }
+    
+    // Read a byte string
+    function readByteString(size)
+    {
+      local read_string = i2cPort.read(i2cAddress, "\x0b\x00", size);
+      local num_string = "";
+    
+        if( read_string == null)
+        {
+        	log("Error: I2C byte string read failure");
+        } else {
+          for (local i=0; i<read_string.len(); i++)
+            num_string += format("0x%02x ", read_string[i]);
+          //server.log(format("Read byte string %s", num_string));
+        }
+        return read_string;
+    }
 }
 
 
@@ -1039,54 +1088,61 @@ class Scanner
         pin = triggerPin;
         reset = resetPin;
 
-        // Reset the scanner at each boot, just to be safe
-        ioExpander.setDir(reset, 0); // set as output
-        ioExpander.setPullUp(reset, 0); // disable pullup
-        ioExpander.setPin(reset, 0); // pull low to reset
-        imp.sleep(0.001); // wait for x seconds
-        ioExpander.setPin(reset, 1); // pull high to boot
-        imp.sleep(0.001);
+	if (!is_hiku004) {
+            // Reset the scanner at each boot, just to be safe
+            ioExpander.setDir(reset, 0); // set as output
+            ioExpander.setPullUp(reset, 0); // disable pullup
+            ioExpander.setPin(reset, 0); // pull low to reset
+            imp.sleep(0.001); // wait for x seconds
+            ioExpander.setPin(reset, 1); // pull high to boot
+            imp.sleep(0.001);
 
-        // Configure trigger pin as output
-        ioExpander.setDir(pin, 0); // set as output
-        ioExpander.setPullUp(pin, 0); // disable pullup
-        ioExpander.setPin(pin, 1); // pull high to disable trigger
+            // Configure trigger pin as output
+            ioExpander.setDir(pin, 0); // set as output
+            ioExpander.setPullUp(pin, 0); // disable pullup
+            ioExpander.setPin(pin, 1); // pull high to disable trigger
 
-        // Configure scanner UART (for RX only)
-	// WARNING: Ensure pin5 is never accidentally configured as a UART TX output
-	// and driven high. This triggers the buzzer and can cause device crashes
-        // on a low battery.	
-        hardware.uart57.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
-                                 scannerCallback.bindenv(this));
-        //gInitTime.scanner = hardware.millis() - gInitTime.scanner;
+            // Configure scanner UART (for RX only)
+	    // WARNING: Ensure pin5 is never accidentally configured as a UART TX output
+	    // and driven high. This triggers the buzzer and can cause device crashes
+            // on a low battery.	
+            SCANNER_UART.configure(38400, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, 
+                scannerCallback.bindenv(this));
+            //gInitTime.scanner = hardware.millis() - gInitTime.scanner;
+	}
     }
 
     // Disable for low power sleep mode
     function disable()
     {
-        ioExpander.setPin(reset, 0); // pull reset low 
-        ioExpander.setPin(pin, 0); // pull trigger low 
-        hardware.uart57.disable();
-        hardware.pin7.configure(DIGITAL_IN_PULLUP);
-        hardware.pin2.configure(DIGITAL_IN_PULLUP);
-        
-    }
-
-    function readTriggerState()
-    {
-        return ioExpander.getPin(pin);
+	if (!is_hiku004) {
+            ioExpander.setPin(reset, 0); // pull reset low 
+            ioExpander.setPin(pin, 0); // pull trigger low 
+            SCANNER_UART.disable();
+            RXD_IN_FROM_SCANNER.configure(DIGITAL_IN_PULLUP);
+            EIMP_AUDIO_IN.configure(DIGITAL_IN_PULLUP);
+	}
     }
 
     function trigger(on)
     {
-        if (on)
-        {
-            ioExpander.setPin(pin, 0);
-        }
-        else
-        {
-            ioExpander.setPin(pin, 1);
-        }
+	if (is_hiku004) {
+	    /*
+	        if (on)
+	           lymeric.writeByteString("\x01\x00\x03");
+            else {
+	           lymeric.writeByteString("\x01\x00\x00");
+	           //lymeric.writeByteString("\x0B\x02");
+	           lymeric.readByteString(65);
+            }
+            */
+	}
+	else {
+            if (on)
+		ioExpander.setPin(pin, 0);
+            else
+		ioExpander.setPin(pin, 1);
+	}
     }
 
     //**********************************************************************
@@ -1103,7 +1159,38 @@ class Scanner
         gLastSamplerBuffer = null; 
         gLastSamplerBufLen = 0; 
         agent.send("startAudioUpload", "");
-        hardware.sampler.start();
+        if (is_hiku004) {
+            local pmic_val;
+            packet_state.state = PS_OUT_OF_SYNC;
+		    packet_state.char_string = "";
+            //hardware.spiflash.enable();
+            //server.log(format("Flash size: %d bytes", hardware.spiflash.size()));
+            // HACK requires SCAN_DEBUG_SAMPLES * FLASH_BLOCK to be a multiple of BLOCKSIZE
+            //for (local i=0; i<((SCAN_DEBUG_SAMPLES * FLASH_BLOCK)/BLOCKSIZE); i++)
+            //  hardware.spiflash.erasesector(i*BLOCKSIZE);
+            lines_scanned = 0;
+            scan_byte_cnt = 0;
+            scanner_error = false;
+            //IMP_ST_CLK.configure(PWM_OUT, 0.000000125, 0.5);
+            nrst.configure(DIGITAL_OUT);
+            nrst.write(0);
+            boot0.configure(DIGITAL_OUT);
+            boot0.write(0);
+            nrst.write(1);
+            // turn on voltage to STM32F0
+	        //pmic_val = pmic.read(0x00);
+	        //pmic.write(0x00, pmic_val | 0x08);
+            buf1.seek(0, 'b');
+            buf2.seek(0, 'b');
+            AUDIO_UART.disable();
+            //AUDIO_UART.setrxfifosize(IMAGE_COLUMNS);
+            //AUDIO_UART.setrxfifosize(UART_BUF_SIZE);
+            //AUDIO_UART.configure(BAUD, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback);
+            AUDIO_UART.configure(1843200, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback);
+            //AUDIO_UART.configure(1843200, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, scannerDebugCallback); 
+            gAudioTimer = hardware.millis();
+        } else
+            hardware.sampler.start();
     }
 
     //**********************************************************************
@@ -1112,8 +1199,30 @@ class Scanner
     // it must support that. 
     function stopScanRecord()
     {
-        // Stop mic recording
-        hardware.sampler.stop();
+        if (is_hiku004) {
+            audioUartCallback();
+            //local pmic_val;
+            AUDIO_UART.disable();
+            // turn off voltage to STM32F0
+	        //pmic_val = pmic.read(0x00);
+	        //pmic.write(0x00, pmic_val & 0xF7);
+            nrst.write(0);
+            //IMP_ST_CLK.configure(DIGITAL_IN);
+            /*
+            lines_scanned = scan_byte_cnt/IMAGE_COLUMNS;
+            agent.send("scan_start", null);
+            server.log(format("Fetching %d lines", lines_scanned));
+            for (local i=0; i<lines_scanned; i++) {
+              agent.send("scan_line", hardware.spiflash.read(i*IMAGE_COLUMNS, IMAGE_COLUMNS));
+            }
+            server.log("Lines fetched!");
+            for (local i=0; i<((SCAN_DEBUG_SAMPLES * FLASH_BLOCK)/BLOCKSIZE); i++)
+              hardware.spiflash.erasesector(i*BLOCKSIZE);
+              */
+            //hardware.spiflash.disable();
+        } else
+            // Stop mic recording
+            hardware.sampler.stop();
 
         // Release scanner trigger
         hwScanner.trigger(false);
@@ -1128,7 +1237,7 @@ class Scanner
     function scannerCallback()
     {
         // Read the first byte
-        local data = hardware.uart57.read();
+        local data = (is_hiku004 ? AUDIO_UART : SCANNER_UART).read();
         while (data != -1)  
         {
             //log("char " + data + " \"" + data.tochar() + "\"");
@@ -1152,8 +1261,8 @@ class Scanner
                         return;
                     }
                     updateDeviceState(DeviceState.SCAN_CAPTURED);
-                    log("Code: \"" + scannerOutput + "\" (" + 
-                               scannerOutput.len() + " chars)");
+                    /*log("Code: \"" + scannerOutput + "\" (" + 
+                               scannerOutput.len() + " chars)");*/
                     //determineSetupBarcode(scannerOutput);
                     if(0!= agent.send("uploadBeep", {
                                               scandata=scannerOutput,
@@ -1186,7 +1295,7 @@ class Scanner
             }
 
             // Read the next byte
-            data = hardware.uart57.read();
+            data = (is_hiku004 ? AUDIO_UART : SCANNER_UART).read();
         } 
     }
 }
@@ -1226,19 +1335,21 @@ class PushButton
 
         // Set event handler for IRQ
         intHandler.setIrqCallback(btnPin, buttonCallback.bindenv(this));
+	if (is_hiku004)
+	    BTN_N.configure(DIGITAL_IN, buttonCallback.bindenv(this));
         connMgr.registerCallback(connectionStatusCb.bindenv(this));
 
-        // Configure pin as input, IRQ on both edges
-        ioExpander.setDir(pin, 1); // set as input
-        ioExpander.setPullUp(pin, 1); // enable pullup
-        ioExpander.setIrqMask(pin, 1); // enable IRQ
-        ioExpander.setIrqEdges(pin, 1, 1); // rising and falling
+	if (!is_hiku004) {
+            // Configure pin as input, IRQ on both edges
+            ioExpander.setDir(pin, 1); // set as input
+            ioExpander.setPullUp(pin, 1); // enable pullup
+            ioExpander.setIrqMask(pin, 1); // enable IRQ
+            ioExpander.setIrqEdges(pin, 1, 1); // rising and falling
+	}
         
         blinkTimer = CancellableTimer(BLINK_UP_TIME, this.cancelBlinkUpTimer.bindenv(this));
         
         connection = connection_available;
-        
-        //gInitTime.button = hardware.millis() - gInitTime.button;
     }
     
     function connectionStatusCb(status)
@@ -1255,7 +1366,10 @@ class PushButton
 
     function readState()
     {
-        return ioExpander.getPin(pin);
+	if (is_hiku004) 
+	    return BTN_N.read() 
+	else
+            return ioExpander.getPin(pin);
     }
 
     //**********************************************************************
@@ -1310,7 +1424,7 @@ class PushButton
                 
                 if ((BLINK_UP_BUTTON_COUNT-1 == buttonPressCount))
                 {
-                	blinkUpDevice_internal(true,true);
+                	blinkUpDevice(true);
                 	buttonPressCount = 0;
                 	return;
                 }
@@ -1331,10 +1445,10 @@ class PushButton
                 		{
                 			hwPiezo.playSound("no-connection");
                 		}
-                		buttonState = ButtonState.BUTTON_DOWN;
+                		//buttonState = ButtonState.BUTTON_DOWN;
                 		return;
                 	}
-		            agentSend("button","Pressed");
+		    agentSend("button","Pressed");
                     updateDeviceState(DeviceState.SCAN_RECORD);
                     buttonState = ButtonState.BUTTON_DOWN;
                     //log("Button state change: DOWN");
@@ -1350,16 +1464,16 @@ class PushButton
                 // Button in released state
                 if (buttonState == ButtonState.BUTTON_DOWN)
                 {
-		            log("BUTTON RELEASED!");
-		            agentSend("button","Released");
+		    server.log("BUTTON RELEASED!");
+		    agentSend("button","Released");
                     buttonState = ButtonState.BUTTON_UP;
                     //log("Button state change: UP");
-				    
+				    /*
 					if( !connection )
 					{
 						return;
 					}
-				    
+				    */
                     local oldState = gDeviceState;
                     updateDeviceState(DeviceState.BUTTON_RELEASED);
 
@@ -1389,30 +1503,22 @@ class PushButton
         }
         //log("buttonCallBack exit time: " + hardware.millis() + "ms");
     }
-	
-	function blinkUpDevice_internal(blink=false, sound=false)
-	{
+    
+    function blinkUpDevice(blink=false)
+    {
     	if( blink )
     	{
-		    if(sound)
-			{
-			    hwPiezo.playSound("blink-up-enabled");
-			}
+    		hwPiezo.playSound("blink-up-enabled");
     		//Enable the 5 minute Timer here
     		// Ensure that we only enable it for the setup_required case
     		if( !server.isconnected())
     		{
     			nv.setup_required = true;
     			nv.sleep_not_allowed = true;
-		        blinkTimer.disable();
+				blinkTimer.disable();
     			blinkTimer.enable();
     		}
-    	}	  
-	}
-    
-    function blinkUpDevice(blink=false)
-    {
-        blinkUpDevice_internal(blink,false);
+    	}
     	log(format("Blink-up: %s.",blink?"enabled":"disabled"));
     }
     
@@ -1435,48 +1541,44 @@ class ChargeStatus
     {
         // Save assignments
         pin = chargePin;
-		pinStatus = 7;
+	pinStatus = 7;
 
         // Set event handler for IRQ
         intHandler.setIrqCallback(pin, chargerCallback.bindenv(this));
         intHandler.setIrqCallback(pinStatus, chargerDetectionCB.bindenv(this));
+	if (is_hiku004)
+	    CHARGER_INT_N.configure(DIGITAL_IN, chargerDetectionCB.bindenv(this));
         
-        hardware.pinB.configure(ANALOG_IN);
+	BATT_VOLT_MEASURE.configure(ANALOG_IN);
+
+	if (!is_hiku004) {
+            // Configure pin as input, IRQ on both edges
+            ioExpander.setDir(pin, 1); // set as input
+            ioExpander.setPullUp(pin, 1); // enable pullup
+            ioExpander.setIrqMask(pin, 1); // enable IRQ
+            ioExpander.setIrqEdges(pin, 1, 1); // rising and falling
+            
+            ioExpander.setDir(pinStatus, 1); // set as input
+            ioExpander.setPullUp(pinStatus, 1); // enable pullup
+            ioExpander.setIrqMask(pinStatus, 1); // enable IRQ
+            ioExpander.setIrqEdges(pinStatus, 1, 1); // rising and falling
+	}
+
+	chargerCallback(); // this will update the current state right away
         imp.wakeup(5, batteryMeasurement.bindenv(this));
-
-        // Configure pin as input, IRQ on both edges
-        ioExpander.setDir(pin, 1); // set as input
-        ioExpander.setPullUp(pin, 1); // enable pullup
-        ioExpander.setIrqMask(pin, 1); // enable IRQ
-        ioExpander.setIrqEdges(pin, 1, 1); // rising and falling
-        
-		chargerCallback(); // this will update the current state right away
-		
-        ioExpander.setDir(pinStatus, 1); // set as input
-        ioExpander.setPullUp(pinStatus, 1); // enable pullup
-        ioExpander.setIrqMask(pinStatus, 1); // enable IRQ
-        ioExpander.setIrqEdges(pinStatus, 1, 1); // rising and falling
-
-		// Congiure Pin C which is supposed to be the pin indicating whether a charger is
-		// attached or not
-		//hardware.pinC.configure(DIGITAL_IN_PULLUP);
-        //agent.send("chargerState", previous_state); // update the charger state
-        //gInitTime.charger = hardware.millis() - gInitTime.charger;
     }
     
-
-    function readState()
-    {
-        return ioExpander.getPin(pin);
-    }
-
     function isCharging()
     {
-        if(ioExpander.getPin(pin))
-        {
-            return false;
-        }
-        return true;
+	local charge_detect_n;
+
+	if (is_hiku004) 
+	    // HACK replace CHARGER_INT_N.read() for charging start/stop with I2C call to LP3918 or monitoring of charging current (IMON)
+	    charge_detect_n = CHARGER_INT_N.read();
+	else
+	    charge_detect_n = ioExpander.getPin(pin);
+
+        return (charge_detect_n ? false : true);
     }
     
     function batteryMeasurement()
@@ -1484,9 +1586,7 @@ class ChargeStatus
     	local raw_read = 0.0;
     	
     	for(local i = 0; i < 10; i++)
-    	{
-    	  raw_read += hardware.pinB.read();
-    	}
+    	    raw_read += BATT_VOLT_MEASURE.read();
     	
     	raw_read = (raw_read / 10.0);
     	nv.voltage_level = raw_read;
@@ -1494,7 +1594,7 @@ class ChargeStatus
     	// every 15 seconds wake up and read the battery level
     	// TODO: change the period of measurement so that it doesn’t drain the
     	// battery
-    	log(format("Battery Level: %d, Input Voltage: %.2f", nv.voltage_level, hardware.voltage()));
+    	//log(format("Battery Level: %d, Input Voltage: %.2f", nv.voltage_level, hardware.voltage()));
     	imp.wakeup(1, function() {
     		agentSend("batteryLevel", nv.voltage_level)
     	});
@@ -1504,9 +1604,17 @@ class ChargeStatus
     function chargerDetectionCB()
     {
     	// the pin is high charger is attached and low is a removal
-	local status = ioExpander.getPin(7)? "disconnected":"connected";
+	local charge_detect_n;
+
+	if (is_hiku004)
+		charge_detect_n = CHARGER_INT_N.read();
+	    else
+		charge_detect_n = ioExpander.getPin(7);
+
+	local status = charge_detect_n ? "disconnected":"connected";
+
     	log(format("USB Detection CB: %s", status));
-        log(format("USB Detection CB: %s", status));
+        server.log(format("USB Detection CB: %s", status));
 	agentSend("usbState",status);
     }
 
@@ -1523,7 +1631,7 @@ class ChargeStatus
         {
             charging += isCharging()?1:0;
         }
-        log(format("Charger: %s",charging?"charging":"not charging"));
+        //log(format("Charger: %s",charging?"charging":"not charging"));
         
 		if( previous_state != (charging==0?false:true))
 		{
@@ -1532,45 +1640,20 @@ class ChargeStatus
 		
         previous_state = (charging==0)? false:true; // update the previous state with the current state
         agentSend("chargerState", previous_state); // update the charger state
-        log(format("USB Detection: %s", ioExpander.getPin(7)? "disconnected":"connected"));
+
+	local charge_detect_n;
+
+	if (is_hiku004)
+		charge_detect_n = CHARGER_INT_N.read();
+	    else
+		charge_detect_n = ioExpander.getPin(7);
+
+	local status = charge_detect_n ? "disconnected":"connected";
+
+        log(format("USB Detection: %s", status));
+	server.log(format("USB Detection: %s", status));
     }
 }
-
-//======================================================================
-// 3.3 volt switch pin for powering most peripherals
-/*
-class Switch3v3Accessory
-{
-    pin = null; // IO expander pin assignment
-
-    constructor(switchPin)
-    {
-
-        // Save assignments
-        pin = switchPin;
-
-        // Configure pin 
-        ioExpander.setDir(pin, 0); // set as output
-        ioExpander.setPullUp(pin, 0); // disable pullup
-        ioExpander.setPin(pin, 0); // pull low to turn switch on
-    }
-
-    function readState()
-    {
-        return ioExpander.getPin(pin);
-    }
-
-    function enable()
-    {
-        ioExpander.setPin(pin, 0);
-    }
-
-    function disable()
-    {
-        ioExpander.setPin(pin, 1);
-    }
-}
-*/
 
 //======================================================================
 // Sampler/Audio In
@@ -1586,11 +1669,6 @@ agent.on("uploadCompleted", function(result) {
 agent.on("devicePage", function(result){
 	hwPiezo.playPageTone();
 });*/
-
-agent.on("stayAwake" function(result){
-  server.log("stayAwake called!!");
-  nv.extend_timeout = result;
-});
 
 
 //**********************************************************************
@@ -1608,8 +1686,12 @@ function sendLastBuffer()
 
     // If there are less than x secs of audio, abandon the 
     // recording. Else send the beep!
-    local secs = gAudioChunkCount*gAudioBufferSize/
-                       gAudioSampleRate.tofloat();
+    local secs;
+    if (is_hiku004)
+        secs = (hardware.millis()-gAudioTimer)/1000.0;
+    else
+        secs = gAudioChunkCount*gAudioBufferSize/
+               gAudioSampleRate.tofloat();
 
     //Because we cannot guarantee network robustness, we allow 
     // uploads even if an overrun occurred. Worst case it still
@@ -1688,8 +1770,8 @@ function samplerCallback(buffer, length)
         }
         else
         {
-            log(format("About to send an audio chunck of size: %d",length));
-            log(format("Agent Send Response: %d", agent.send("uploadAudioChunk", {buffer=buffer, length=length})));
+            server.log(format("About to send an audio chunck of size: %d",length));
+            server.log(format("Agent Send Response: %d", agent.send("uploadAudioChunk", {buffer=buffer, length=length})));
         }
 
         // Finish timing the send.  See function comments for more info. 
@@ -1697,6 +1779,118 @@ function samplerCallback(buffer, length)
         //log(gAudioTimer + "ms");
     }
 }
+
+function audioUartCallback()
+{
+    local buf_ptr = 0;
+    local string_len;
+    
+    packet_state.char_string += AUDIO_UART.readstring(UART_BUF_SIZE);
+    string_len = packet_state.char_string.len();
+
+    while ((buf_ptr < string_len) && (packet_state.state < PS_TYPE_FIELD)) {
+        if (packet_state.char_string[buf_ptr] == PS_PREAMBLE[packet_state.state])
+          packet_state.state++;
+        else if (packet_state.char_string[buf_ptr] == PS_PREAMBLE[0])
+            packet_state.state = 1;
+          else
+            packet_state.state = 0;
+        buf_ptr++;
+    }
+   if ((buf_ptr < string_len) && (packet_state.state == PS_TYPE_FIELD)) {
+      packet_state.type = packet_state.char_string[buf_ptr];
+      packet_state.state++;
+      buf_ptr++;
+   }
+   if ((buf_ptr < string_len) && (packet_state.state == PS_LEN_FIELD)) {
+      // HACK HACK HACK
+      // verify that length is not 0
+      packet_state.pay_len = packet_state.char_string[buf_ptr];
+      packet_state.state++;
+      buf_ptr++;
+   }
+   if ((string_len-buf_ptr >= packet_state.pay_len) && (packet_state.state == PS_DATA_FIELD)) {
+       switch (packet_state.type) {
+           case PKT_TYPE_AUDIO:
+               audio_pkt_blob.seek(0,'b');
+               audio_pkt_blob.writestring(packet_state.char_string.slice(buf_ptr, buf_ptr+packet_state.pay_len));
+               agent.send("uploadAudioChunk", {buffer=audio_pkt_blob, length=packet_state.pay_len});
+               //server.log(audio_pkt_blob);
+               buf_ptr += packet_state.pay_len;
+               break;
+           case PKT_TYPE_SCAN:
+                    local scannerOutput = "";
+                    // If the scan came in late (e.g. after button up), 
+                    // discard it, to maintain the state machine. 
+                    if (gDeviceState != DeviceState.SCAN_RECORD)
+                      return;
+                    updateDeviceState(DeviceState.SCAN_CAPTURED);
+                    while ((buf_ptr < string_len) && (packet_state.char_string[buf_ptr] != '\r')) {
+                        scannerOutput += packet_state.char_string[buf_ptr].tochar();
+                        buf_ptr++;
+                    }
+                    if (packet_state.char_string[buf_ptr] != '\r')
+                      return;
+                    server.log(format("Scanned %s", scannerOutput));
+                    if(agent.send("uploadBeep", {
+                                              scandata=scannerOutput,
+                                              scansize=scannerOutput.len(),
+                                              serial=hardware.getdeviceid(),
+                                              fw_version=cFirmwareVersion,
+                                              linkedrecord="",
+                                              audiodata="",
+                                             }) == 0)
+                    	hwPiezo.playSound("success-local");
+                    // Stop collecting data
+                    hwScanner.stopScanRecord();
+               break;
+           default:
+               buf_ptr += packet_state.pay_len;
+               break;
+       }
+      packet_state.state = PS_OUT_OF_SYNC;
+   }
+
+/*
+   if (packet_state.state == PS_LEN_FIELD+1) {
+       server.log("Preamble found!");
+       server.log(format("ptr 0x%x type 0x%x len 0x%x", buf_ptr, packet_state.type, packet_state.pay_len));
+       packet_state.state = 0;
+   }
+*/
+   packet_state.char_string = packet_state.char_string.slice(buf_ptr);
+}
+
+function scannerDebugCallback()
+{
+    if (scan_byte_cnt < SCAN_MAX_BYTES) {
+    buf1.writeblob(AUDIO_UART.readblob(IMAGE_COLUMNS));
+    local bytes_read = buf1.tell();
+    
+    //if (bytes_ == IMAGE_COLUMNS) {
+        //hardware.spiflash.write(lines_scanned*FLASH_BLOCK, buf1, 0, 0, IMAGE_COLUMNS-1);
+        hardware.spiflash.write(scan_byte_cnt, buf1);
+        scan_byte_cnt += bytes_read;
+        //lines_scanned++;
+        //server.log("X");
+        buf1.seek(0,'b');
+    if (!scanner_error && (bytes_read % IMAGE_COLUMNS != 0)) {
+        scanner_error = true;
+        server.log(format("Scanner error during UART RX, %d", bytes_read));
+    }
+        /*
+    } else if (buf1.tell() > IMAGE_COLUMNS) {
+        scanner_error = true;
+        server.log(format("Scanner error during UART RX, %d", buf1.tell()));
+    } else 
+        server.log(format("Scanner UART RX, partial buffer %d", buf1.tell()));
+    } else {
+      AUDIO_UART.readblob(IMAGE_COLUMNS);
+      AUDIO_UART.disable();
+    }*/
+    }
+}
+
 
 //======================================================================
 // Accelerometer
@@ -1761,13 +1955,17 @@ class Accelerometer extends I2cDevice
         // otherwise we get a spurious interrupt at boot. 
         clearAccelInterrupt();
 
-        // Configure pin as input, IRQ on both edges
-        ioExpander.setDir(pin, 1); // set as input
-        ioExpander.setPullDown(pin, 1); // enable pulldown
-        ioExpander.setIrqMask(pin, 1); // enable IRQ
-        ioExpander.setIrqEdges(pin, 1, 0); // rising only        
+	if (!is_hiku004) {
+            // Configure pin as input, IRQ on both edges
+            ioExpander.setDir(pin, 1); // set as input
+            ioExpander.setPullDown(pin, 1); // enable pulldown
+            ioExpander.setIrqMask(pin, 1); // enable IRQ
+            ioExpander.setIrqEdges(pin, 1, 0); // rising only        
+	}
         // Set event handler for IRQ
         intHandler.setIrqCallback(pin, handleAccelInt.bindenv(this));
+	if (is_hiku004)
+	    ACCEL_INT.configure(DIGITAL_IN, handleAccelInt.bindenv(this));
     }
 
     function enableInterrupts()
@@ -1834,7 +2032,7 @@ function init_nv_items()
 {
 	log(format("sleep_count=%d setup_required=%s", 
 					nv.sleep_count, (nv.setup_required?"yes":"no")));
-	//log(format("Bootup Reason: %xh", nv.boot_up_reason));
+	//server.log(format("Bootup Reason: %xh", nv.boot_up_reason));
 }
 
 function init_unused_pins(i2cDev)
@@ -1855,16 +2053,11 @@ function init_unused_pins(i2cDev)
 	i2cDev.write(0x09, value | ( 0xF8 ));
 	
 	hardware.pinA.configure(DIGITAL_IN_PULLUP);
+	hardware.pin6.configure(DIGITAL_IN_PULLUP);
 	hardware.pinB.configure(DIGITAL_IN_PULLUP);
 	hardware.pinC.configure(DIGITAL_IN_PULLUP);
 	hardware.pinD.configure(DIGITAL_IN_PULLUP);
-	
-	if(!DEBUG_UART_ENABLED)
-	{
-        // Configure these two pins if we are not using the debug uart
-        hardware.pin6.configure(DIGITAL_IN_PULLUP);
-		hardware.pinE.configure(DIGITAL_IN_PULLUP);
-	}
+	hardware.pinE.configure(DIGITAL_IN_PULLUP);
 	
 	//gInitTime.init_unused = hardware.millis() - gInitTime.init_unused;
 }
@@ -1878,7 +2071,7 @@ function preSleepHandler() {
 	// previous_state before going to sleep 
 	chargeStatus.chargerCallback();
 	
-	if( nv.sleep_not_allowed || chargeStatus.previous_state || nv.extend_timeout )
+	if( nv.sleep_not_allowed || chargeStatus.previous_state )
 	{
 		//Just for testing but we should remove it later
 		//hwPiezo.playSound("device-page");
@@ -1903,8 +2096,10 @@ function preSleepHandler() {
     	// that were not caught by handlePin1Int. Race condition? 
     	log("preSleepHandler: clear out all the pending accel interrupts");
     	hwAccelerometer.clearAccelInterruptUntilCleared();
-    	log("preSleepHandler: clear out all the IOExpander Interrupts");
-    	intHandler.clearAllIrqs(); 
+	if (!is_hiku004) {
+    	    log("preSleepHandler: clear out all the IOExpander Interrupts");
+    	    intHandler.clearAllIrqs(); 
+	}
     
     	// When the timer below expires we will hit the sleepHandler function below
     	// only enter into the delay wait if the current state is either IDLE or PRE_SLEEP
@@ -1935,36 +2130,35 @@ function configurePinsBeforeSleep()
     hwScanner.disable();
     hwPiezo.disable();
      
-    // set all registers on the SX1508 pin expander to defined values before sleep
+    if (!is_hiku004) {
+	// set all registers on the SX1508 pin expander to defined values before sleep
 
-    // set registers RegInputDisable, RegLongSlew, RegLowDrive to default values
-    i2cDev.write(0x00, 0x00);
-    i2cDev.write(0x01, 0x00);
-    i2cDev.write(0x02, 0x00);
-    // enable the pullup resistor for the button (BUTTON_L) and to disable 
-    // microphone and scanner (SW_VCC_EN_L)
-    i2cDev.write(0x03, 0x14);
-    // set registers RegPullDown, RegOpenDrain, and RegPolarity to default values
-    i2cDev.write(0x04, 0x00);
-    i2cDev.write(0x05, 0x00);
-    i2cDev.write(0x06, 0x00);
-    // set all pins on the SX1508 to inputs
-    i2cDev.write(0x07, 0xff);
-    // set output values in RegData to default values
-    i2cDev.write(0x08, 0xff);
-    // enable interrupts for button (BUTTON_L), accelerometer (ACCELEROMETER_INT), and charger (CHARGE_PGOOD_L)
-    i2cDev.write(0x09, 0x7a);
-    // set interrupt trigger to both edges for the enabled interrupts
-    i2cDev.write(0x0a, 0xc0);
-    i2cDev.write(0x0b, 0x33);
-    // clear all interrupts
-    i2cDev.write(0x0c, 0xff);    
-    i2cDev.write(0x0d, 0xff);
+	// set registers RegInputDisable, RegLongSlew, RegLowDrive to default values
+	i2cDev.write(0x00, 0x00);
+	i2cDev.write(0x01, 0x00);
+	i2cDev.write(0x02, 0x00);
+	// enable the pullup resistor for the button (BUTTON_L) and to disable 
+	// microphone and scanner (SW_VCC_EN_L)
+	i2cDev.write(0x03, 0x14);
+	// set registers RegPullDown, RegOpenDrain, and RegPolarity to default values
+	i2cDev.write(0x04, 0x00);
+	i2cDev.write(0x05, 0x00);
+	i2cDev.write(0x06, 0x00);
+	// set all pins on the SX1508 to inputs
+	i2cDev.write(0x07, 0xff);
+	// set output values in RegData to default values
+	i2cDev.write(0x08, 0xff);
+	// enable interrupts for button (BUTTON_L), accelerometer (ACCELEROMETER_INT), and charger (CHARGE_PGOOD_L)
+	i2cDev.write(0x09, 0x7a);
+	// set interrupt trigger to both edges for the enabled interrupts
+	i2cDev.write(0x0a, 0xc0);
+	i2cDev.write(0x0b, 0x33);
+	// clear all interrupts
+	i2cDev.write(0x0c, 0xff);    
+	i2cDev.write(0x0d, 0xff);
 
-    i2cDev.disable();
-	
-	// Reconfigure pin1 before sleep
-	hardware.pin1.configure(DIGITAL_IN_WAKEUP);
+	i2cDev.disable();
+    }
 }
 
 //**********************************************************************
@@ -1972,7 +2166,7 @@ function configurePinsBeforeSleep()
 // further accelerometer interrupts
 function sleepHandler()
 {
- 	log("sleepHandler: enter");
+ 	log("sleepHandler: enter");   
     if( gAccelInterrupted )
     {
 		log("sleepHandler: aborting sleep due to Accelerometer Interrupt");
@@ -1987,16 +2181,20 @@ function sleepHandler()
     log(format("Free memory: %d bytes", imp.getmemoryfree()));
     
     assert(gDeviceState == DeviceState.PRE_SLEEP);
-    log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", hardware.pin1.read()));
-	server.expectonlinein(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);
+    log(format("sleepHandler: entering deep sleep, hardware.pin1=%d", CPU_INT.read()));
+    server.expectonlinein(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);
     nv.sleep_count++;
     nv.boot_up_reason = 0x0;
     nv.sleep_duration = time();
-	
     server.disconnect();
+    
     configurePinsBeforeSleep();
-	// We don't need to wrap this in imp.onidle() as per Electric Imp.
-    imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);
+    // NOTE: disabling blinkup before sleep is required for hiku-004
+    // as the Imp otherwise starts flashing the LEDs green/red/yellow when
+    // going to sleep
+    imp.enableblinkup(false);
+    imp.setpoweren(false);
+    imp.deepsleepfor(nv.setup_required?cDeepSleepInSetupMode:cDeepSleepDuration);   
 }
 
 
@@ -2023,36 +2221,12 @@ function init_done()
 	}
 }
 
-function getUTCTime()
-{
-	local str ="";
-	//[dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss.SSSSSS"];
-	local d=date();
-    str = format("%04d-%02d-%02d %02d:%02d:%02d.000000", d.year, d.month+1, d.day, d.hour, d.min, d.sec);
-    return str;
-}
-
 // This is the log function wrapper
 // so that we can 
 function log(str)
 {
-    // by default this should be disabled, iff we are debugging locally
-    if (DEBUG_UART_ENABLED)
-	{
-	   debug_uart.write("["+getUTCTime()+"] "+str+"\r\n");
-	}
-	
-	// Send the logs to server.log iff the flag is enabled
-	// by default we should disable it and send it over to agent
-	// so the logs are captured by hiku cloud
-	if (IMP_SERVER_LOG_ENABLED)
-	{
-	   server.log(str);
-	}
-	else
-	{
-	   agentSend("deviceLog", str);
-	}
+	//server.log(str);
+    agentSend("deviceLog", str);
 }
 
 function agentSend(key, value)
@@ -2061,7 +2235,7 @@ function agentSend(key, value)
   {
     if(agent.send(key,value) != 0)
     {
-       log(format("agentSend: failed for %s",key));
+	  server.log(format("agentSend: failed for %s",key));
 	}
 }
 }
@@ -2105,30 +2279,45 @@ function init()
     //const cIoPin3v3Switch =  4;
     //const cIoPinScannerTrigger =  5;
     //const cIoPinScannerReset =  6;
+    if (is_hiku004) {
+    local pmic_val;
+	i2cDev <- null;
+	// create device for LP3918 power management IC
+	pmic <- I2cDevice(I2C_IF, 0x7e);
+	// set buzzer volume by setting LDO1 voltage to 3.0V
+	pmic.write(0x01, 0x0b);
+	// set charging current to 500mA
+	pmic.write(0x11, 0x9);
+	// wait 350ms after release of PS_HOLD before turning off power
+	pmic.write(0x1c, 0x1);
+    // turn on voltage to STM32F0
+	pmic_val = pmic.read(0x00);
+	pmic.write(0x00, pmic_val | 0x08);
 
+
+	lymeric <- I2cDevice(I2C_IF, 0x41);
+	
+    }
+    else 
 	// Create an I2cDevice to pass around
-	i2cDev <- I2cDevice(I2C_89, 0x23);
-	intHandler <- InterruptHandler(8, i2cDev);	
+	i2cDev <- I2cDevice(I2C_IF, 0x23);
+
+    intHandler <- InterruptHandler(8, i2cDev);	
+    
+    if (!is_hiku004) {
 	ioExpander <- IoExpanderDevice(intHandler);
 	
-    // This is to default unused pins so that we consume less current
-    init_unused_pins(i2cDev);
+	// This is to default unused pins so that we consume less current
+	init_unused_pins(i2cDev);
     
-    // 3v3 accessory switch config
-    // we don’t need a class for this:
-    
-    // Configure pin 
-    ioExpander.setPin(4, 1); // start as logic 1
-    ioExpander.setDir(4, 0); // set as output
-    ioExpander.setPullUp(4, 0); // disable pullup
-    ioExpander.setPullDown(4, 1); // enable pulldown
-    ioExpander.setDir(4, 1); // set as input
-    
-    // 25ms later set as output and later drive hard
-    imp.wakeup(0.025, function() { ioExpander.setPin(4, 0); ioExpander.setDir(4, 0); } ); 
-
-    //sw3v3 <- Switch3v3Accessory(4);
-    //sw3v3.enable();
+	// 3v3 accessory switch config
+	// we don’t need a class for this:	
+	// Configure pin 
+	ioExpander.setDir(4, 0); // set as output
+	ioExpander.setPullUp(4, 0); // disable pullup
+	ioExpander.setPin(4, 0); // pull low to turn switch on
+	ioExpander.setPin(4, 0); // enable the Switcher3v3
+    }
  
     // Charge status detect config
     chargeStatus <- ChargeStatus(1);
@@ -2143,14 +2332,15 @@ function init()
     hwScanner <-Scanner(5,6);
 
     // Microphone sampler config
-    hwMicrophone <- hardware.pin2;
+    hwMicrophone <- EIMP_AUDIO_IN;
     hardware.sampler.configure(hwMicrophone, gAudioSampleRate, 
                                [buf1, buf2, buf3, buf4], 
                                samplerCallback, NORMALISE | A_LAW_COMPRESS); 
                        
-	log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
+    local oldsize = imp.setsendbuffersize(sendBufferSize);
+	server.log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
     // Accelerometer config
-    hwAccelerometer <- Accelerometer(I2C_89, 0x18, 
+    hwAccelerometer <- Accelerometer(I2C_IF, 0x18, 
                                      0);
 
     // Create our timers
@@ -2188,7 +2378,9 @@ function init()
 }
 
 function onConnected(status)
-{	
+{
+	gIsConnecting = false;
+	
     if (status == SERVER_CONNECTED) {
 	if (imp.getbssid() == FACTORY_BSSID) {
 	    if (gDeepSleepTimer) 
@@ -2211,9 +2403,8 @@ function onConnected(status)
         				sleep_duration = nv.sleep_duration,
         				osVersion = imp.getsoftwareversion(),
 						time_to_connect = timeToConnect,
-                        at_factory = (imp.getbssid() == FACTORY_BSSID),
-	                    macAddress = imp.getmacaddress(),
-						ssid = imp.getssid()
+                                                at_factory = (imp.getbssid() == FACTORY_BSSID),
+	                                        macAddress = imp.getmacaddress()
         			};
         agentSend("init_status", data);
         
@@ -2237,22 +2428,12 @@ function onConnected(status)
     {
    		nv.disconnect_reason = status;
     }
-}
-
-function heartBeat()
-{
-    if(DEBUG_UART_ENABLED)
-    {
-        imp.wakeup(5,heartBeat);
-	    log("heart beat!!");
-    }
-}
+}	
 
 // start off here and things should move
 // Piezo config
-hwPiezo <- Piezo(hardware.pin5); 
+hwPiezo <- Piezo(EIMP_AUDIO_OUT); 
 if (imp.getssid() == "" && !("first_boot" in nv)) {
-    log("entered first boot check");
     nv.first_boot <- 1;
     nv.setup_required = true;
     imp.deepsleepfor(1);
@@ -2263,4 +2444,717 @@ connMgr <- ConnectionManager();
 connMgr.registerCallback(onConnected.bindenv(this));
 connMgr.init_connections();	
 init();
-heartBeat();
+
+
+/*
+//hardware.pinM.configure(PWM_OUT, 0.000000083, 0.5);
+// enable interrupts
+//lymeric.write(0x66, 0x00);
+lymeric.write(0x66, 0xFF);
+lymeric.write(0x61, 0x00);
+lymeric.writeByteString("\x01\x00\x0f");
+local source;
+while(1){
+        source = lymeric.read(0x65);
+        if (source != 0) {
+          //server.log("reading interrupts");
+          local byte_string = lymeric.readByteString(65);
+          lymeric.write(0x66, 0xFF);
+          lymeric.write(0x61, 0xFF);
+          lymeric.write(0x61, 0x00);
+          agent.send("testBarcode", byte_string);
+        //imp.sleep(0.1);
+        }
+        
+        //lymeric.write(0x66, 0x00);
+        //lymeric.write(0x66, 0x01);
+}
+*/
+
+// STM32 microprocessor firmware updater
+// Copyright (c) 2014 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+
+// CLASS AND FUNCTION DEFS -----------------------------------------------------
+
+function hexdump(data) {
+    local i = 0;
+    while (i < data.tell()) {
+        local line = " ";
+        for (local j = 0; j < 8 && i < data.tell(); j++) {
+            line += format("%02x ", data[i++]);
+        }
+        server.log(line);
+    }
+}
+
+// This class implements the UART bootloader command set
+// https://github.com/electricimp/reference/tree/master/hardware/stm32/UART
+class Stm32 {    
+    static INIT_TIME        = 0.5; // seconds
+    static UART_CONN_TIME   = 0.010; // ms, initial UART configuration time
+    static TIMEOUT_CMD      = 100; // ms
+    static TIMEOUT_ERASE    = 30000; // ms; erases take a long time!
+    static TIMEOUT_WRITE    = 1000; // ms
+    static TIMEOUT_PROTECT  = 5000; // ms; used when enabling or disabling read or write protect
+
+    static CMD_INIT         = 0x7F;
+    static ACK              = 0x79;
+    static NACK             = 0x1F;
+    static CMD_GET          = 0x00;
+    static CMD_GET_VERSION_PROT_STATUS = 0x01;
+    static CMD_GETID       = 0x02;
+    static CMD_RD_MEM    = 0x11;
+    static CMD_GO           = 0x21;
+    static CMD_WR_MEM    = 0x31;
+    static CMD_ERASE        = 0x43; // ERASE and EXT_ERASE are exclusive; only one is supported
+    static CMD_EXT_ERASE    = 0x44;
+    static CMD_WR_PROT      = 0x63;
+    static CMD_WR_UNPROT    = 0x73;
+    static CMD_RDOUT_PROT   = 0x82;
+    static CMD_RDOUT_UNPROT = 0x92;
+    
+    static FLASH_BASE_ADDR  = 0x08000000;
+    static WRSIZE = 256; // max bytes per write
+    static SECTORSIZE = 0x4000; // size of one flash "page"
+    
+
+    bootloader_version = null;
+    bootloader_active = false;
+    supported_cmds = [];
+    pid = null;
+    mem_ptr = 0;
+    
+    uart = null;
+    nrst = null;
+    boot0 = null;
+    boot1 = null;
+    
+    constructor(_uart, _nrst, _boot0, _boot1 = null) {
+        uart = _uart;
+        nrst = _nrst;
+        boot0 = _boot0;
+        if (_boot1) { boot1 = _boot1; }
+        mem_ptr = FLASH_BASE_ADDR;
+        clearUart();
+    }
+    
+    // Helper function: clear the UART RX FIFO by reading out any remaining data
+    // Input: None
+    // Return: None
+    function clearUart() {
+        uart.configure(BAUD, 8, PARITY_EVEN, 1, NO_CTSRTS);
+        
+        local byte = uart.read();
+        while (byte != -1) {
+            byte = uart.read();
+        }
+    }
+    
+    // Helper function: block and read a set number of bytes from the UART
+    // Times out if the UART doesn't receive the required number of bytes in 2 * BYTE TIME
+    // Helpful primarily when reading more than the UART RX FIFO can hold (80 bytes)
+    // Input: num_bytes (integer)
+    // Return: RX'd data (blob)
+    function readUart(num_bytes) {
+        local result = blob(num_bytes);
+        local start = hardware.millis();
+        local pos = result.tell();
+        local timeout = 10 * BYTE_TIME * num_bytes * 1000;
+        while (result.tell() < num_bytes) {
+            if (hardware.millis() - start > timeout) {
+                throw format("Timed out waiting for data, got %d / %d bytes",pos,num_bytes);
+            }
+            local byte = uart.read();
+            if (byte != -1) {
+                result.writen(byte,'b');
+                pos++;
+            }
+        }
+        return result;
+    }
+    
+    // Helper function: compute the checksum for a blob and write the checksum to the end of the blob
+    // Note that STM32 checksum is really just a parity byte
+    // Input: data (blob)
+    //      Blob pointer should be at the end of the data to checksum
+    // Return: data (blob), with checksum written to end
+    function wrChecksum(data) {
+        local checksum = 0;
+        for (local i = 0; i < data.tell(); i++) {
+            //server.log(format("%02x",data[i]));
+            checksum = (checksum ^ data[i]) & 0xff;
+        }
+        data.writen(checksum, 'b');
+    }
+    
+    // Helper function: send a UART bootloader command
+    // Not all commands can use this helper, as some require multiple steps
+    // Sends command, gets ACK, and receives number of bytes indicated by STM32
+    // Input: cmd - USART bootloader command (defined above)
+    // Return: response (blob) - results of sending command
+    function sendCmd(cmd) {
+        clearUart();
+        local checksum = (~cmd) & 0xff;
+        uart.write(format("%c%c",cmd,checksum));
+        getAck(TIMEOUT_CMD);
+        imp.sleep(BYTE_TIME * 2);
+        local num_bytes = uart.read() + 0;
+        if (cmd == CMD_GETID) {num_bytes++;} // getId command responds w/ number of bytes in ID - 1.
+        imp.sleep(BYTE_TIME * (num_bytes + 4));
+        
+        local result = blob(num_bytes);
+        for (local i = 0; i < num_bytes; i++) {
+            result.writen(uart.read(),'b');
+        }
+        
+        result.seek(0,'b');
+        return result;
+    }
+    
+    // Helper function: wait for an ACK from STM32 when sending a command
+    // Implements a timeout and blocks until ACK is received or timeout is reached
+    // Input: [optional] timeout in µs
+    // Return: bool. True for ACK, False for NACK.
+    function getAck(timeout) {
+        local byte = uart.read();
+        local start = hardware.millis();
+        while ((hardware.millis() - start) < timeout) {
+            // server.log(format("Looking for ACK: %02x",byte));
+            if (byte == ACK) { return true; }
+            if (byte == NACK) { return false; }
+            if (byte != -1) { server.log(format("%02x",byte)); }
+            byte = uart.read();
+        }
+        throw "Timed out waiting for ACK after "+timeout+" ms";
+    }
+    
+    // set the class's internal pointer for the current address in flash
+    // this allows functions outside the class to start at 0 and ignore the flash base address
+    // Input: relative position of flash memory pointer (integer)
+    // Return: None
+    function setMemPtr(addr) {
+        mem_ptr = addr + FLASH_BASE_ADDR;
+    }
+    
+    // get the relative position of the current address in flash
+    // Input: None
+    // Return: relative position of flash memory pointer (integer)
+    function getMemPtr() {
+        return mem_ptr - FLASH_BASE_ADDR;
+    }
+    
+    // get the base address of flash memory
+    // Input: None
+    // Return: flash base address (integer)
+    function getFlashBaseAddr() {
+        return FLASH_BASE_ADDR;
+    }
+    
+    // Reset the STM32 to bring it out of USART bootloader
+    // Releases the boot0 pin, then toggles reset
+    // Input: None
+    // Return: None
+    function reset() {
+        bootloader_active = false;
+        nrst.write(0);
+        // release boot0 so we don't come back up in USART bootloader mode
+        boot0.write(0);
+        imp.sleep(0.010);
+        nrst.write(1);
+    }
+    
+    // Reset the STM32 and bring it up in USART bootloader mode
+    // Applies "pattern1" from "STM32 system memory boot mode” application note (AN2606)
+    // Note that the USARTs available for bootloader vary between STM32 parts
+    // Input: None
+    // Return: None
+    function enterBootloader() {
+        // hold boot0 high, boot1 low, and toggle reset
+        nrst.write(0);
+        boot0.write(1);
+        if (boot1) { boot1.write(0); }
+        nrst.write(1);
+        // bootloader will take a little time to come up
+        imp.sleep(INIT_TIME);
+        // release boot0 so we don't wind up back in the bootloader on our next reset
+        boot0.write(0);
+        // send a command to initialize the bootloader on this UART
+        clearUart();
+        uart.write(CMD_INIT);
+        imp.sleep(UART_CONN_TIME);
+        local response = uart.read() + 0;
+        if (response == ACK) {
+            // USART bootloader successfully configured
+            bootloader_active = true;
+            return;
+        } else {
+            throw "Failed to configure USART Bootloader, got "+response;
+        }
+    }
+    
+    // Send the GET command to the STM32
+    // Gets the bootloader version and a list of supported commands
+    // The imp will store the results of this command to save time if asked again later
+    // Input: None
+    // Return: Result (table)
+    //      bootloader_version (byte)
+    //      supported_cmds (array)
+    function get() {
+        // only request info from the device if we don't already have it
+        if (bootloader_version == null || supported_cmds.len() == 0) {
+            // make sure the bootloader is active; allows us to call this method directly from outside the class
+            if (!bootloader_active) { enterBootloader(); }
+            local result = sendCmd(CMD_GET);
+            bootloader_version = result.readn('b');
+            bootloader_version = format("%d.%d",((bootloader_version & 0xf0) >> 4),(bootloader_version & 0x0f)).tofloat();
+            while (!result.eos()) {
+                local byte  = result.readn('b');
+                supported_cmds.push(byte);
+            }
+        } 
+        return {bootloader_version = bootloader_version, supported_cmds = supported_cmds};
+    }
+    
+    // Send the GET ID command to the STM32
+    // Gets the chip ID from the device
+    // The imp will store the results of this command to save time if asked again later
+    // Input: None
+    // Return: pid (2 bytes)
+    function getId() {
+        // just return the value if we already know it
+        if (pid == null) {
+            // make sure bootloader is active before sending command
+            if (!bootloader_active) { enterBootloader(); }
+            local result = sendCmd(CMD_GETID);
+            pid = result.readn('w');
+        }
+        return format("%04x",pid);
+    }
+    
+    // Read a section of device memory
+    // Input: 
+    //      addr: 4-byte address. Refer to “STM32 microcontroller system memory boot mode” application note (AN2606) for valid addresses
+    //      len: number of bytes to read. 0-255.
+    // Return: 
+    //      memory contents from addr to addr+len (blob)
+    function rdMem(addr, len) {
+        if (!bootloader_active) { enterBootloader(); }
+        clearUart();
+        uart.write(format("%c%c",CMD_RD_MEM, (~CMD_RD_MEM) & 0xff));
+        getAck(TIMEOUT_CMD);
+        // read mem command ACKs, then waits for starting memory address
+        local addrblob = blob(5);
+        addrblob.writen(addr,'i');
+        addrblob.swap4(); // STM32 wants MSB-first. Imp is LSB-first.
+        wrChecksum(addrblob);
+        uart.write(addrblob);
+        if (!getAck(TIMEOUT_CMD)) {
+            throw format("Read Failed for addr %08x (invalid address)",addr);
+        };
+        // STM32 ACKs the address, then waits for the number of bytes to read
+        len = len & 0xff;
+        uart.write(format("%c%c",len, (~len) & 0xff));
+        if (!getAck(TIMEOUT_CMD)) {
+            throw format("Read Failed for %d bytes starting at %08x (read protected)",len,addr);
+        }
+        // blocking read the memory contents
+        local result = readUart(len);
+        return result;
+    }
+    
+    // Execute downloaded or other code by branching to a specified address
+    // When the address is valid and the command is executed: 
+    // - registers of all peripherals used by bootloader are reset to default values
+    // - user application's main stack pointer is initialized
+    // - STM32 jumps to memory location specified + 4
+    // Host should send base address where the application to jump to is programmed
+    // Jump to application only works if the user application sets the vector table correctly to point to application addr
+    // Input: 
+    //      addr: 4-byte address
+    // Return: None
+    function go(addr = null) {
+        if (!bootloader_active) { enterBootloader(); }
+        clearUart()
+        uart.write(format("%c%c",CMD_GO, (~CMD_GO) & 0xff));
+        getAck(TIMEOUT_CMD);
+        // GO command ACKs, then waits for starting address
+        // if no address was given, assume image starts at the beginning of the flash
+        if (addr == null) { addr = FLASH_BASE_ADDR; }
+        local addrblob = blob(5);
+        addrblob.writen(addr,'i');
+        addrblob.swap4(); // STM32 wants MSB-first. Imp is LSB-first.
+        wrChecksum(addrblob);
+        uart.write(addrblob);        
+        if (!getAck(TIMEOUT_CMD)) {
+            throw format("Write Failed for addr %08x (invalid address)",addr);
+        };
+        // system will now exit bootloader and jump into application code
+        bootloader_active = false;
+        setMemPtr(0);
+    }
+    
+    // Write data to any valid memory address (RAM, Flash, Option Byte Area, etc.)
+    // Note: to write to option byte area, address must be base address of this area
+    // Maximum length of block to be written is 256 bytes
+    // Input: 
+    //      addr: 4-byte starting address
+    //      data: data to write (0 to 256 bytes, blob)
+    // Return: None
+    function wrMem(data, addr = null) {
+        if (!bootloader_active) { enterBootloader(); }
+        if (addr == null) { addr = mem_ptr; }
+        data.seek(0,'b');
+    
+        while (!data.eos()) {
+            local bytes_left = data.len() - data.tell();
+            local bytes_to_write = bytes_left > WRSIZE ? WRSIZE : bytes_left;
+            local buffer = data.readblob(bytes_to_write);
+            
+            clearUart();
+            uart.write(format("%c%c",CMD_WR_MEM, (~CMD_WR_MEM) & 0xff));
+            getAck(TIMEOUT_CMD);
+        
+            // read mem command ACKs, then waits for starting memory address
+            local addrblob = blob(5);
+            addrblob.writen(mem_ptr,'i');
+            addrblob.swap4(); // STM32 wants MSB-first. Imp is LSB-first.
+            wrChecksum(addrblob);
+            uart.write(addrblob);
+            if (!getAck(TIMEOUT_CMD)) {
+                throw format("Got NACK on wrMemORY for addr %08x (invalid address)",addr);
+            };
+            
+            // STM32 ACKs the address, then waits for the number of bytes to be written
+            local wrblob = blob(buffer.len() + 2);
+            wrblob.writen(buffer.len() - 1,'b');
+            wrblob.writeblob(buffer);
+            wrChecksum(wrblob);
+            uart.write(wrblob);
+            
+            if(!getAck(TIMEOUT_WRITE)) {
+                throw "Write Failed (NACK)";
+            }
+            mem_ptr += bytes_to_write;
+        }
+    }
+    
+    // Erase flash memory pages
+    // Note that either ERASE or EXT_ERASE are supported, but not both
+    // The STM32F407VG does not support ERASE
+    // Input:
+    //      num_pages (1-byte integer) number of pages to erase
+    //      page_codes (array)
+    // Return: None
+    function eraseMem(num_pages, page_codes) {
+        if (!bootloader_active) { enterBootloader(); }
+        setMemPtr(0);
+        clearUart();
+        uart.write(format("%c%c",CMD_ERASE, (~CMD_ERASE) & 0xff));
+        getAck(TIMEOUT_CMD);
+        local erblob = blob(page_codes.len() + 2);
+        erblob.writen(num_pages & 0xff, 'b');
+        foreach (page in page_codes) {
+            erblob.writen(page & 0xff, 'b');
+        }
+        wrChecksum(erblob);
+        uart.write(wrblob);
+        if (!getAck(TIMEOUT_ERASE)) {
+            throw "Flash Erase Failed (NACK)";
+        }
+    }
+    
+    // Erase all flash memory
+    // Note that either ERASE or EXT_ERASE are supported, but not both
+    // The STM32F407VG does not support ERASE
+    // Input: None
+    // Return: None
+    function eraseGlobalMem() {
+        if (!bootloader_active) { enterBootloader(); }
+        setMemPtr(0);
+        clearUart();
+        uart.write(format("%c%c",CMD_ERASE, (~CMD_ERASE) & 0xff));
+        getAck(TIMEOUT_CMD);
+        uart.write("\xff\x00");
+        if (!getAck(TIMEOUT_ERASE)) {
+            throw "Flash Global Erase Failed (NACK)";
+        }
+    }
+    
+    // Erase flash memory pages using two byte addressing
+    // Note that either ERASE or EXT_ERASE are supported, but not both
+    // The STM32F407VG does not support ERASE
+    // Input: 
+    //      page codes (array of 2-byte integers). List of "sector codes"; leading bytes of memory address to erase.
+    // Return: None
+    function extEraseMem(page_codes) {
+        if (!bootloader_active) { enterBootloader(); }
+        setMemPtr(0)
+        clearUart();
+        uart.write(format("%c%c",CMD_EXT_ERASE, (~CMD_EXT_ERASE) & 0xff));
+        getAck(TIMEOUT_CMD);
+        // 2 bytes for num_pages, 2 bytes per page code, 1 byte for checksum
+        local num_pages = page_codes.len() - 1; // device erases N + 1 pages (grumble)
+        local erblob = blob((2 * num_pages) + 3);
+        erblob.writen((num_pages & 0xff00) >> 8, 'b');
+        erblob.writen(num_pages & 0xff, 'b');
+        foreach (page in page_codes) {
+            erblob.writen((page & 0xff00) >> 8, 'b');
+            erblob.writen(page & 0xff, 'b');
+        }
+        wrChecksum(erblob);
+        uart.write(erblob);
+        if (!getAck(TIMEOUT_ERASE)) {
+            throw "Flash Extended Erase Failed (NACK)";
+        }
+    }
+    
+    // Erase all flash memory for devices that support EXT_ERASE
+    // Input: None
+    // Return: None
+    function massErase() {
+        if (!bootloader_active) { enterBootloader(); }
+        setMemPtr(0);
+        clearUart();
+        uart.write(format("%c%c",CMD_EXT_ERASE, (~CMD_EXT_ERASE) & 0xff));
+        getAck(TIMEOUT_CMD);
+        uart.write("\xff\xff\x00");
+        local byte = uart.read();
+        local start = hardware.millis();
+        if (!getAck(TIMEOUT_ERASE)) {
+            throw "Flash Mass Erase Failed (NACK)";
+        }
+    }
+    
+    // Erase bank 1 flash memory for devices that support EXT_ERASE
+    // Input: None
+    // Return: None
+    function bank1Erase() {
+        if (!bootloader_active) { enterBootloader(); }
+        setMemPtr(0);
+        clearUart();
+        uart.write(format("%c%c",CMD_EXT_ERASE, (~CMD_EXT_ERASE) & 0xff));
+        getAck(TIMEOUT_CMD);
+        uart.write("\xff\xfe\x01");
+        if (!getAck(TIMEOUT_ERASE)) {
+            throw "Flash Bank 1 Erase Failed (NACK)";
+        }
+        setMemPtr(0);
+    }
+    
+    // Erase bank 2 flash memory for devices that support EXT_ERASE
+    // Input: None
+    // Return: None    
+    function bank2Erase() {
+        if (!bootloader_active) { enterBootloader(); }
+        setMemPtr(0);
+        clearUart();
+        uart.write(format("%c%c",CMD_EXT_ERASE, (~CMD_EXT_ERASE) & 0xff));
+        getAck(TIMEOUT_CMD);
+        uart.write("\xff\xfd\x02");
+        if (!getAck(TIMEOUT_ERASE)) {
+            throw "Flash Bank 2 Erase Failed (NACK)";
+        }
+    }
+    
+    // Enable write protection for some or all flash memory sectors
+    // System reset is generated at end of command to apply the new configuration
+    // Input: 
+    //      num_sectors: (1-byte integer) number of sectors to protect
+    //      sector_codes: (1-byte integer array) sector codes of sectors to protect
+    // Return: None
+    function wrProt(num_sectors, sector_codes) {
+        if (!bootloader_active) { enterBootloader(); }
+        clearUart();
+        uart.write(format("%c%c",CMD_WR_PROT, (~CMD_WR_PROT) & 0xff));
+        getAck(TIMEOUT_CMD);
+        local protblob = blob(sector_codes.len() + 2);
+        protblob.writen(num_sectors & 0xff, 'b');
+        foreach (sector in sector_codes) {
+            protblob.writen(sector & 0xff, 'b');
+        }
+        wrChecksum(protblob);
+        uart.write(protblob);
+        if (!getAck(TIMEOUT_PROTECT)) {
+            throw "Write Protect Unprotect Failed (NACK)";
+        }
+        // system will now reset
+        bootloader_active = false;
+        imp.sleep(INIT_TIME);
+        enterBootloader();
+    }
+    
+    // Disable write protection of all flash memory sectors
+    // System reset is generated at end of command to apply the new configuration
+    // Input: None
+    // Return: None
+    function wrUnprot() {
+        if (!bootloader_active) { enterBootloader(); }
+        clearUart();
+        uart.write(format("%c%c",CMD_WR_UNPROT, (~CMD_WR_UNPROT) & 0xff));
+        // first ACK acknowledges command
+        getAck(TIMEOUT_CMD);
+        // second ACK acknowledges completion of write protect enable
+        if (!getAck(TIMEOUT_PROTECT)) {
+            throw "Write Unprotect Failed (NACK)"
+        }
+        // system will now reset
+        bootloader_active = false;
+        imp.sleep(INIT_TIME);
+        enterBootloader();
+        setMemPtr(0);
+    }
+    
+    // Enable flash memory read protection
+    // System reset is generated at end of command to apply the new configuration
+    // Input: None
+    // Return: None
+    function rdProt() {
+        if (!bootloader_active) { enterBootloader(); }
+        clearUart();
+        uart.write(format("%c%c",CMD_RDOUT_PROT, (~CMD_RDOUT_PROT) & 0xff));
+        // first ACK acknowledges command
+        getAck(TIMEOUT_CMD);
+        // second ACK acknowledges completion of write protect enable
+        if (!getAck(TIMEOUT_PROTECT)) {
+            throw "Read Protect Failed (NACK)"
+        }        
+        // system will now reset
+        bootloader_active = false;
+        imp.sleep(SYS_RESET_WAIT);
+        enterBootloader();
+    }
+    
+    // Disable flash memory read protection
+    // System reset is generated at end of command to apply the new configuration
+    // Input: None
+    // Return: None
+    function rdUnprot() {
+        if (!bootloader_active) { enterBootloader(); }
+        clearUart();
+        uart.write(format("%c%c",CMD_RDOUT_UNPROT, (~CMD_RDOUT_UNPROT) & 0xff));
+        // first ACK acknowledges command
+        getAck(TIMEOUT_CMD);
+        // second ACK acknowledges completion of write protect enable
+        if (!getAck(TIMEOUT_PROTECT)) {
+            throw "Read Unprotect Failed (NACK)";
+        }
+        // system will now reset
+        bootloader_active = false;
+        imp.sleep(INIT_TIME);
+        enterBootloader();
+        setMemPtr(0);
+    }
+}
+
+// AGENT CALLBACKS -------------------------------------------------------------
+
+// Allow the agent to request that the device send its bootloader version and supported commands
+agent.on("get_version", function(dummy) {
+    agent.send("set_version",stm32.get());
+    if (stm32.bootloader_active) { stm32.reset(); }
+});
+
+// Allow the agent to request the device's PID
+agent.on("get_id", function(dummy) {
+    agent.send("set_id", stm32.getId());
+    if (stm32.bootloader_active) { stm32.reset(); }
+});
+
+// Allow the agent to reset the stm32 to normal operation
+agent.on("reset", function(dummy) {
+    stm32.reset();
+});
+
+// Allow the agent to erase the full STM32 flash 
+// Useful for device recovery if something goes wrong during testing
+agent.on("erase_stm32", function(dummy) {
+    server.log("Enabling Flash Erase");
+    stm32.wrUnprot();
+    server.log("Erasing All STM32 Flash");
+    stm32.massErase();
+    server.log("Resetting STM32");
+    stm32.reset();
+    server.log("Done");
+});
+
+// Initiate an application firmware update
+agent.on("load_fw", function(len) {
+    server.log(format("FW Update: %d bytes",len));
+    stm32.enterBootloader();
+    local page_codes = [];
+    local erase_through_sector = math.ceil((len * 1.0) / STM32_SECTORSIZE);
+    for (local i = 0; i <= erase_through_sector; i++) {
+        page_codes.push(i);
+    }
+    server.log(format("FW Update: Erasing %d page(s) in Flash (%d bytes each)", erase_through_sector, STM32_SECTORSIZE));
+    stm32.extEraseMem(page_codes);
+    stm32.setMemPtr(0);
+    server.log("FW Update: Starting Download");
+    // send pull request with a dummy value
+    agent.send("pull", 0);
+});
+
+// used to load new application firmware; device sends a block of data to the stm32,
+// then requests another block from the agent with "pull". Agent responds with "push".
+agent.on("push", function(buffer) {
+    stm32.wrMem(buffer);
+    // send pull request with a dummy value
+    agent.send("pull", 0);
+});
+
+// agent sends this event when the device has downloaded the entire new firmware image
+// the device can then reset or send the GO command to start execution
+agent.on("dl_complete", function(dummy) {
+    server.log("FW Update: Complete, Resetting");
+    // can use the GO command to jump right into flash and run
+    stm32.go();
+    // Or, you can just reset the device and it'll come up and run the new application code
+    //stm32.reset();
+    server.log("Running");
+});
+
+// MAIN ------------------------------------------------------------------------
+
+// enable clock to STM32F0
+IMP_ST_CLK.configure(PWM_OUT, 0.000000125, 0.5);
+
+nrst.configure(DIGITAL_OUT);
+nrst.write(0);
+boot0.configure(DIGITAL_OUT);
+boot0.write(0);
+
+//uart.configure(BAUD, 8, PARITY_EVEN, 1, NO_CTSRTS);
+
+stm32 <- Stm32(AUDIO_UART, nrst, boot0);
+
+server.log("Ready");
+server.log(imp.getsoftwareversion());
+
+/*
+server.log("**************************** STARTING SPI TESTS *********************************************");
+hardware.spiflash.enable();
+server.log(format("SPI Chip ID: 0x%x", hardware.spiflash.chipid()));
+
+local samples = blob();
+local read_samples = blob();
+//hardware.spiflash.erasesector(4096);
+
+//samples.writestring("Hello World! ***");
+for (local i=0; i<1024;i++)
+  samples.writen(math.rand(), 'i');
+server.log(format("blob length %d", samples.len()));
+local sec_offs = 4096;
+for (local i=0; i<16;i++)
+  hardware.spiflash.erasesector(sec_offs*(i+1));
+local write_start = hardware.millis();
+for (local i=0; i<16;i++)
+  hardware.spiflash.write(sec_offs*(i+1), samples);
+write_start = hardware.millis() - write_start;
+server.log(format("Writing 128kB to flash took %d ms", write_start));
+//hardware.spiflash.write(4096, samples);
+//read_samples = hardware.spiflash.read(4096, 15);
+//server.log(format("Read back: %s", read_samples.tostring()));
+hardware.spiflash.disable();
+*/
