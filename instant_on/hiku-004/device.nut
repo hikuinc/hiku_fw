@@ -700,6 +700,9 @@ for(local i=0; i<15; i++)
     BTN_N.configure(DIGITAL_OUT,1);
     BTN_N.configure(DIGITAL_IN);
     pressed += BTN_N.read();
+    // clear interrupts
+    CPU_INT_RESET.write(0);
+    CPU_INT_RESET.write(1);	
     imp.sleep(0.005);
 }
 
@@ -1130,19 +1133,19 @@ function handlePin1Int()
         server.log("Charger Removed")
     }
     
-    /*
     if (!BTN_N.read())
     {
-        //server.log("Button Interrupt Fired");
-        gButtonState = ButtonState.BUTTON_DOWN;
-        //imp.wakeup(0.001,startScanRecord);
-        startScanRecord();
+        if (gButtonState == ButtonState.BUTTON_DOWN)
+        {
+            gButtonState == ButtonState.BUTTON_UP;
+            stopScanRecord();
+        }
+
     }
     else
     {
         //server.log("Button Interrupt did not fire");
     }
-    */
     
     
     if (ACCEL_INT.read())
@@ -1628,6 +1631,10 @@ class PushButton
         if (gButtonState == ButtonState.BUTTON_DOWN)
         {
             updateDeviceState(DeviceState.SCAN_RECORD);
+            if (BTN_N.read())
+            {
+                imp.wakeup(0.0001, buttonCallback.bindenv(this));
+            }
         }
         
         pin = btnPin;
