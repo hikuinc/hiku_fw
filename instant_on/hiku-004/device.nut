@@ -21,7 +21,7 @@ local is_hiku004_rev10 = (hardware.pinQ.read() == 1);
 hardware.pinQ.configure(DIGITAL_IN_PULLDOWN);
 is_hiku004_rev10 = is_hiku004_rev10 && (hardware.pinQ.read() == 0);
 
-is_hiku004_rev10 = false;
+//is_hiku004_rev10 = false;
 
 if (is_hiku004) {
     CPU_INT             <- hardware.pinW;
@@ -125,25 +125,25 @@ const AUDIO_MEM_SIZE = 0x10000;
 const AUDIO_MEM_END_ADDR = 0x410000;
 
 packet_state <- {
-				 state=PS_OUT_OF_SYNC,
-				 char_string = "",
-				 type=0,
-				 pay_len=0
+                 state=PS_OUT_OF_SYNC,
+                 char_string = "",
+                 type=0,
+                 pay_len=0
                 }
 
 /*
 gInitTime <- { 
-        	overall = 0, 
-				piezo = 0, 
-				button = 0, 
-				accel = 0,
-				scanner = 0,
-				charger = 0,
-				inthandler = 0,
-				init_stage1 = 0,
-				init_stage2 = 0,
-				init_unused = 0,
-			}; 
+            overall = 0, 
+                piezo = 0, 
+                button = 0, 
+                accel = 0,
+                scanner = 0,
+                charger = 0,
+                inthandler = 0,
+                init_stage1 = 0,
+                init_stage2 = 0,
+                init_unused = 0,
+            }; 
 */
 local connection_available = server.isconnected();
 
@@ -153,7 +153,7 @@ const BOOT_UP_REASON_COLD_BOOT= 0x0000h;
 const BOOT_UP_REASON_ACCEL    =    1 << 0; // 0x0001h
 const BOOT_UP_REASON_CHRG_ST  =    1 << 1; // 0x0002h
 const BOOT_UP_REASON_BTUTTON  =    1 << 2; // 0x0004h
-const BOOT_UP_REASON_TOUCH	  =    1 << 3; // 0x0008h
+const BOOT_UP_REASON_TOUCH    =    1 << 3; // 0x0008h
 const BOOT_UP_REASON_SW_VCC   =    1 << 4; // 0x0010h
 const BOOT_UP_REASON_SCAN_TRIG=    1 << 5; // 0x0020h
 const BOOT_UP_REASON_SCAN_RST =    1 << 6; // 0x0040h
@@ -163,7 +163,7 @@ const IMP_LOG_ENABLED = 1;
 const IMP_SERVER_LOG_ENABLED = 0;
 
 // set this flag to disable the UART logging
-const DEBUG_UART_ENABLED = 1;
+const DEBUG_UART_ENABLED = 0;
 debug_uart <- hardware.uartQRPW;
 if (DEBUG_UART_ENABLED)
 {
@@ -178,32 +178,32 @@ if (DEBUG_UART_ENABLED)
 if (!("nv" in getroottable()))
 {
     nv <- { 
-        	sleep_count = 0, 
-    	    setup_required=true, 
-    	    setup_count = 0,
-    	    disconnect_reason=0, 
-    	    sleep_not_allowed=false,
-    	    boot_up_reason = 0,
-    	    voltage_level = 0.0,
-    	    sleep_duration = 0.0,
-    	    stm32_sw_uptodate = false
-    	  };
+            sleep_count = 0, 
+            setup_required=true, 
+            setup_count = 0,
+            disconnect_reason=0, 
+            sleep_not_allowed=false,
+            boot_up_reason = 0,
+            voltage_level = 0.0,
+            sleep_duration = 0.0,
+            stm32_sw_uptodate = false
+          };
 }
 
 if(!("setup" in getroottable()))
 {
     setup <- {
                  ssid="",
-				 pass="",
-				 barcode_scanned=false,
-				 time=0.0,
+                 pass="",
+                 barcode_scanned=false,
+                 time=0.0,
              }
 }
 
 // Get the Sleep Duration early on
 if( nv.sleep_count != 0 )
 {
-	nv.sleep_duration = time() - nv.sleep_duration;
+    nv.sleep_duration = time() - nv.sleep_duration;
 }
 
 // Consts and enums
@@ -288,6 +288,9 @@ if ("spiflash" in hardware)
 
 gPendingAudio <- 0;
 gPendingBarcode <- null;
+gPendingBarcodeTimerOne <- null;
+gPendingBarcodeTimerTwo <- null;
+gPendingBarcodeTimerThree <- null;
 gStopScanRecord <- false;
 gstm32UpdateOnceFlag <-0;
 gAudioUartCallBackFired <-false;
@@ -333,7 +336,7 @@ function audioUartCallback()
     local buf_ptr = 0;
     local string_len;
     local log_buf = false;
-	 local packet_complete;
+     local packet_complete;
     
     local flags = AUDIO_UART.flags();
     local flag = 0x0;
@@ -638,9 +641,9 @@ function startScanRecord()
 
 function getUTCTime()
 {
-	local str ="";
-	//[dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss.SSSSSS"];
-	local d=date();
+    local str ="";
+    //[dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss.SSSSSS"];
+    local d=date();
     str = format("%04d-%02d-%02d %02d:%02d:%02d.000000", d.year, d.month+1, d.day, d.hour, d.min, d.sec);
     return str;
 }
@@ -652,7 +655,7 @@ function agentSend(key, value)
         if(agent.send(key,value) != 0)
         {
            log(format("agentSend: failed for %s",key));
-    	}
+        }
     }
 }
 
@@ -663,24 +666,24 @@ function log(str)
     
     // by default this should be disabled, iff we are debugging locally
     if (DEBUG_UART_ENABLED)
-	{
-	   debug_uart.write("["+getUTCTime()+"] "+str+"\r\n");
-	}
-	
-	// Send the logs to server.log iff the flag is enabled
-	// by default we should disable it and send it over to agent
-	// so the logs are captured by hiku cloud
-	if (IMP_LOG_ENABLED)
-	{
-    	if (IMP_SERVER_LOG_ENABLED)
-    	{
-    	   server.log(str);
-    	}
-    	else
-    	{
-    	   agentSend("deviceLog", str);
-    	}
-	}
+    {
+       debug_uart.write("["+getUTCTime()+"] "+str+"\r\n");
+    }
+    
+    // Send the logs to server.log iff the flag is enabled
+    // by default we should disable it and send it over to agent
+    // so the logs are captured by hiku cloud
+    if (IMP_LOG_ENABLED)
+    {
+        if (IMP_SERVER_LOG_ENABLED)
+        {
+           server.log(str);
+        }
+        else
+        {
+           agentSend("deviceLog", str);
+        }
+    }
 }
 
 // --- Logging End ---
@@ -702,7 +705,7 @@ for(local i=0; i<15; i++)
     pressed += BTN_N.read();
     // clear interrupts
     CPU_INT_RESET.write(0);
-    CPU_INT_RESET.write(1);	
+    CPU_INT_RESET.write(1); 
     imp.sleep(0.005);
 }
 
@@ -786,8 +789,8 @@ class Piezo
     pin = null;
     
     page_device = false;
-	pageToneIdx=0;
-		
+    pageToneIdx=0;
+        
     // In Squirrel, if you initialize a member array or table, all
     // instances will point to the same one.  So init in the constructor.
     tonesParamsList = {};
@@ -848,10 +851,10 @@ class Piezo
     //**********************************************************
     constructor(hwPin)
     {
-    	//gInitTime.piezo = hardware.millis();
+        //gInitTime.piezo = hardware.millis();
         pin = hwPin;
         
-	    disable();
+        disable();
 
         tonesParamsList = {
             "pending": [[pendingTone]],
@@ -873,9 +876,9 @@ class Piezo
     
     function disable()
     {
-	    pin.write(0);
-    	pin.configure(DIGITAL_OUT);
-	    pin.write(0);
+        pin.write(0);
+        pin.configure(DIGITAL_OUT);
+        pin.write(0);
     }
     
     // utility futimeoutnction to validate that the tone is present
@@ -903,26 +906,26 @@ class Piezo
     function playSound(tone = "success", async = true) 
     {
 
-		if( !validate_tone( tone ) )
-		{
-			return;
-		}
-		
-		log(format("tone queue: %s",tone));
-		
-	    server.log("IN THE ZONE");    
-	
+        if( !validate_tone( tone ) )
+        {
+            return;
+        }
+        
+        log(format("tone queue: %s",tone));
+        
+        server.log("IN THE ZONE");    
+    
         local toneData = tonesParamsList[tone][0];
-	    local bufferlen = toneData[0].len();
+        local bufferlen = toneData[0].len();
         
         server.log("Tone = " + tone)
-	    server.log(format("buffer length to play = %u", bufferlen));
-	    
-	    //initialize to size of tone and load it into gtoneBuffer
-	    gtoneBuffer = blob(bufferlen);
-	    writeToneBuffer(gtoneBuffer, toneData[0].slice(0));
-	    
-	    if (gDACActive != 1 && tone != "unknown-upc"){
+        server.log(format("buffer length to play = %u", bufferlen));
+        
+        //initialize to size of tone and load it into gtoneBuffer
+        gtoneBuffer = blob(bufferlen);
+        writeToneBuffer(gtoneBuffer, toneData[0].slice(0));
+        
+        if (gDACActive != 1 && tone != "unknown-upc"){
             
             local toneBuffer1 = blob();
             local toneBuffer2 = blob();
@@ -932,12 +935,12 @@ class Piezo
             toneBuffer2.writen(0xFF, 'b');
             toneBuffer3.writen(0xFF, 'b');
             
-	        hardware.fixedfrequencydac.configure(hardware.pinC, 32000, [toneBuffer1, toneBuffer2, toneBuffer3], bufferEmpty, AUDIO | A_LAW_DECOMPRESS);
-	        server.log("Going to start DAC");
-	        hardware.fixedfrequencydac.start();
-	        gDACActive = 1;
-	        
-	    } else if (gDACActive!=1 && tone == "unknown-upc"){
+            hardware.fixedfrequencydac.configure(hardware.pinC, 32000, [toneBuffer1, toneBuffer2, toneBuffer3], bufferEmpty, AUDIO | A_LAW_DECOMPRESS);
+            server.log("Going to start DAC");
+            hardware.fixedfrequencydac.start();
+            gDACActive = 1;
+            
+        } else if (gDACActive!=1 && tone == "unknown-upc"){
 
             local toneBuffer1 = blob();
             local toneBuffer2 = blob();
@@ -946,17 +949,17 @@ class Piezo
             toneBuffer1 = gtoneBuffer;
             toneBuffer2 = gtoneBuffer;
             toneBuffer3 = gtoneBuffer;
-	        
-	        hardware.fixedfrequencydac.configure(hardware.pinC, 32000, [toneBuffer1, toneBuffer2, toneBuffer3], bufferEmpty, AUDIO | A_LAW_DECOMPRESS);
-	        server.log("unknown - upc should play 3 times.");
-	        hardware.fixedfrequencydac.start();
-	        gDACActive = 1;		        
-	        
-	    } else {
-	        //if DAC is busy, this indicates to callback that we need to add a buffer to the queue
-	        gtoneUpdateFlag = 1;
-	    }
-		    
+            
+            hardware.fixedfrequencydac.configure(hardware.pinC, 32000, [toneBuffer1, toneBuffer2, toneBuffer3], bufferEmpty, AUDIO | A_LAW_DECOMPRESS);
+            server.log("unknown - upc should play 3 times.");
+            hardware.fixedfrequencydac.start();
+            gDACActive = 1;             
+            
+        } else {
+            //if DAC is busy, this indicates to callback that we need to add a buffer to the queue
+            gtoneUpdateFlag = 1;
+        }
+            
     }
     
     //DMA functions    
@@ -1068,8 +1071,8 @@ function stopScanRecord()
     
     if (gPendingBarcode)
     {
-        hwPiezo.playSound("success-local");
-        imp.wakeup(0.5, handlePendingBarcode);
+        //hwPiezo.playSound("success-local");
+        gPendingBarcodeTimerOne = imp.wakeup(0.5, handlePendingBarcode);
     }
     else if(gPendingAudio)
     {
@@ -1077,7 +1080,7 @@ function stopScanRecord()
         hwPiezo.playSound("success-local");
         imp.wakeup(0.5, handlePendingAudio);
     }
-	else
+    else
     {
         //imp.onidle(sendLastBuffer);
         agentSend("button","Released");
@@ -1117,8 +1120,8 @@ function handlePin1Int()
     //log(format("handlePin1Int: entry time=%d ms, hardware.pin1=%d", hardware.millis(),pinState));
     if(0 == pinState)
     {
-    	log(format("handlePin1Int: fallEdge time=%d ms, hardware.pin1=%d", hardware.millis(),pinState));
-    	return;
+        log(format("handlePin1Int: fallEdge time=%d ms, hardware.pin1=%d", hardware.millis(),pinState));
+        return;
     }
     
     // HACK replace ACOK_N.read() for charging start/stop with I2C call to LP3923 or monitoring of charging current (IMON)
@@ -1182,46 +1185,46 @@ function determineSetupBarcode(barcode)
    // local patternString = format("\b%s\b",SETUP_BARCODE_PREFIX);
     local pattern = regexp(@"\b4H1KU");
     local res = pattern.search(barcode);
-	local tempBarcode = barcode;
-	log(format("Barcode to Match: %s",barcode));
-	log("result: "+res);
-	// result is null which means its not the setup barcode
-	if( res == null)
-	{
-	   log("regex didn't fint a setup barcode");
-	   return false;
-	}
-	
-	// At this time we have a barcode that has either an ssid or a password
-	// decode it by stripping the first character which identifies an ssid if its 5
-	// identifies a password if its a 6
-	
-	local barcodeType = tempBarcode.slice(res.end, res.end+1);
-	local setupCode = tempBarcode.slice(res.end+1, tempBarcode.len());
-	
-	if(barcodeType == "5")
-	{
+    local tempBarcode = barcode;
+    log(format("Barcode to Match: %s",barcode));
+    log("result: "+res);
+    // result is null which means its not the setup barcode
+    if( res == null)
+    {
+       log("regex didn't fint a setup barcode");
+       return false;
+    }
+    
+    // At this time we have a barcode that has either an ssid or a password
+    // decode it by stripping the first character which identifies an ssid if its 5
+    // identifies a password if its a 6
+    
+    local barcodeType = tempBarcode.slice(res.end, res.end+1);
+    local setupCode = tempBarcode.slice(res.end+1, tempBarcode.len());
+    
+    if(barcodeType == "5")
+    {
         // This is the SSID
-		setup.ssid = setupCode;
-	}
-	else if( barcodeType == "6")
-	{
+        setup.ssid = setupCode;
+    }
+    else if( barcodeType == "6")
+    {
         // This is the password
-		setup.pass = setupCode;
-	}
-	
-	
-	log(" setupCode: "+setupCode+" type: "+barcodeType);
-	
-	if(setup.ssid !="" && setup.pass !="")
-	{
+        setup.pass = setupCode;
+    }
+    
+    
+    log(" setupCode: "+setupCode+" type: "+barcodeType);
+    
+    if(setup.ssid !="" && setup.pass !="")
+    {
        imp.wakeup(0.1 function(){
-	        ChangeWifi(setup.ssid, setup.pass);
+            ChangeWifi(setup.ssid, setup.pass);
             setup.ssid = setup.pass = "";
-	   });
-	}
-	
-	return true;
+       });
+    }
+    
+    return true;
 }
 
 function ChangeWifi(ssid, password) {
@@ -1245,14 +1248,14 @@ function ChangeWifi(ssid, password) {
 
 class ConnectionManager
 {
-	_connCb = array(5);
-	numCb = 0;
-	_retryTimer = null;
-	
-	constructor()
-	{
-	}
-	
+    _connCb = array(5);
+    numCb = 0;
+    _retryTimer = null;
+    
+    constructor()
+    {
+    }
+    
    function connect(callback, timeout)
    {
        // Check if we're connected before calling server.connect()
@@ -1260,121 +1263,121 @@ class ConnectionManager
   
       if (server.isconnected()) 
       {
-	     log("connect called, but we are already connected");
-	     gIsConnecting = false;
-	     // We're already connected, so execute the callback
-	     callback(SERVER_CONNECTED);
+         log("connect called, but we are already connected");
+         gIsConnecting = false;
+         // We're already connected, so execute the callback
+         callback(SERVER_CONNECTED);
       } 
       else 
       {
-	     // Otherwise, proceed as normal
+         // Otherwise, proceed as normal
          log("connect called!!");
          imp.wakeup(0.001, function(){
             server.connect(callback, timeout); 
          });
       }
-    }	
-	
-	function registerCallback(func)
-	{
-		if( numCb > _connCb.len() )
-		{
-			_connCb.resize(numCb+2);
-		}
-		
-		_connCb[numCb++] = func;
-	}
-	
-	function init_connections()
-	{
-		//hwPiezo.playSound("no-connection");
-		server.onunexpecteddisconnect(onUnexpectedDisconnect.bindenv(this));
-		server.onshutdown(onShutdown.bindenv(this));
-		//connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME)
-		tryToConnect();
-	}
-	
-	function notifyConnectionStatus(status)
-	{
-		local i = 0;
-		
-		log(format("Notifying Connection Status: %d",status));
-		
-		for( i = 0; i < numCb; i++ )
-		{
-			_connCb[i](status);
-		}
-	}
-	
+    }   
+    
+    function registerCallback(func)
+    {
+        if( numCb > _connCb.len() )
+        {
+            _connCb.resize(numCb+2);
+        }
+        
+        _connCb[numCb++] = func;
+    }
+    
+    function init_connections()
+    {
+        //hwPiezo.playSound("no-connection");
+        server.onunexpecteddisconnect(onUnexpectedDisconnect.bindenv(this));
+        server.onshutdown(onShutdown.bindenv(this));
+        //connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME)
+        tryToConnect();
+    }
+    
+    function notifyConnectionStatus(status)
+    {
+        local i = 0;
+        
+        log(format("Notifying Connection Status: %d",status));
+        
+        for( i = 0; i < numCb; i++ )
+        {
+            _connCb[i](status);
+        }
+    }
+    
 
-	//********************************************************************
-	// This is to make sure that we wake up and start trying to connect on the background
-	// only time we would get into onConnected is when we have a connection established
-	// otherwise its going to beep left and right which is nasty!
-	function onConnectedResume(status)
-	{
-		if( status != SERVER_CONNECTED )
-		{
-			nv.disconnect_reason = status;
-			//imp.wakeup(2, tryToConnect.bindenv(this) );
-			//hwPiezo.playSound("no-connection");
-			connection_available = false;
-		}
-		else
-		{
-			connection_available = true;
-			gIsConnecting = false;
-			notifyConnectionStatus(status);
-		}
-	}
+    //********************************************************************
+    // This is to make sure that we wake up and start trying to connect on the background
+    // only time we would get into onConnected is when we have a connection established
+    // otherwise its going to beep left and right which is nasty!
+    function onConnectedResume(status)
+    {
+        if( status != SERVER_CONNECTED )
+        {
+            nv.disconnect_reason = status;
+            //imp.wakeup(2, tryToConnect.bindenv(this) );
+            //hwPiezo.playSound("no-connection");
+            connection_available = false;
+        }
+        else
+        {
+            connection_available = true;
+            gIsConnecting = false;
+            notifyConnectionStatus(status);
+        }
+    }
 
-	function tryToConnect()
-	{
-	        if (_retryTimer )
-		{
-		  imp.cancelwakeup(_retryTimer);
-		}
-		if (!server.isconnected() ) {
-			gIsConnecting = true;
-			log("Trying to reconnect!!");
-			connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
-			_retryTimer = imp.wakeup(CONNECT_RETRY_TIME+2, tryToConnect.bindenv(this));
-		}
-		else
-		{
-		    log("Trying to reconnect called but fell in the else block");
-		    onConnectedResume(SERVER_CONNECTED);
-		}
-	}
+    function tryToConnect()
+    {
+            if (_retryTimer )
+        {
+          imp.cancelwakeup(_retryTimer);
+        }
+        if (!server.isconnected() ) {
+            gIsConnecting = true;
+            log("Trying to reconnect!!");
+            connect(onConnectedResume.bindenv(this), CONNECT_RETRY_TIME);
+            _retryTimer = imp.wakeup(CONNECT_RETRY_TIME+2, tryToConnect.bindenv(this));
+        }
+        else
+        {
+            log("Trying to reconnect called but fell in the else block");
+            onConnectedResume(SERVER_CONNECTED);
+        }
+    }
 
-	function onUnexpectedDisconnect(status)
-	{
-		log(format("onUnexpectedDisconnect: %d",status));
-		nv.disconnect_reason = status;
-		connection_available = false;
-		notifyConnectionStatus(status);
-		if( !gIsConnecting )
-		{
-		      imp.wakeup(0.5, tryToConnect.bindenv(this));
-   		}
-	}
-	
+    function onUnexpectedDisconnect(status)
+    {
+        log(format("onUnexpectedDisconnect: %d",status));
+        nv.disconnect_reason = status;
+        connection_available = false;
+        notifyConnectionStatus(status);
+        if( !gIsConnecting )
+        {
+              imp.wakeup(0.5, tryToConnect.bindenv(this));
+        }
+    }
+    
 
-	function onShutdown(status)
-	{
-		agentSend("shutdownRequestReason", status);
-		if((status == SHUTDOWN_NEWSQUIRREL) || (status == SHUTDOWN_NEWFIRMWARE))
-		{
-			hwPiezo.playSound("software-update");
-			imp.wakeup(2, function(){
-				server.restart();
-			});
-		}
-		else
-		{
-			server.restart();
-		}
-	}		
+    function onShutdown(status)
+    {
+        agentSend("shutdownRequestReason", status);
+        if((status == SHUTDOWN_NEWSQUIRREL) || (status == SHUTDOWN_NEWFIRMWARE))
+        {
+            hwPiezo.playSound("software-update");
+            imp.wakeup(2, function(){
+                server.restart();
+            });
+        }
+        else
+        {
+            server.restart();
+        }
+    }       
 }
 
 //======================================================================
@@ -1394,7 +1397,7 @@ class CancellableTimer
 {
     actionFn = null; // Function to call when timer expires
     _timerHandle = null;
-	duration = 0.0;
+    duration = 0.0;
 
     //**********************************************************
     // Duration in seconds, and function to execute
@@ -1406,45 +1409,45 @@ class CancellableTimer
 
     //**********************************************************
     // Start the timer
-	// If the _timerHandle is null then no timer pending for this object
-	// just create a timer and set it
+    // If the _timerHandle is null then no timer pending for this object
+    // just create a timer and set it
     function enable() 
     {
         log("Timer enable called");
-		
-		if(_timerHandle)
-		{
-		  disable();
-		}
-		_timerHandle = imp.wakeup(duration,_timerCallback.bindenv(this));
+        
+        if(_timerHandle)
+        {
+          disable();
+        }
+        _timerHandle = imp.wakeup(duration,_timerCallback.bindenv(this));
     }
 
     //**********************************************************
     // Stop the timer
-	// If the timer handle is not null then we have a pending timer, just cancel it
-	// and set the handle to null
+    // If the timer handle is not null then we have a pending timer, just cancel it
+    // and set the handle to null
     function disable() 
     {
         log("Timer disable called!");
         // if the timerHandle is not null, then the timer is enabled and active
-		if(_timerHandle)
-		{
-		  //just cancel the wakeup timer and set the handle to null
-		  imp.cancelwakeup(_timerHandle);
-		  _timerHandle = null;
-		  log("Timer canceled wakeup!");
-		}
+        if(_timerHandle)
+        {
+          //just cancel the wakeup timer and set the handle to null
+          imp.cancelwakeup(_timerHandle);
+          _timerHandle = null;
+          log("Timer canceled wakeup!");
+        }
     }
     
     //**********************************************************
     // Set new time for the timer
-	// Expectation is that if an existing timer is pending
-	// then the it needs to be disabled prior to setting the duration
-	// Pre-Condition: timer is not running
-	// Post-Condition: Timer is enabled
+    // Expectation is that if an existing timer is pending
+    // then the it needs to be disabled prior to setting the duration
+    // Pre-Condition: timer is not running
+    // Post-Condition: Timer is enabled
     function setDuration(secs) 
     {
-		duration = secs;
+        duration = secs;
     }
         
 
@@ -1453,8 +1456,8 @@ class CancellableTimer
     function _timerCallback()
     {
         log("timer fired!");
-		actionFn();
-		_timerHandle = null;
+        actionFn();
+        _timerHandle = null;
     }
 }
 
@@ -1494,8 +1497,8 @@ class I2cDevice
     
     function disable()
     {
-    	SCL_OUT.configure(DIGITAL_IN_PULLUP);
-    	SDA_OUT.configure(DIGITAL_IN_PULLUP);
+        SCL_OUT.configure(DIGITAL_IN_PULLUP);
+        SDA_OUT.configure(DIGITAL_IN_PULLUP);
     }
 
     // Write a byte
@@ -1503,7 +1506,7 @@ class I2cDevice
     {
         if( i2cPort.write(i2cAddress, format("%c%c", register, data)) != 0)
         {
-        	log(format("Error: I2C write failure on register=%04x",register));
+            log(format("Error: I2C write failure on register=%04x",register));
         }
     }
 
@@ -1575,7 +1578,7 @@ function updateDeviceState(newState)
     {
         case DeviceState.IDLE:
             assert(oldState == DeviceState.BUTTON_RELEASED ||
-            	   oldState == DeviceState.PRE_SLEEP ||
+                   oldState == DeviceState.PRE_SLEEP ||
                    oldState == DeviceState.IDLE ||
                    oldState == null);
             break;
@@ -1595,9 +1598,9 @@ function updateDeviceState(newState)
                    oldState == DeviceState.BUTTON_TIMEOUT);
             break;
         case DeviceState.PRE_SLEEP:
-        	assert( oldState == DeviceState.IDLE ||
+            assert( oldState == DeviceState.IDLE ||
                     oldState == DeviceState.PRE_SLEEP);
-        	break;
+            break;
         default:
             assert(false);
             break;
@@ -1625,8 +1628,8 @@ class PushButton
 
     constructor(btnPin)
     {   
-		//gInitTime.button = hardware.millis();
-		
+        //gInitTime.button = hardware.millis();
+        
         // Save assignments
         if (gButtonState == ButtonState.BUTTON_DOWN)
         {
@@ -1639,7 +1642,7 @@ class PushButton
         
         pin = btnPin;
         // Set event handler for IRQ
-	    BTN_N.configure(DIGITAL_IN, buttonCallback.bindenv(this));
+        BTN_N.configure(DIGITAL_IN, buttonCallback.bindenv(this));
         connMgr.registerCallback(connectionStatusCb.bindenv(this));
         blinkTimer = CancellableTimer(BLINK_UP_TIME, this.cancelBlinkUpTimer.bindenv(this));
         
@@ -1648,19 +1651,19 @@ class PushButton
     
     function connectionStatusCb(status)
     {
-		connection = (status == SERVER_CONNECTED);
-    	if((connection) && ( gButtonState == ButtonState.BUTTON_DOWN ) )
-    	{
+        connection = (status == SERVER_CONNECTED);
+        if((connection) && ( gButtonState == ButtonState.BUTTON_DOWN ) )
+        {
             //updateDeviceState(DeviceState.SCAN_RECORD);
             //gButtonState = ButtonState.BUTTON_DOWN;
             //log("Button state change: DOWN");
-            //startScanRecord();    		
-    	}
+            //startScanRecord();            
+        }
     }
 
     function readState()
     {
-	    return BTN_N.read() 
+        return BTN_N.read() 
     }
 
     //**********************************************************************
@@ -1687,20 +1690,20 @@ class PushButton
         local curr_time, delta;
         
 
-		imp.sleep(0.020);
+        imp.sleep(0.020);
         state += readState();
 
-		log("buttonCallBack entry time: " + hardware.millis() + "ms");
+        log("buttonCallBack entry time: " + hardware.millis() + "ms");
 
         // Handle the button state transition
         switch(state) 
         {
             case 0:
-            	/*
+                /*
                 // Button in held state
                 if( hwPiezo.isPaging() )
                 {
-                	hwPiezo.stopPageTone();
+                    hwPiezo.stopPageTone();
                 }
                 */
                 
@@ -1709,20 +1712,20 @@ class PushButton
                 // blink-up state with BLINK_UP_BUTTON_COUNT quick button presses
                 curr_time = hardware.millis();
                 local prv_time = previousTime;
-        		previousTime = curr_time;
-        		delta = curr_time - prv_time;
+                previousTime = curr_time;
+                delta = curr_time - prv_time;
                 buttonPressCount = ( delta <= 300 )?++buttonPressCount:0;
                 
                 if ((BLINK_UP_BUTTON_COUNT-1 == buttonPressCount))
                 {
-                	blinkUpDevice_internal(true,true);
-                	buttonPressCount = 0;
-                	return;
+                    blinkUpDevice_internal(true,true);
+                    buttonPressCount = 0;
+                    return;
                 }
                 
                 if( delta <= 300 )
                 {
-                	return;
+                    return;
                 }
                 
                 if (gPendingAudio || gPendingBarcode)
@@ -1736,32 +1739,32 @@ class PushButton
                 if (gButtonState == ButtonState.BUTTON_UP)
                 {
                     /*
-                 	if(!connection)
-                	{
-                		// Here we play the no connection sound and return from the state machine
-                		if( !nv.setup_required )
-                		{
-                			hwPiezo.playSound("no-connection");
-                		}
-                		//buttonState = ButtonState.BUTTON_DOWN;
-                		return;
-                	}
-                	*/
-		    //agentSend("button","Pressed");
+                    if(!connection)
+                    {
+                        // Here we play the no connection sound and return from the state machine
+                        if( !nv.setup_required )
+                        {
+                            hwPiezo.playSound("no-connection");
+                        }
+                        //buttonState = ButtonState.BUTTON_DOWN;
+                        return;
+                    }
+                    */
+            //agentSend("button","Pressed");
                     updateDeviceState(DeviceState.SCAN_RECORD);
                     gButtonState = ButtonState.BUTTON_DOWN;
                     //log("Button state change: DOWN");
                     startScanRecord();
                 }
-        		else
-        		{
-        		    gButtonState = ButtonState.BUTTON_DOWN;
-        		}
+                else
+                {
+                    gButtonState = ButtonState.BUTTON_DOWN;
+                }
                 
                 break;
             case 2:
 
-				if (gAudioUartCallBackFired == true){
+                if (gAudioUartCallBackFired == true){
 
                     // Button in released state
                     if (gButtonState == ButtonState.BUTTON_DOWN)
@@ -1799,9 +1802,9 @@ class PushButton
                             }
                             
                         }
-    		            // No more work to do, so go to idle
-                        updateDeviceState(DeviceState.IDLE);	        
-				    
+                        // No more work to do, so go to idle
+                        updateDeviceState(DeviceState.IDLE);            
+                    
                     } 
                     
                 } else {
@@ -1828,36 +1831,36 @@ class PushButton
         }
         //log("buttonCallBack exit time: " + hardware.millis() + "ms");
     }
-	
-	function blinkUpDevice_internal(blink=false, sound=false)
-	{
-    	if( blink )
-    	{
-		    if(sound)
-			{
-			    hwPiezo.playSound("blink-up-enabled");
-			}
-    		//Enable the 5 minute Timer here
-    		// Ensure that we only enable it for the setup_required case
-    		if( !server.isconnected())
-    		{
-    			nv.setup_required = true;
-    			nv.sleep_not_allowed = true;
-		        blinkTimer.disable();
-    			blinkTimer.enable();
-    		}
-    	}	  
-	}
+    
+    function blinkUpDevice_internal(blink=false, sound=false)
+    {
+        if( blink )
+        {
+            if(sound)
+            {
+                hwPiezo.playSound("blink-up-enabled");
+            }
+            //Enable the 5 minute Timer here
+            // Ensure that we only enable it for the setup_required case
+            if( !server.isconnected())
+            {
+                nv.setup_required = true;
+                nv.sleep_not_allowed = true;
+                blinkTimer.disable();
+                blinkTimer.enable();
+            }
+        }     
+    }
     
     function blinkUpDevice(blink=false)
     {
         blinkUpDevice_internal(blink,false);
-    	log(format("Blink-up: %s.",blink?"enabled":"disabled"));
+        log(format("Blink-up: %s.",blink?"enabled":"disabled"));
     }
     
     function cancelBlinkUpTimer()
     {
-    	nv.sleep_not_allowed = false;
+        nv.sleep_not_allowed = false;
     }
 }
 
@@ -1870,60 +1873,60 @@ class ChargeStatus
 
     constructor(chargePin)
     {
-	    ACOK_N.configure(DIGITAL_IN, chargerDetectionCB.bindenv(this));
-	    IMON.configure(ANALOG_IN);
-	
-	    BATT_VOLT_MEASURE.configure(ANALOG_IN);
+        ACOK_N.configure(DIGITAL_IN, chargerDetectionCB.bindenv(this));
+        IMON.configure(ANALOG_IN);
+    
+        BATT_VOLT_MEASURE.configure(ANALOG_IN);
 
-	    chargerCallback(); // this will update the current state right away
+        chargerCallback(); // this will update the current state right away
         imp.wakeup(5, batteryMeasurement.bindenv(this));
     }
     
     function isCharging()
     {
-	    local charge_detect_n;
-	    // Register charging if USB voltage is present (ACOK_N),
-	    // register charging stop if either USB voltage is disconnected or the measured charging current is below CHARGE_CURRENT_MIN
-	    charge_detect_n = previous_state ? ACOK_N.read() || (CHARGE_CURRENT_FACTOR*IMON.read() < CHARGE_CURRENT_MIN) : ACOK_N.read();
-	    server.log(format("Current: %06fmA, %d, %d", CHARGE_CURRENT_FACTOR*IMON.read(), charge_detect_n ? 0 : 1, previous_state ? 1 : 0));
+        local charge_detect_n;
+        // Register charging if USB voltage is present (ACOK_N),
+        // register charging stop if either USB voltage is disconnected or the measured charging current is below CHARGE_CURRENT_MIN
+        charge_detect_n = previous_state ? ACOK_N.read() || (CHARGE_CURRENT_FACTOR*IMON.read() < CHARGE_CURRENT_MIN) : ACOK_N.read();
+        server.log(format("Current: %06fmA, %d, %d", CHARGE_CURRENT_FACTOR*IMON.read(), charge_detect_n ? 0 : 1, previous_state ? 1 : 0));
 
         return (charge_detect_n ? false : true);
     }
     
     function batteryMeasurement()
     {
-    	local raw_read = 0.0;
-    	
-    	for(local i = 0; i < 10; i++)
-    	    raw_read += BATT_VOLT_MEASURE.read();
-    	
-    	raw_read = (raw_read / 10.0);
-    	nv.voltage_level = raw_read;
-    	
-    	// every 15 seconds wake up and read the battery level
-    	// TODO: change the period of measurement so that it doesnÕt drain the
-    	// battery
-    	//log(format("Battery Level: %d, Input Voltage: %.2f", nv.voltage_level, hardware.voltage()));
-    	imp.wakeup(1, function() {
-    		agentSend("batteryLevel", nv.voltage_level);
-    	});
-    	imp.wakeup(60, batteryMeasurement.bindenv(this));
+        local raw_read = 0.0;
+        
+        for(local i = 0; i < 10; i++)
+            raw_read += BATT_VOLT_MEASURE.read();
+        
+        raw_read = (raw_read / 10.0);
+        nv.voltage_level = raw_read;
+        
+        // every 15 seconds wake up and read the battery level
+        // TODO: change the period of measurement so that it doesnÕt drain the
+        // battery
+        //log(format("Battery Level: %d, Input Voltage: %.2f", nv.voltage_level, hardware.voltage()));
+        imp.wakeup(1, function() {
+            agentSend("batteryLevel", nv.voltage_level);
+        });
+        imp.wakeup(60, batteryMeasurement.bindenv(this));
     }
     
     function chargerDetectionCB()
     {
-    	// the pin is high charger is attached and low is a removal
-	    local charge_detect_n;
+        // the pin is high charger is attached and low is a removal
+        local charge_detect_n;
 
-		charge_detect_n = ACOK_N.read();
+        charge_detect_n = ACOK_N.read();
 
-	    local status = charge_detect_n ? "disconnected":"connected";
+        local status = charge_detect_n ? "disconnected":"connected";
 
-    	log(format("USB Detection CB: %s", status));
         log(format("USB Detection CB: %s", status));
-	    agentSend("usbState",status);
+        log(format("USB Detection CB: %s", status));
+        agentSend("usbState",status);
 
-    	chargerCallback();
+        chargerCallback();
     }
 
     //**********************************************************************
@@ -1934,18 +1937,18 @@ class ChargeStatus
         
         charging = isCharging()?1:0;
         
-		if( previous_state != (charging==0?false:true))
-		{
+        if( previous_state != (charging==0?false:true))
+        {
             //remove this later if decision is final -- right now playing silent tones [EM]
             hwPiezo.playSound(previous_state?"charger-attached":"charger-removed");
         }
-		
+        
         previous_state = (charging==0)? false:true; // update the previous state with the current state
         agentSend("chargerState", previous_state); // update the charger state
 
-	    local charge_detect_n= ACOK_N.read();
+        local charge_detect_n= ACOK_N.read();
 
-	    local status = charge_detect_n ? "disconnected":"connected";
+        local status = charge_detect_n ? "disconnected":"connected";
 
         log(format("USB Detection: %s", status));
     }
@@ -1957,14 +1960,14 @@ class ChargeStatus
 //**********************************************************************
 // Agent callback: upload complete
 agent.on("uploadCompleted", function(result) {
-	//log("uploadCompleted response");
+    //log("uploadCompleted response");
     pmic.write(0x02, 0x1b);
     hwPiezo.playSound(result);
 });
 
 /*
 agent.on("devicePage", function(result){
-	hwPiezo.playPageTone();
+    hwPiezo.playPageTone();
 });*/
 
 
@@ -2023,9 +2026,9 @@ function handlePendingAudio()
                                      }) == 0)
         {
             log(format("AudioLocal Success is playing!!, chunks=%d",gAudioChunkCount));
-        	//hwPiezo.playSound("success-local");
-        	gAudioChunkCount=0;
-        	//init_audio_memory();
+            //hwPiezo.playSound("success-local");
+            gAudioChunkCount=0;
+            //init_audio_memory();
         }
     }
     else
@@ -2061,32 +2064,34 @@ function handlePendingBarcode()
                                           scansize=gAudioChunkCount, 
                                          });
         }
-        if(agent.send("uploadBeep", {
-				  scandata=gPendingBarcode,
-				  scansize=gPendingBarcode.len(),
-				  serial=hardware.getdeviceid(),
-				  fw_version=cFirmwareVersion,
-				  linkedrecord="",
-				  audiodata="",
-				  }) == 0)
-				  {
-					 //hwPiezo.playSound("success-local");
-				  }
-        gPendingBarcode = null;
-		//init_audio_memory();
-		if (gDeviceState == DeviceState.SCAN_CAPTURED){
-	        updateDeviceState(DeviceState.BUTTON_RELEASED);	 
-	        updateDeviceState(DeviceState.IDLE);	        
-		} else {
-	        updateDeviceState(DeviceState.IDLE);	        
-		}
-	
+        
+        if (gPendingBarcode){
+            if(agent.send("uploadBeep", {
+                      scandata=gPendingBarcode,
+                      scansize=gPendingBarcode.len(),
+                      serial=hardware.getdeviceid(),
+                      fw_version=cFirmwareVersion,
+                      linkedrecord="",
+                      audiodata="",
+                      }) == 0)
+                      {
+                         //hwPiezo.playSound("success-local");
+                      }
+            gPendingBarcode = null;
+            //init_audio_memory();
+            if (gDeviceState == DeviceState.SCAN_CAPTURED){
+                updateDeviceState(DeviceState.BUTTON_RELEASED);  
+                updateDeviceState(DeviceState.IDLE);            
+            } else {
+                updateDeviceState(DeviceState.IDLE);            
+            }
+        }
     }
     else
     {
         pmic.write(0x02, 0x1);
-        imp.wakeup(1.5,function(){hwPiezo.playSound("pending")});
-        imp.wakeup(1.5, handlePendingBarcode);
+        gPendingBarcodeTimerThree = imp.wakeup(1.5,function(){hwPiezo.playSound("pending")});
+        gPendingBarcodeTimerTwo = imp.wakeup(1.5, handlePendingBarcode);
     }
 }
 
@@ -2118,7 +2123,7 @@ function sendLastBuffer()
                                      }) == 0)
         {
             log("Sendlast buffer is executed!!!");
-        	hwPiezo.playSound("success-local");
+            hwPiezo.playSound("success-local");
         }
         
         //imp.wakeup(0.001, function(){gAudioUploader.stopAudio();});
@@ -2226,11 +2231,11 @@ class Accelerometer extends I2cDevice
             log(format("Error reading accelerometer; whoami=0x%02X", 
                               whoami));
         }
-		
-		write( 0x1F, 0x0 ); // disable ADC and temp sensor
-		
-		whoami = read( 0x1E );
-		write ( 0x1E, whoami | 0x80 );
+        
+        write( 0x1F, 0x0 ); // disable ADC and temp sensor
+        
+        whoami = read( 0x1E );
+        write ( 0x1E, whoami | 0x80 );
 
         // Configure and enable accelerometer and interrupt
         write(0x20, 0x2F); // CTRL_REG1: 10 Hz, low power mode, 
@@ -2273,13 +2278,13 @@ class Accelerometer extends I2cDevice
 
     function enableInterrupts()
     {
-    	write(0x20, 0x2F); // power up first
+        write(0x20, 0x2F); // power up first
         write(0x22, 0x40); // CTRL_REG3: Enable AOI interrupts
     }
 
     function disableInterrupts()
     {
-    	write(0x20, 0x0F); // power down
+        write(0x20, 0x0F); // power down
         write(0x22, 0x00); // CTRL_REG3: Disable AOI interrupts
     }
 
@@ -2292,7 +2297,7 @@ class Accelerometer extends I2cDevice
         local reg;
         while ((reg = read(0x31)) != 0x15)
         {
-        	//log(format("STATUS: 0x%02X", reg));
+            //log(format("STATUS: 0x%02X", reg));
             imp.sleep(0.001);
         }
         log(format("STATUS: 0x%02X", reg));
@@ -2334,63 +2339,63 @@ function print(str)
 //**********************************************************************
 function init_nv_items()
 {
-	log(format("sleep_count=%d setup_required=%s", 
-					nv.sleep_count, (nv.setup_required?"yes":"no")));
-	//log(format("Bootup Reason: %xh", nv.boot_up_reason));
+    log(format("sleep_count=%d setup_required=%s", 
+                    nv.sleep_count, (nv.setup_required?"yes":"no")));
+    //log(format("Bootup Reason: %xh", nv.boot_up_reason));
 }
 
 function init_unused_pins(i2cDev)
 {
     /*
-	hardware.pinA.configure(DIGITAL_IN_PULLUP);
-	hardware.pin6.configure(DIGITAL_IN_PULLUP);
-	hardware.pinB.configure(DIGITAL_IN_PULLUP);
-	hardware.pinC.configure(DIGITAL_IN_PULLUP);
-	hardware.pinD.configure(DIGITAL_IN_PULLUP);
-	hardware.pinE.configure(DIGITAL_IN_PULLUP);
-	*/
-	//gInitTime.init_unused = hardware.millis() - gInitTime.init_unused;
+    hardware.pinA.configure(DIGITAL_IN_PULLUP);
+    hardware.pin6.configure(DIGITAL_IN_PULLUP);
+    hardware.pinB.configure(DIGITAL_IN_PULLUP);
+    hardware.pinC.configure(DIGITAL_IN_PULLUP);
+    hardware.pinD.configure(DIGITAL_IN_PULLUP);
+    hardware.pinE.configure(DIGITAL_IN_PULLUP);
+    */
+    //gInitTime.init_unused = hardware.millis() - gInitTime.init_unused;
 }
 
 //**********************************************************************
 // Do pre-sleep configuration and initiate deep sleep
 function preSleepHandler() {
-	updateDeviceState( DeviceState.PRE_SLEEP);
+    updateDeviceState( DeviceState.PRE_SLEEP);
 
     // Resample the ~CHG charge signal and update chargeStatus.
-	// previous_state before going to sleep 
-	chargeStatus.chargerCallback();
-	
-	if( nv.sleep_not_allowed || chargeStatus.previous_state )
-	{
-		//Just for testing but we should remove it later
-		//hwPiezo.playSound("device-page");
-		updateDeviceState( DeviceState.IDLE );
-		return;
-	}
-	
-	if( !nv.setup_required )
-	{
-    	// Re-enable accelerometer interrupts
-    	log("preSleepHandler: about to re-enable accel Intterupts");
-    	hwAccelerometer.reenableInterrupts = true;
-    	hwAccelerometer.enableInterrupts();
+    // previous_state before going to sleep 
+    chargeStatus.chargerCallback();
+    
+    if( nv.sleep_not_allowed || chargeStatus.previous_state )
+    {
+        //Just for testing but we should remove it later
+        //hwPiezo.playSound("device-page");
+        updateDeviceState( DeviceState.IDLE );
+        return;
+    }
+    
+    if( !nv.setup_required )
+    {
+        // Re-enable accelerometer interrupts
+        log("preSleepHandler: about to re-enable accel Intterupts");
+        hwAccelerometer.reenableInterrupts = true;
+        hwAccelerometer.enableInterrupts();
 
-    	// Handle any last interrupts before we clear them all and go to sleep
-    	log("preSleepHandler: handle any pending interrupts");
-    	handlePin1Int(); 
-		log("preSleepHandler: handled pending interrupts");
-    	// Clear any accelerometer interrupts, then clear the IO expander. 
-    	// We found this to be necessary to not hang on sleep, as we were
-    	// getting spurious interrupts from the accelerometer when re-enabling,
-    	// that were not caught by handlePin1Int. Race condition? 
-    	log("preSleepHandler: clear out all the pending accel interrupts");
-    	hwAccelerometer.clearAccelInterruptUntilCleared();
+        // Handle any last interrupts before we clear them all and go to sleep
+        log("preSleepHandler: handle any pending interrupts");
+        handlePin1Int(); 
+        log("preSleepHandler: handled pending interrupts");
+        // Clear any accelerometer interrupts, then clear the IO expander. 
+        // We found this to be necessary to not hang on sleep, as we were
+        // getting spurious interrupts from the accelerometer when re-enabling,
+        // that were not caught by handlePin1Int. Race condition? 
+        log("preSleepHandler: clear out all the pending accel interrupts");
+        hwAccelerometer.clearAccelInterruptUntilCleared();
 
-	    // perform STM32 software upgrade before going to sleep if software version doesn't match
-	    
-	    init_audio_memory();
-	    
+        // perform STM32 software upgrade before going to sleep if software version doesn't match
+        
+        init_audio_memory();
+        
         AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS);
         NRST.write(1);
         imp.sleep(0.02);
@@ -2398,35 +2403,35 @@ function preSleepHandler() {
         imp.sleep(0.3);
         NRST.write(0);
         AUDIO_UART.disable();
-	    
-	    server.log("swuptodate = " + nv.stm32_sw_uptodate);
-	    server.log("stm32 flag = " + gstm32UpdateOnceFlag);
-	    if (!nv.stm32_sw_uptodate) {
-	        AUDIO_UART.disable();
-	        //TODO: remove it once done instant on dev work is done.
-	        updateSTM32();
+        
+        server.log("swuptodate = " + nv.stm32_sw_uptodate);
+        server.log("stm32 flag = " + gstm32UpdateOnceFlag);
+        if (!nv.stm32_sw_uptodate) {
+            AUDIO_UART.disable();
+            //TODO: remove it once done instant on dev work is done.
+            updateSTM32();
             // Put STM32F0 in reset mode to turn scanner off
             NRST.write(0);
-	    }
+        }
     
-    	// When the timer below expires we will hit the sleepHandler function below
-    	// only enter into the delay wait if the current state is either IDLE or PRE_SLEEP
-    	// otherwise just get out of this because it would just go into sleep even though
-    	// someone pushed the button
-    	if( (gDeviceState == DeviceState.IDLE) || (gDeviceState == DeviceState.PRE_SLEEP) )
-    	{
-    		gAccelInterrupted = false;
-    		log("preSleepHandler: enabled the hysteresis timer");
-    		gAccelHysteresis.enable();
-    	}
+        // When the timer below expires we will hit the sleepHandler function below
+        // only enter into the delay wait if the current state is either IDLE or PRE_SLEEP
+        // otherwise just get out of this because it would just go into sleep even though
+        // someone pushed the button
+        if( (gDeviceState == DeviceState.IDLE) || (gDeviceState == DeviceState.PRE_SLEEP) )
+        {
+            gAccelInterrupted = false;
+            log("preSleepHandler: enabled the hysteresis timer");
+            gAccelHysteresis.enable();
+        }
     }
     else
     {
-    	// If the setup is required and we timed out for
-    	// the 5 minute timer then we just enter sleep right away
-    	// only thing that would wake up the device is the button press
-    	gAccelInterrupted = false;
-    	sleepHandler();
+        // If the setup is required and we timed out for
+        // the 5 minute timer then we just enter sleep right away
+        // only thing that would wake up the device is the button press
+        gAccelInterrupted = false;
+        sleepHandler();
     }
 }
 
@@ -2441,18 +2446,18 @@ function configurePinsBeforeSleep()
 // further accelerometer interrupts
 function sleepHandler()
 {
- 	log("sleepHandler: enter");   
+    log("sleepHandler: enter");   
     if( gAccelInterrupted )
     {
-		log("sleepHandler: aborting sleep due to Accelerometer Interrupt");
-		// Transition to the idle state
-		hwAccelerometer.reenableInterrupts = false;
-		hwAccelerometer.disableInterrupts();
-		updateDeviceState(DeviceState.IDLE);
-		return;
+        log("sleepHandler: aborting sleep due to Accelerometer Interrupt");
+        // Transition to the idle state
+        hwAccelerometer.reenableInterrupts = false;
+        hwAccelerometer.disableInterrupts();
+        updateDeviceState(DeviceState.IDLE);
+        return;
     }
     
-	// free memory
+    // free memory
     log(format("Free memory: %d bytes", imp.getmemoryfree()));
     
     assert(gDeviceState == DeviceState.PRE_SLEEP);
@@ -2465,7 +2470,7 @@ function sleepHandler()
     
     configurePinsBeforeSleep();
     
-	// clear interrupts
+    // clear interrupts
     CPU_INT_RESET.write(0);
     CPU_INT_RESET.write(1);
     // Turn off charger LED by disabling LDO1
@@ -2489,22 +2494,22 @@ function sleepHandler()
 
 function init_done()
 {
-	if( init_completed )
-	{
-		handlePin1Int(); 
-		//log(format("init_stage1: %d\n", gInitTime.init_stage1));
-		
-		// Since the blinkup is always enabled, there is no need to enable
-		// them here
-		if( nv.setup_required )
-		{
-		  hwButton.blinkUpDevice(nv.setup_required);
-		}
-	}
-	else
-	{
-		imp.wakeup(1, init_done );
-	}
+    if( init_completed )
+    {
+        handlePin1Int(); 
+        //log(format("init_stage1: %d\n", gInitTime.init_stage1));
+        
+        // Since the blinkup is always enabled, there is no need to enable
+        // them here
+        if( nv.setup_required )
+        {
+          hwButton.blinkUpDevice(nv.setup_required);
+        }
+    }
+    else
+    {
+        imp.wakeup(1, init_done );
+    }
 }
 
 triggerCount <- 0;
@@ -2515,17 +2520,17 @@ function shippingMode()
     triggerCount++;
     if (triggerCount < 40)
     {
-	    imp.wakeup(0.05, shippingMode);
+        imp.wakeup(0.05, shippingMode);
     }
     else 
     {
-	    hwPiezo.playSound("blink-up-enabled", false);
-	    nv.setup_required = true;
-    	nv.sleep_not_allowed = false;
-    	gAccelInterrupted = false;
-	    gDeviceState = DeviceState.PRE_SLEEP;
-	    triggerCount = 0;
-	    imp.clearconfiguration();
+        hwPiezo.playSound("blink-up-enabled", false);
+        nv.setup_required = true;
+        nv.sleep_not_allowed = false;
+        gAccelInterrupted = false;
+        gDeviceState = DeviceState.PRE_SLEEP;
+        triggerCount = 0;
+        imp.clearconfiguration();
         sleepHandler();
     }
 }
@@ -2533,11 +2538,11 @@ function shippingMode()
 
 agent.on("shippingMode", function(result) 
 {
-	if (imp.getbssid() == FACTORY_BSSID) 
-	{
-	    AUDIO_UART.disable();
-	    shippingMode();
-	}
+    if (imp.getbssid() == FACTORY_BSSID) 
+    {
+        AUDIO_UART.disable();
+        shippingMode();
+    }
 });
 
 function init()
@@ -2547,45 +2552,45 @@ function init()
     imp.setpowersave(false);
 
     local pmic_val;
-	i2cDev <- null;
-	// create device for LP3918 power management IC
-	pmic <- I2cDevice(I2C_IF, 0x7e);
-	
+    i2cDev <- null;
+    // create device for LP3918 power management IC
+    pmic <- I2cDevice(I2C_IF, 0x7e);
+    
     if(gButtonState != ButtonState.BUTTON_DOWN)
     {
-    	// Enable LDO1, LDO2 and LDO7. Disable LDO8, and buck converter.
-    	pmic.write(0x00, 0x07);
-    	// LDO1: set to 3.0V (charging LED) 
-    	pmic.write(0x01, 0x1b);
-    	// LDO2: set to 3.0V for buzzer volume 
-    	pmic.write(0x02, 0x1b);
-    	// LDO3: set to 3.0V for VCC_LDO3 (I2C)
-    	pmic.write(0x03, 0x1b);
-    	// LDO4: set to 3.0V for VCC_VREF (microphone)
-    	pmic.write(0x04, 0x1b);
-    	// LDO5: set to 3.0V (unused) 
-    	pmic.write(0x05, 0x1b);
-    	// LDO6: set to 3.0V for SCAN_LED  
-    	pmic.write(0x06, 0x1f);
-    	// LDO7: set to 3.0V for VCC_STM32  
-    	pmic.write(0x07, 0x1b);
-    	// LDO8: set to 3.0V (unused)
-    	pmic.write(0x08, 0x1b);
-    	// enable charging, enable EOC termination, set charging timer to 5h
-    	pmic.write(0x10, 0x11);
-    	// set charging current to 500mA
-    	pmic.write(0x11, 0x9);
-    	// set charging termination voltage to 4.2V, 
-    	// charging restart voltage to 4.1V,
-    	// termination current to 0.2C=100mA
-    	pmic.write(0x12, 0x1d);
-    	// wait 350ms after release of PS_HOLD before turning off power
-    	pmic.write(0x1c, 0x1);
+        // Enable LDO1, LDO2 and LDO7. Disable LDO8, and buck converter.
+        pmic.write(0x00, 0x07);
+        // LDO1: set to 3.0V (charging LED) 
+        pmic.write(0x01, 0x1b);
+        // LDO2: set to 3.0V for buzzer volume 
+        pmic.write(0x02, 0x1b);
+        // LDO3: set to 3.0V for VCC_LDO3 (I2C)
+        pmic.write(0x03, 0x1b);
+        // LDO4: set to 3.0V for VCC_VREF (microphone)
+        pmic.write(0x04, 0x1b);
+        // LDO5: set to 3.0V (unused) 
+        pmic.write(0x05, 0x1b);
+        // LDO6: set to 3.0V for SCAN_LED  
+        pmic.write(0x06, 0x1f);
+        // LDO7: set to 3.0V for VCC_STM32  
+        pmic.write(0x07, 0x1b);
+        // LDO8: set to 3.0V (unused)
+        pmic.write(0x08, 0x1b);
+        // enable charging, enable EOC termination, set charging timer to 5h
+        pmic.write(0x10, 0x11);
+        // set charging current to 500mA
+        pmic.write(0x11, 0x9);
+        // set charging termination voltage to 4.2V, 
+        // charging restart voltage to 4.1V,
+        // termination current to 0.2C=100mA
+        pmic.write(0x12, 0x1d);
+        // wait 350ms after release of PS_HOLD before turning off power
+        pmic.write(0x1c, 0x1);
     }
 
 
-	// This is to default unused pins so that we consume less current
-	init_unused_pins(i2cDev);
+    // This is to default unused pins so that we consume less current
+    init_unused_pins(i2cDev);
 
  
     // Charge status detect config
@@ -2597,7 +2602,7 @@ function init()
     // Microphone sampler config
     hwMicrophone <- EIMP_AUDIO_IN;
                        
-	log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
+    log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
     // Accelerometer config
     hwAccelerometer <- Accelerometer(I2C_IF, 0x18, 
                                      0);
@@ -2622,13 +2627,26 @@ function init()
 }
 
 function onConnected(status)
-{	
+{   
     if (status == SERVER_CONNECTED) {
         log("Connected!!!!!!!!!! yay!!!!!");
         if (gPendingAudio && !gPendingBarcode)
         {
             agent.send("startAudioUpload", "");
         }
+        
+        if (gPendingBarcode){
+            server.log("calling early pendingBarcode call")
+            //cancel barcode schedules
+            if (gPendingBarcodeTimerOne || gPendingBarcodeTimerTwo || gPendingBarcodeTimerThree){
+                imp.cancelwakeup(gPendingBarcodeTimerThree);
+                imp.cancelwakeup(gPendingBarcodeTimerOne);
+                imp.cancelwakeup(gPendingBarcodeTimerTwo);  
+            }
+            handlePendingBarcode();
+
+        }   
+        
         /*
         if (gPendingTimer)
         {
@@ -2640,53 +2658,53 @@ function onConnected(status)
             handlePendingAudio();
         }
         */
-	if (imp.getbssid() == FACTORY_BSSID) {
-	    if (gDeepSleepTimer) 
-		gDeepSleepTimer.disable();
-	    gDeepSleepTimer = CancellableTimer(cDelayBeforeDeepSleepFactory, preSleepHandler);
-	}
+    if (imp.getbssid() == FACTORY_BSSID) {
+        if (gDeepSleepTimer) 
+        gDeepSleepTimer.disable();
+        gDeepSleepTimer = CancellableTimer(cDelayBeforeDeepSleepFactory, preSleepHandler);
+    }
         local timeToConnect = hardware.millis() - entryTime;
-    	connection_available = true;
+        connection_available = true;
         //imp.configure("hiku", [], []);   // this is depcrecated  
-		log(format("Reconnected after unexpected disconnect: %d ",nv.disconnect_reason));
-		init_nv_items();
-		server.log(format("Response Time: %d, afterConnect=%d, justBeforeHandleInt=%d, startOfScanRecord=%d",responseTime,afterConnect,justBeforeHandleInt,gStartScanRecord));			             
-        	// Send the agent our impee ID
+        log(format("Reconnected after unexpected disconnect: %d ",nv.disconnect_reason));
+        init_nv_items();
+        server.log(format("Response Time: %d, afterConnect=%d, justBeforeHandleInt=%d, startOfScanRecord=%d",responseTime,afterConnect,justBeforeHandleInt,gStartScanRecord));                       
+            // Send the agent our impee ID
         local data = { 
-        				impeeId = hardware.getdeviceid(), 
-        				fw_version = cFirmwareVersion,
-        				bootup_reason = nv.boot_up_reason,
-        				disconnect_reason = nv.disconnect_reason,
-        				rssi = imp.rssi(),
-        				sleep_duration = nv.sleep_duration,
-        				osVersion = imp.getsoftwareversion(),
-						time_to_connect = timeToConnect,
+                        impeeId = hardware.getdeviceid(), 
+                        fw_version = cFirmwareVersion,
+                        bootup_reason = nv.boot_up_reason,
+                        disconnect_reason = nv.disconnect_reason,
+                        rssi = imp.rssi(),
+                        sleep_duration = nv.sleep_duration,
+                        osVersion = imp.getsoftwareversion(),
+                        time_to_connect = timeToConnect,
                                                 at_factory = (imp.getbssid() == FACTORY_BSSID),
-	                                        macAddress = imp.getmacaddress()
-        			};
+                                            macAddress = imp.getmacaddress()
+                    };
         agentSend("init_status", data);
         
         if( nv.setup_required )
         {
-        	nv.setup_required = false;
-	        nv.sleep_not_allowed = false;
-        	nv.setup_count++;
-        	log("Setup Completed!");
+            nv.setup_required = false;
+            nv.sleep_not_allowed = false;
+            nv.setup_count++;
+            log("Setup Completed!");
         }
         nv.disconnect_reason = 0;
         
 /*
-    	log(format("total_init:%d, init_stage1: %d, init_stage2: %d, init_unused: %d\n",
-    		(hardware.millis() - entryTime), gInitTime.init_stage1, gInitTime.init_stage2, gInitTime.init_unused));
-    	log(format("scanner:%d, button: %d, charger: %d, accel: %d, int handler: %d\n",
-    		gInitTime.scanner, gInitTime.button, gInitTime.charger, gInitTime.accel, gInitTime.inthandler));  */    		      
+        log(format("total_init:%d, init_stage1: %d, init_stage2: %d, init_unused: %d\n",
+            (hardware.millis() - entryTime), gInitTime.init_stage1, gInitTime.init_stage2, gInitTime.init_unused));
+        log(format("scanner:%d, button: %d, charger: %d, accel: %d, int handler: %d\n",
+            gInitTime.scanner, gInitTime.button, gInitTime.charger, gInitTime.accel, gInitTime.inthandler));  */                  
         
-	}
+    }
     else
     {
-   		nv.disconnect_reason = status;
+        nv.disconnect_reason = status;
     }
-}	
+}   
 
 // start off here and things should move
 if (imp.getssid() == "" && !("first_boot" in nv)) {
@@ -2700,14 +2718,14 @@ function heartBeat()
     if(DEBUG_UART_ENABLED)
     {
         imp.wakeup(5,heartBeat);
-	    log("heart beat!!");
+        log("heart beat!!");
     }
 }
 
 init_done();
 connMgr <- ConnectionManager();
 connMgr.registerCallback(onConnected.bindenv(this));
-connMgr.init_connections();	
+connMgr.init_connections(); 
 init();
 heartBeat();
 // STM32 microprocessor firmware updater
