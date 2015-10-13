@@ -2258,8 +2258,10 @@ class Accelerometer extends I2cDevice
         clearAccelInterrupt();
 
         // Set event handler for IRQ
-
-	    //ACCEL_INT.configure(DIGITAL_IN, handleAccelInt.bindenv(this));
+        if (!DEBUG_UART_ENABLED)
+        {
+            ACCEL_INT.configure(DIGITAL_IN, handleAccelInt.bindenv(this));   
+        }
     }
 
     function enableInterrupts()
