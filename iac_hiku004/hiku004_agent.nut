@@ -38,7 +38,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "2.1.00";
+gAgentVersion <- "1.3.XX";
 
 gAudioState <- AudioStates.AudioError;
 gAudioAbort <- false;
@@ -63,6 +63,8 @@ gLinkedRecord <- ""; // Used to link unknown UPCs to audio records.
                      // so from the server, then clear it after we 
                      // send the next audio beep, after next barcode, 
                      // or after a timeout
+                     
+gEndUploadData <- null;
 
 gEan <- ""; // stored EAN for a superscan
                      
@@ -97,6 +99,7 @@ const MIX_PANEL_EVENT_CONFIG = "DeviceConfig";
 const MIX_PANEL_EVENT_STATUS = "DeviceStatus";
 
 // Heroku server base URL   
+//gBaseUrl <- "https://app-staging.hiku.us/api/v1";
 gBaseUrl <- "https://app.hiku.us/api/v1";
 gFactoryUrl <- "https://hiku-mfgdb.herokuapp.com/api/v1";
 
@@ -933,6 +936,10 @@ function onReceiveAudioToken(m)
             agentLog("Token POST: Received non-ok status");
           } else {  
             gAudioToken = body.data.audioToken;
+            if (gEndUploadData)
+            {
+                imp.wakeup(0.001,waitUntilTokenReceived);
+            }
             agentLog(format("Token POST: AudioToken received: %s", gAudioToken));
             gAudioState = gAudioAbort ? AudioStates.AudioError : AudioStates.AudioRecording;
           }
@@ -941,8 +948,6 @@ function onReceiveAudioToken(m)
         {
             agentLog(format("Token POST: Caught exception: %s", e));
             gAudioState = AudioStates.AudioError;
-        //sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFailed"});
-        //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFailed"}));
         }
     }
 }
@@ -1031,13 +1036,26 @@ device.on("endAudioUpload", function(data) {
 
         return;
     } */
-    if( gAudioToken == "")
-    {
-        imp.sleep(0.200);
-    }
-    sendBeepToHikuServer(data);  
+    gEndUploadData = data;
+    waitUntilTokenReceived();
 });
 
+// Use a scheduler to upload the end of audio as soon as we receive the token
+function waitUntilTokenReceived()
+{
+    server.log(gAudioToken);
+    server.log(gEndUploadData);
+    if (gAudioToken && gAudioToken.len() > 0)
+    {
+        sendBeepToHikuServer(gEndUploadData);
+        gEndUploadData = null;
+    }
+    else
+    {
+        server.log("Audio Token is not yet received!! scheduling to try again!!!!!!!");
+        //imp.wakeup(0.150, waitUntilTokenReceived);
+    }
+}
 
 //**********************************************************************
 // Handle an audio buffer from the device
