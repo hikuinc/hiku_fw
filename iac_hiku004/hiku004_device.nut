@@ -243,7 +243,9 @@ const SETUP_BARCODE_PREFIX = "4H1KU5"
 // on the hiku box only works in the factory
 // HACK find correct BSSID at IAC
 //const FACTORY_BSSID = "c83a351e5680";
-const FACTORY_BSSID = "c83a35587e00";
+//const FACTORY_BSSID = "c83a35587e00";
+FACTORY_BSSIDS <- ["94b40f1cb7a6", "94b40fc9cb56", "94b40fc9cbba","94b40f1cbba1","94b40f679823","94b40f1cb561","94b40f679860" /* All the 5-7 macs infront is on an Aruba thin AP */, "c83a35587e00" /* Tenda router at IAC */, "c83a351e5680" /* Tenda router at hiku */];
+
 //const FACTORY_BSSID = "00184dc95267";
 enum DeviceState
 /*
@@ -2744,8 +2746,9 @@ function shippingMode()
 
 agent.on("shippingMode", function(result) 
 {
-    if (imp.getbssid() == FACTORY_BSSID) 
-    {
+    if (FACTORY_BSSIDS.find(imp.getbssid()) != null) {
+    //if (imp.getbssid() == FACTORY_BSSID) {
+        server.log("entering shipping mode");
         AUDIO_UART.disable();
         shippingMode();
     }
@@ -2862,7 +2865,8 @@ function onConnected(status)
             handlePendingAudio();
         }
         */
-    if (imp.getbssid() == FACTORY_BSSID) {
+    server.log("BSSID: "+imp.getbssid());
+    if (FACTORY_BSSIDS.find(imp.getbssid()) != null) {
         if (gDeepSleepTimer) 
         gDeepSleepTimer.disable();
         gDeepSleepTimer = CancellableTimer(cDelayBeforeDeepSleepFactory, preSleepHandler);
