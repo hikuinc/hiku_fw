@@ -22,7 +22,8 @@ if (!("nv" in getroottable()))
 			gBatteryLevel = 0.0,
 			gFwVersion = 0.0,
 			at_factory = false,
-	                macAddress = null
+	        macAddress = null,
+	        countryCode = null
     	  };
 }
 
@@ -557,9 +558,9 @@ function handleSpecialBarcodes(data)
 		local printer_req = http.get("https://agent.electricimp.com/WQ8othFzM2Zm/printMAC?mac="+nv.macAddress, {});
 		printer_req.sendasync(onMacPrintReturn);
 		// Goes to test controller 20000c2a69093434
-		//local iac_printer_req = http.get("https://agent.electricimp.com/TvVLVemS7PR9/printMAC?mac="+nv.macAddress, {});
+		//local iac_printer_req = http.get("https://agent.electricimp.com/TvVLVemS7PR9/printMAC?mac="+nv.macAddress+"&countryCode="+nv.countryCode, {});
 		// Goes to test controller 20000c2a69090783
-		local iac_printer_req = http.get("https://agent.electricimp.com/3qMq5k6INLiw/printMAC?mac="+nv.macAddress, {});
+		local iac_printer_req = http.get("https://agent.electricimp.com/3qMq5k6INLiw/printMAC?mac="+nv.macAddress+"&countryCode="+nv.countryCode, {});
 		iac_printer_req.sendasync(onMacPrintReturn);
 		req = http.post(
 		    gSpecialBarcodePrefixes[i]["url"],
@@ -1246,9 +1247,11 @@ device.on("init_status", function(data) {
     nv.gSleepDuration = data.sleep_duration;
     nv.at_factory = data.at_factory;
     nv.macAddress = data.macAddress;
+    nv.countryCode = data.countryCode;
     
     //server.log(format("Device to Agent Time: %dms", (time()*1000 - data.time_stamp)));
     server.log(format("Device OS Version: %s", data.osVersion));
+    server.log(format("Device Country: %s", nv.countryCode));
     local dataToSend =  {  	  
 		      fw_version=nv.gFwVersion,
 		      wakeup_reason = xlate_bootreason_to_string(nv.gWakeUpReason),
@@ -1257,8 +1260,9 @@ device.on("init_status", function(data) {
 		      rssi = data.rssi,
 		      dc_reason = getDisconnectReason(data.disconnect_reason),
 		      os_version = data.osVersion,
-		      connectTime = data.time_to_connect
-    		    };
+		      connectTime = data.time_to_connect,
+		      ssid = data.ssid,
+    };
     sendDeviceEvents(dataToSend);
     sendMixPanelEvent(MIX_PANEL_EVENT_STATUS,dataToSend);
     //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_STATUS,dataToSend));
