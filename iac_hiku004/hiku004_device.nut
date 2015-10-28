@@ -2927,7 +2927,7 @@ function onConnected(status)
 if (imp.getssid() == "" && !("first_boot" in nv)) {
     nv.first_boot <- 1;
     nv.setup_required = true;
-    hwPiezo.playSound("success-server");
+    //hwPiezo.playSound("success-server");
     imp.onidle(function () {imp.deepsleepfor(1);});
 }
 

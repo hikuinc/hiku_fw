@@ -39,7 +39,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "2.1.01";
+gAgentVersion <- "2.1.02";
 
 gAudioState <- AudioStates.AudioError;
 gAudioAbort <- false;
@@ -121,9 +121,12 @@ const BATT_0_PERCENT = 43726.16;
 const PREFIX_IMP_MAC = "0c2a69";
 const PREFIX_IMP_LABELING = ".HCMGETMAC";
 const PREFIX_GENERAL = ".HFB";
+const PREFIX_OBA_CHECK = ".HCOBACHECK";
 
 const TEST_CMD_PACKAGE = "package";
 const TEST_CMD_PRINT_LABEL = "label";
+const TEST_CMD_OBA_CHECK = "obacheck";
+
 
 const IMAGE_COLUMNS = 1016;
 scanned_image <- "";
@@ -135,6 +138,11 @@ gSpecialBarcodePrefixes <- [{
 	min_len = 12,
 	max_len = 12,
 	url = gFactoryUrl + "/factory"},{
+	// this is to check the mac address at the oba station
+	prefix = PREFIX_OBA_CHECK,
+	min_len = 11,
+	max_len = 11,
+	url = gFactoryUrl + "/factory"}, {
 	// barcode for generating a 2D datamatrix barcode for the scanner at the
         // label printer in production	
 	prefix = PREFIX_IMP_LABELING,
@@ -538,6 +546,30 @@ function handleSpecialBarcodes(data)
 			"Accept": "application/json"}, 
 		    json_data);
 		break;
+		
+		case PREFIX_OBA_CHECK:
+		  server.log(format("Scanned label code %s", barcode));
+		  if (!nv.at_factory) {
+			  return false;
+		  }
+		  is_special = true;
+		  dataToSend = {
+			  "macAddress": nv.macAddress,
+			  "serialNumber": nv.gImpeeId,
+			  "agentUrl": http.agenturl(),
+			  "command": TEST_CMD_OBA_CHECK
+			  };
+		  sendMixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend);
+		  //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend));
+		  local json_data = http.jsonencode (dataToSend);
+		  server.log(json_data);
+		  req = http.post(
+			  gSpecialBarcodePrefixes[i]["url"],
+			  {"Content-Type": "application/json", 
+			  "Accept": "application/json"}, 
+			  json_data);
+		  break;		
+		
 	    case PREFIX_IMP_LABELING :
 		server.log(format("Scanned label code %s", barcode));
 		if (!nv.at_factory) {
