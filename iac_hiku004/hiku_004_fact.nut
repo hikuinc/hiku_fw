@@ -499,12 +499,12 @@ function disconnectHandler(reason) {
         })
     }
     if (reason == SERVER_CONNECTED){
-        try {
+        //try {
         // Do something that generates an error: mis-assign a new table slot
-            test_flush();
-        } catch(error) {
-            server.error(error);
-        }
+        //    test_flush();
+        //} catch(error) {
+        //    server.error(error);
+    //    }
         server.log(format("connected from disconnect: %d", glastConnectReason));
         local disconnectReason = null;
         switch (glastConnectReason) {
@@ -2650,7 +2650,9 @@ function audioUartCallback()
         server.flush(SERVER_FLUSH_TIME);
         
         if( bless_success ) {
-            imp.clearconfiguration();
+            //imp.wakeup(5, function(){
+               imp.clearconfiguration();
+            //});
         }
         
       });
