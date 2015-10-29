@@ -62,7 +62,7 @@ logIndividual <- false;
 
 // MAC addresses of the factory Imps to run the blinkup/OS upgrade firmware;
 // the other Imp runs the test fixture firmware
-BLINKUP_IMP_MACS <- ["0c2a69090d9b", "0c2a6908c47b", "0c2a6908b054"];
+BLINKUP_IMP_MACS <- ["0c2a69090d9b", "0c2a6908b054"];
 
 // timer handle for timing out devices that did not complete the button test
 // after the charging test is done
@@ -306,7 +306,8 @@ const TEST_ID_OS_VERSION = 100;
 const TEST_ID_SSID = 200;
 const TEST_ID_RSSI = 300;
 const TEST_ID_REGION = 400
-const TEST_ID_DISCONNECT_REASON = 500;
+const TEST_ID_WAKEUP_REASON = 500;
+const TEST_ID_DISCONNECT_REASON = 600;
 const TEST_ID_SCL_SH_VCC = 10000;
 const TEST_ID_SDA_SH_VCC = 10100;
 const TEST_ID_SCL_PU = 10200;
@@ -434,6 +435,60 @@ test_ok <- true;
 
 testBox <- null;
 
+//======= Wake reason handler is used to detect first boot (during blinkup stage) vs. second boot (during ======/
+gReasonString <- "Unknown";
+
+function logDeviceOnline() {
+
+    switch(hardware.wakereason()) {
+        case WAKEREASON_POWER_ON: 
+            gReasonString = "The power was turned on";
+            break;
+            
+        case WAKEREASON_TIMER:
+            gReasonString = "An event timer fired";
+            break;
+            
+        case WAKEREASON_SW_RESET:
+            gReasonString = "A software reset took place";
+            break;
+            
+        case WAKEREASON_PIN:
+            gReasonString = "Pulse detected on Wakeup Pin";
+            break;
+            
+        case WAKEREASON_NEW_SQUIRREL:
+            gReasonString = "New Squirrel code downloaded";
+            break;
+            
+        case WAKEREASON_SQUIRREL_ERROR:
+            gReasonString = "Squirrel runtime error";
+            break;
+        
+        case WAKEREASON_NEW_FIRMWARE:
+            gReasonString = "impOS update";
+            break;
+        
+        case WAKEREASON_SNOOZE:
+            gReasonString = "A snooze-and-retry event";
+            break;
+            
+        case WAKEREASON_HW_RESET:
+            // imp003 only
+            gReasonString = "Hardware reset";
+            break;
+            
+        case WAKEREASON_BLINKUP:
+            gReasonString = "BlinkUp event";            
+            break;
+    }   
+    
+    server.log("Reason for waking/reboot: " + gReasonString);
+
+    
+}
+
+logDeviceOnline();
 
 function disconnectHandler(reason) {
     if (reason != SERVER_CONNECTED) {
@@ -444,6 +499,12 @@ function disconnectHandler(reason) {
         })
     }
     if (reason == SERVER_CONNECTED){
+        try {
+        // Do something that generates an error: mis-assign a new table slot
+            test_flush();
+        } catch(error) {
+            server.error(error);
+        }
         server.log(format("connected from disconnect: %d", glastConnectReason));
         local disconnectReason = null;
         switch (glastConnectReason) {
@@ -2588,7 +2649,9 @@ function audioUartCallback()
 
         server.flush(SERVER_FLUSH_TIME);
         
-        if( bless_success ) imp.clearconfiguration();
+        if( bless_success ) {
+            imp.clearconfiguration();
+        }
         
       });
   //if(!test_ok) imp.clearconfiguration();
@@ -2624,6 +2687,9 @@ function audioUartCallback()
     testControl = TEST_CONTROL_START,
     testList = testList};
       agent.send("testresult", result_data_table);
+      
+    test_log(TEST_CLASS_NONE, TEST_RESULT_INFO, format("Wakeup Reason: %s. Connected to BSSID: #%s",gReasonString, imp.getbssid()), TEST_ID_WAKEUP_REASON, {gReasonString=gReasonString});
+    test_flush();
       
       //test_log(TEST_CLASS_NONE, TEST_RESULT_INFO, "**** TESTS STARTING ****");
       local os_version = imp.getsoftwareversion();
@@ -2806,6 +2872,8 @@ function init()
         VREF_EN             <- hardware.pinT;
     }
 
+    NRST.configure(DIGITAL_OUT);
+    NRST.write(0)
   // Piezo config
   hwPiezo <- Piezo(EIMP_AUDIO_OUT);
 
