@@ -1093,6 +1093,8 @@ class I2cDevice
                 pmic = I2cDevice(PMICADDR, 0, 0);
                 pmic.write(0x00, 0x47);
                 pmic.write(0x07, 0x1b);
+
+                //pmic.write(0x06, 0x0C);
                 
                 // configure vref, stm32 and cpu_int
                 VREF_EN.configure(DIGITAL_OUT);
@@ -1108,6 +1110,8 @@ class I2cDevice
                 // run stm32Test
                 stm32Test();
                 
+                pmic.write(0x06, 0x0C);
+
                 AUDIO_UART.disable();
                 NRST.write(0);
                 imp.sleep(0.01);
