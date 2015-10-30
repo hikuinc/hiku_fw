@@ -219,7 +219,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.1.07"; // hiku-v2 firmware starts with 2.0.00
+const cFirmwareVersion = "2.1.08"; // hiku-v2 firmware starts with 2.0.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -2753,7 +2753,14 @@ function init_done()
 triggerCount <- 0;
 function shippingMode()
 {
-    NRST.write(triggerCount % 2);
+    local result = triggerCount % 2;
+    NRST.write(result);
+    
+    if(result)
+    {
+        AUDIO_UART.write("LLLL");
+        AUDIO_UART.flush();          
+    }
     
     triggerCount++;
     if (triggerCount < 40)
@@ -2762,7 +2769,7 @@ function shippingMode()
     }
     else 
     {
-        triggerCount = 0;
+        AUDIO_UART.disable();
         hwPiezo.playSound("blink-up-enabled", false);
         nv.setup_required = true;
         nv.sleep_not_allowed = false;
@@ -2781,6 +2788,8 @@ agent.on("shippingMode", function(result)
     //if (imp.getbssid() == FACTORY_BSSID) {
         server.log("entering shipping mode");
         AUDIO_UART.disable();
+        AUDIO_UART.setrxfifosize(UART_BUF_SIZE);
+        AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS|NO_RX);
         shippingMode();
     }
 });
