@@ -1783,7 +1783,7 @@ class FactoryTester {
     test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, format("Battery voltage %fV.", batt_voltage), 
     TEST_ID_CHARGER_BATT_VOLT, {batt_voltage=batt_voltage});
       else
-    test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Battery voltage %fV higher than allowed %fV.", batt_voltage, BATT_MAX_VOLTAGE), 
+    test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Battery voltage %fV higher than allowed %fV.", batt_voltage, BATT_MAX_VOLTAGE ), 
     TEST_ID_CHARGER_BATT_VOLT, {batt_voltage=batt_voltage, batt_max_voltage=BATT_MAX_VOLTAGE});
   } else 
       test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Battery voltage %fV lower than allowed %fV.", batt_voltage, BATT_MIN_VOLTAGE), 
@@ -2128,6 +2128,8 @@ function audioUartCallback()
                         if (packet_state.run_test == 1) {
                             test_flush();
                             
+                            //set scanner LED to half brightness to conserve power
+                            pmic.write(0x06, 0x0C);
                             //update - keep scanner light on until scannerTest is called (after buttonTest)
                             AUDIO_UART.write("LLL");
                             AUDIO_UART.flush();
@@ -2243,6 +2245,8 @@ function audioUartCallback()
 
     AUDIO_UART.setrxfifosize(UART_BUF_SIZE);
     
+    //set scanner led back to full brightness
+    pmic.write(0x06, 0x1f);
     //update - removed NO_TX
     AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS, audioUartCallback.bindenv(this));
     
@@ -2297,34 +2301,41 @@ function audioUartCallback()
           
       local charge_current = (CHARGE_CURRENT_FACTOR*charge_current_acc)/CHARGE_CURRENT_SAMPLES;
 
-        // wait with submission of charging test start to the server until after the
-        // charging current measurement to not introduce a variable network delay
-        // or WiFi transmission noise
-      agent.send("testresult", result_data_table);
 
-      if ((charge_current > CHARGE_CURRENT_MIN) && (charge_current < CHARGE_CURRENT_MAX))
-    test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, format("Charge current of %fmA in range of %fmA to %fmA.", charge_current, CHARGE_CURRENT_MIN, CHARGE_CURRENT_MAX),
-      TEST_ID_CHARGER_DEVICE_CURRENT, {charge_current=charge_current});
-      else
-    test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Charge current of %fmA outside of range of %fmA to %fmA.", charge_current, CHARGE_CURRENT_MIN, CHARGE_CURRENT_MAX),
-    TEST_ID_CHARGER_DEVICE_CURRENT, {charge_current=charge_current});
+    //hack - battery too high
+    local bat_acc = 0;
+    for (local i = 0; i < BATT_ADC_SAMPLES; i++)
+          bat_acc += (BATT_VOLT_MEASURE.read() >> 4) & 0xFFF;
+    
+    batt_voltage = (bat_acc/BATT_ADC_SAMPLES) * BATT_ADC_RDIV;
+    
+    //end hack
 
-      
-/*
-      local bat_acc = 0;
-      for (local i = 0; i < BATT_ADC_SAMPLES; i++)
-        bat_acc += (BATT_VOLT_MEASURE.read() >> 4) & 0xFFF;
-      
-      local charge_voltage = (bat_acc/BATT_ADC_SAMPLES) * BATT_ADC_RDIV;
-      local volt_diff = charge_voltage - batt_voltage;
+    // wait with submission of charging test start to the server until after the
+    // charging current measurement to not introduce a variable network delay
+    // or WiFi transmission noise
+    agent.send("testresult", result_data_table);
 
-      if (volt_diff > CHARGE_MIN_INCREASE)
-    test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, format("Battery voltage when charging %fV greater than before charging.", volt_diff),
-      TEST_ID_CHARGER_BATT_VOLT_DIFF, {volt_diff=volt_diff});
-      else
-    test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Battery voltage difference %fV to before charging, requiring greater %fV.", volt_diff, CHARGE_MIN_INCREASE),
-    TEST_ID_CHARGER_BATT_VOLT_DIFF, {volt_diff=volt_diff, charge_min_increase=CHARGE_MIN_INCREASE});
-*/
+    if (batt_voltage > 4.1) {
+            if ((charge_current > 100) && (charge_current < 400)){
+                test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, format("Battery almost full. Charge current of %fmA in range of %fmA to %fmA.", charge_current, 90, 400),
+                TEST_ID_CHARGER_DEVICE_CURRENT, {charge_current=charge_current});
+            } else {
+                test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Battery almost full. Charge current of %fmA outside of range of %fmA to %fmA.", charge_current, 90, 400),
+                TEST_ID_CHARGER_DEVICE_CURRENT, {charge_current=charge_current});
+            }
+    } else {
+        if ((charge_current > CHARGE_CURRENT_MIN) && (charge_current < CHARGE_CURRENT_MAX)){
+            test_log(TEST_CLASS_CHARGER, TEST_RESULT_SUCCESS, format("Charge current of %fmA in range of %fmA to %fmA.", charge_current, CHARGE_CURRENT_MIN, CHARGE_CURRENT_MAX),
+            TEST_ID_CHARGER_DEVICE_CURRENT, {charge_current=charge_current});
+        } else {
+            test_log(TEST_CLASS_CHARGER, TEST_RESULT_ERROR, format("Charge current of %fmA outside of range of %fmA to %fmA.", charge_current, CHARGE_CURRENT_MIN, CHARGE_CURRENT_MAX),
+            TEST_ID_CHARGER_DEVICE_CURRENT, {charge_current=charge_current});
+        }
+    }
+
+
+
       
       test_flush();
       server.flush(SERVER_FLUSH_TIME);
