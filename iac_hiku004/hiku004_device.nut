@@ -14,7 +14,6 @@ imp.setpoweren(true);
 if ("spiflash" in hardware) {
     // Running on an imp003...
     hardware.spiflash.enable();
-    imp.sleep(0.100);
 }
 
 if (imp.getssid() != "")
@@ -220,7 +219,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.1.05"; // hiku-v2 firmware starts with 2.0.00
+const cFirmwareVersion = "2.1.07"; // hiku-v2 firmware starts with 2.0.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -1201,6 +1200,10 @@ function handlePin1Int()
     
     local pinState = CPU_INT.read();
 
+	// clear the interrupt on Silego
+	CPU_INT_RESET.write(0);
+    CPU_INT_RESET.write(1);
+
     // Get the active interrupt sources
     // Keep reading the interrupt source register and clearing 
     // interrupts until it reads clean.  This catches any interrupts
@@ -1219,11 +1222,11 @@ function handlePin1Int()
     
     if (ACOK_N_val)
     {
-        server.log("Charger Plugged In");
+        //server.log("Charger Plugged In");
     }
     else
     {
-        server.log("Charger Removed");
+        //server.log("Charger Removed");
     }
     
     if (!BTN_N.read())
@@ -1252,7 +1255,6 @@ function handlePin1Int()
     {
         //server.log("Accelerometer Interrupt Fired");
     }
-    
     //regInterruptSource = (ACOK_N_val << 7) | ((BTN_N.read() ? 0 : 1) << 2) | (ACOK_N_val << 1) | (ACCEL_INT.read() & 1);
 }
 CPU_INT_RESET.write(0);
@@ -1782,9 +1784,13 @@ class PushButton
     {
         // Sample the button multiple times to debounce. Total time 
         // taken is (numSamples-1)*sleepSecs
+        
+        // clear the interrupt on Silego
+    	CPU_INT_RESET.write(0);
+        CPU_INT_RESET.write(1);
+        
         local state = readState();
         local curr_time, delta;
-        
         
         imp.sleep(0.010);
         state += readState();
@@ -2046,6 +2052,7 @@ class ChargeStatus
     {
         ACOK_N.configure(DIGITAL_IN, chargerDetectionCB.bindenv(this));
         IMON.configure(ANALOG_IN);
+        
     
         BATT_VOLT_MEASURE.configure(ANALOG_IN);
 
@@ -2086,13 +2093,16 @@ class ChargeStatus
     
     function chargerDetectionCB()
     {
+        // clear the interrupt on Silego
+        CPU_INT_RESET.write(0);
+        CPU_INT_RESET.write(1);
         // the pin is high charger is attached and low is a removal
         local charge_detect_n;
 
         charge_detect_n = ACOK_N.read();
 
         local status = charge_detect_n ? "disconnected":"connected";
-
+        server.log(format("USB Detection CB: %s", status));
         log(format("USB Detection CB: %s", status));
         log(format("USB Detection CB: %s", status));
         agentSend("usbState",status);
@@ -2534,6 +2544,8 @@ class Accelerometer extends I2cDevice
 
     function handleAccelInt() 
     {
+        CPU_INT_RESET.write(0);
+        CPU_INT_RESET.write(1);
         server.log("Accel interrupt fired!!");
         gAccelInterrupted = true;
         disableInterrupts();
@@ -2627,15 +2639,14 @@ function preSleepHandler() {
         NRST.write(0);
         AUDIO_UART.disable();
         
-        /*server.log("swuptodate = " + nv.stm32_sw_uptodate);
-        server.log("stm32 flag = " + gstm32UpdateOnceFlag);
-        if (!nv.stm32_sw_uptodate) {
+
+        if (FACTORY_BSSIDS.find(imp.getbssid()) != null) {
             AUDIO_UART.disable();
             //TODO: remove it once done instant on dev work is done.
             updateSTM32();
             // Put STM32F0 in reset mode to turn scanner off
             NRST.write(0);
-        }*/
+        }
     
         // When the timer below expires we will hit the sleepHandler function below
         // only enter into the delay wait if the current state is either IDLE or PRE_SLEEP
@@ -2643,6 +2654,8 @@ function preSleepHandler() {
         // someone pushed the button
         if( (gDeviceState == DeviceState.IDLE) || (gDeviceState == DeviceState.PRE_SLEEP) )
         {
+            CPU_INT_RESET.write(0); // make sure interrupts are cleared
+            CPU_INT_RESET.write(1);	// make sure interrupts are cleared	
             gAccelInterrupted = false;
             log("preSleepHandler: enabled the hysteresis timer");
             gAccelHysteresis.enable();
@@ -2653,6 +2666,8 @@ function preSleepHandler() {
         // If the setup is required and we timed out for
         // the 5 minute timer then we just enter sleep right away
         // only thing that would wake up the device is the button press
+        CPU_INT_RESET.write(0); // make sure interrupts are cleared
+        CPU_INT_RESET.write(1);	// make sure interrupts are cleared	
         gAccelInterrupted = false;
         sleepHandler();
     }
@@ -2747,6 +2762,7 @@ function shippingMode()
     }
     else 
     {
+        triggerCount = 0;
         hwPiezo.playSound("blink-up-enabled", false);
         nv.setup_required = true;
         nv.sleep_not_allowed = false;
@@ -2848,15 +2864,13 @@ function init()
                                          hwButton)
                                     );
     
-    if ( (FACTORY_BSSIDS.find(imp.getbssid()) != null) || (imp.getssid() == "") ) {
-        //if (gDeepSleepTimer) {
-        //    gDeepSleepTimer.disable();
-       // }
-        gDeepSleepTimer = CancellableTimer(cDelayBeforeDeepSleepFactory, preSleepHandler);
-    } else {
-       gDeepSleepTimer = CancellableTimer(cActualDelayBeforeDeepSleep, preSleepHandler);
-
-    }
+					
+    gDeepSleepTimer = CancellableTimer(cActualDelayBeforeDeepSleep, preSleepHandler);
+    
+    if (FACTORY_BSSIDS.find(imp.getbssid()) != null) {
+        if (gDeepSleepTimer) gDeepSleepTimer.disable();
+        gDeepSleepTimer = CancellableTimer(cDelayBeforeDeepSleepFactory, preSleepHandler.bindenv(this));
+    }    
     
     gAccelHysteresis <- CancellableTimer( 2, sleepHandler); 
     
@@ -2889,23 +2903,11 @@ function onConnected(status)
             handlePendingBarcode();
         }   
         
-        /*
-        if (gPendingTimer)
-        {
-            imp.cancelwakeup(gPendingTimer);
-            gPendingTimer = null;
-            imp.wakeup(0.0001, function (){
-                hwPiezo.playSound("success-local");
-            });
-            handlePendingAudio();
+        server.log("BSSID: "+imp.getbssid());
+        if (FACTORY_BSSIDS.find(imp.getbssid()) != null) {
+            if (gDeepSleepTimer) gDeepSleepTimer.disable();
+            gDeepSleepTimer = CancellableTimer(cDelayBeforeDeepSleepFactory, preSleepHandler.bindenv(this));
         }
-        */
-    server.log("BSSID: "+imp.getbssid());
-    if (FACTORY_BSSIDS.find(imp.getbssid()) != null) {
-        if (gDeepSleepTimer) 
-        gDeepSleepTimer.disable();
-        gDeepSleepTimer = CancellableTimer(cDelayBeforeDeepSleepFactory, preSleepHandler);
-    }
         local timeToConnect = hardware.millis() - entryTime;
         connection_available = true;
         //imp.configure("hiku", [], []);   // this is depcrecated  
@@ -2939,12 +2941,6 @@ function onConnected(status)
             log("Setup Completed!");
         }
         nv.disconnect_reason = 0;
-        
-/*
-        log(format("total_init:%d, init_stage1: %d, init_stage2: %d, init_unused: %d\n",
-            (hardware.millis() - entryTime), gInitTime.init_stage1, gInitTime.init_stage2, gInitTime.init_unused));
-        log(format("scanner:%d, button: %d, charger: %d, accel: %d, int handler: %d\n",
-            gInitTime.scanner, gInitTime.button, gInitTime.charger, gInitTime.accel, gInitTime.inthandler));  */                  
         
     }
     else
@@ -3648,6 +3644,10 @@ stm32 <- Stm32(AUDIO_UART, NRST, BOOT0);
 //Do an update of STM32 here iff device is waking up after new squirrel download OR new blinkup
 //Done here so that it's after the updateSTM32() fcn and stm32 object is defined. 
 
+if (FACTORY_BSSIDS.find(imp.getbssid()) != null) {
+    gUpdateMode = 0; // override update if on the factory floor
+}
+
 if (gUpdateMode){
     server.log("Valid reason for updating STM32 now");
     AUDIO_UART.disable();
@@ -3660,30 +3660,3 @@ if (gUpdateMode){
 
 server.log("Ready");
 server.log(imp.getsoftwareversion());
-
-/*
-server.log("**************************** STARTING SPI TESTS *********************************************");
-hardware.spiflash.enable();
-server.log(format("SPI Chip ID: 0x%x", hardware.spiflash.chipid()));
-
-local samples = blob();
-local read_samples = blob();
-//hardware.spiflash.erasesector(4096);
-
-//samples.writestring("Hello World! ***");
-for (local i=0; i<1024;i++)
-  samples.writen(math.rand(), 'i');
-server.log(format("blob length %d", samples.len()));
-local sec_offs = 4096;
-for (local i=0; i<16;i++)
-  hardware.spiflash.erasesector(sec_offs*(i+1));
-local write_start = hardware.millis();
-for (local i=0; i<16;i++)
-  hardware.spiflash.write(sec_offs*(i+1), samples);
-write_start = hardware.millis() - write_start;
-server.log(format("Writing 128kB to flash took %d ms", write_start));
-//hardware.spiflash.write(4096, samples);
-//read_samples = hardware.spiflash.read(4096, 15);
-//server.log(format("Read back: %s", read_samples.tostring()));
-hardware.spiflash.disable();
-*/
