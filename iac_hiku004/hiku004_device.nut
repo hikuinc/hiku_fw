@@ -2756,12 +2756,6 @@ function shippingMode()
     local result = triggerCount % 2;
     NRST.write(result);
     
-    if(result)
-    {
-        AUDIO_UART.write("LLLL");
-        AUDIO_UART.flush();          
-    }
-    
     triggerCount++;
     if (triggerCount < 40)
     {
@@ -2788,8 +2782,6 @@ agent.on("shippingMode", function(result)
     //if (imp.getbssid() == FACTORY_BSSID) {
         server.log("entering shipping mode");
         AUDIO_UART.disable();
-        AUDIO_UART.setrxfifosize(UART_BUF_SIZE);
-        AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS|NO_RX);
         shippingMode();
     }
 });
