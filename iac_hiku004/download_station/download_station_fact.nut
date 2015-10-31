@@ -157,9 +157,13 @@ function disconnectHandler(reason) {
             if (TEST_CONTROLLERS.find(imp.getmacaddress()) != null){
                 server.connect(disconnectHandler, 10);
             } else {
-                server.connect(disconnectHandler, 30);
+                // Only attempt to connect iff the ssid is valid
+                if (imp.getssid() != "")
+                {
+                    server.connect(disconnectHandler, 30);
+                }
             }
-        })
+        });
     }
     if (reason == SERVER_CONNECTED){
         server.log(format("connected from disconnect: %d", glastConnectReason));
@@ -1162,7 +1166,13 @@ function buttonCallback()
         // blinkup/OS upgrade Imp
         if (TEST_CONTROLLERS.find(macAddress) != null) {
             server.log("Factory blink-up started");
-            server.factoryblinkup(SSID,PASSWORD, BLINKUP_LED, BLINKUP_ACTIVEHIGH | BLINKUP_FAST);
+            local ssid_programmed = imp.getssid();
+            
+            if (ssid_programmed == "")
+            {
+                ssid_programmed = SSID;
+            }
+            server.factoryblinkup(ssid_programmed,PASSWORD, BLINKUP_LED, BLINKUP_ACTIVEHIGH | BLINKUP_FAST);
             imp.wakeup(10, function() {
             //#server.log("Factory blink-up done");
             // allow test to run again here

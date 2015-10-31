@@ -219,7 +219,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.1.08"; // hiku-v2 firmware starts with 2.0.00
+const cFirmwareVersion = "2.1.10"; // hiku-v2 firmware starts with 2.0.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -251,7 +251,7 @@ const SETUP_BARCODE_PREFIX = "4H1KU5"
 // HACK find correct BSSID at IAC
 //const FACTORY_BSSID = "c83a351e5680";
 //const FACTORY_BSSID = "c83a35587e00";
-FACTORY_BSSIDS <- ["94b40f1cb7a6", "94b40fc9cb56", "94b40fc9cbba","94b40f1cbba1","94b40f679823","94b40f1cb561","94b40f679860" /* All the 5-7 macs infront is on an Aruba thin AP */, "c83a35587e00" /* Tenda router at IAC */, "c83a351e5680" /* Tenda router at hiku */];
+FACTORY_BSSIDS <- ["94b40f1cb7a6", "94b40fc9cb56", "94b40fc9cbba","94b40f1cbba1","94b40f1cbba2","94b40f679823","94b40f1cb561","94b40f1cb562","94b40f679860" /* All the 5-7 macs infront is on an Aruba thin AP */, "c83a35587e00" /* Tenda router at IAC */, "c83a351e5680" /* Tenda router at hiku */];
 
 //const FACTORY_BSSID = "00184dc95267";
 enum DeviceState
@@ -2666,6 +2666,7 @@ function preSleepHandler() {
         // If the setup is required and we timed out for
         // the 5 minute timer then we just enter sleep right away
         // only thing that would wake up the device is the button press
+        hwAccelerometer.disableInterrupts();
         CPU_INT_RESET.write(0); // make sure interrupts are cleared
         CPU_INT_RESET.write(1);	// make sure interrupts are cleared	
         gAccelInterrupted = false;
