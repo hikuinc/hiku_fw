@@ -64,6 +64,9 @@ const MAX_AUDIO_PAYLOAD_LEN = 192;
 const UART_BUF_SIZE = 1536;
 
 
+
+SSID_LIST <- ["hiku_dl","hiku_ap"];
+
 const SSID = "hiku_dl";
 const PASSWORD = "hikuflashing";
 
@@ -1172,6 +1175,7 @@ function buttonCallback()
             {
                 ssid_programmed = SSID;
             }
+            server.log("ssid: "+ssid_programmed);
             server.factoryblinkup(ssid_programmed,PASSWORD, BLINKUP_LED, BLINKUP_ACTIVEHIGH | BLINKUP_FAST);
             imp.wakeup(10, function() {
             //#server.log("Factory blink-up done");
@@ -1269,5 +1273,5 @@ function init()
 //**********************************************************************
 // main
 // Only run in the factory with a specified SSID
-if (imp.getssid() == SSID)
+if (SSID_LIST.find(imp.getssid()) != null)
     init();
