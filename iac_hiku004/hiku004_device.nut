@@ -219,7 +219,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.1.10"; // hiku-v2 firmware starts with 2.0.00
+const cFirmwareVersion = "2.1.11"; // hiku-v2 firmware starts with 2.0.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -2714,7 +2714,7 @@ function sleepHandler()
     CPU_INT_RESET.write(1);
     // Turn off charger LED by disabling LDO1
     // Leave LDO2 and LDO7 enabled
-    pmic.write(0x00, 0x06);
+    //pmic.write(0x00, 0x06);
 
     // NOTE: disabling blinkup before sleep is required for hiku-004
     // as the Imp otherwise starts flashing the LEDs green/red/yellow when
@@ -2956,6 +2956,7 @@ if (imp.getssid() == "" && !("first_boot" in nv)) {
     nv.first_boot <- 1;
     nv.setup_required = true;
     //hwPiezo.playSound("success-server");
+    gUpdateMode = 0;    //don't update STM32 if booting for first time
     imp.onidle(function () {imp.deepsleepfor(1);});
 }
 
