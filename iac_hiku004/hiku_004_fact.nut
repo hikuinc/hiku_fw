@@ -62,7 +62,7 @@ logIndividual <- false;
 
 // MAC addresses of the factory Imps to run the blinkup/OS upgrade firmware;
 // the other Imp runs the test fixture firmware
-BLINKUP_IMP_MACS <- ["0c2a69090d9b", "0c2a6908b054"];
+BLINKUP_IMP_MACS <- ["0c2a69090d9b", "0c2a6908b054", "0c2a69093434"];
 
 // timer handle for timing out devices that did not complete the button test
 // after the charging test is done
@@ -119,7 +119,7 @@ const UART_BUF_SIZE = 1536;
 // HACK
 //const SSID = "Tenda_1E5680";
 //const PASSWORD = "1234567890";
-
+SSID_LIST <- ["hiku_ap","hiku_dl"];
 const SSID = "hiku_ap";
 const PASSWORD = "hikuflashing";
 
@@ -2765,8 +2765,16 @@ function buttonCallback()
       // blinkup/OS upgrade Imp
       if (BLINKUP_IMP_MACS.find(macAddress) != null) {
               //#server.log("Factory blink-up started");
-              server.factoryblinkup(SSID,PASSWORD, BLINKUP_LED, BLINKUP_ACTIVEHIGH | BLINKUP_FAST);
-          imp.wakeup(10, function() {
+              
+        local ssid_programmed = imp.getssid();
+        
+        if (ssid_programmed == "")
+        {
+            ssid_programmed = SSID;
+        }
+        server.factoryblinkup(ssid_programmed,PASSWORD, BLINKUP_LED, BLINKUP_ACTIVEHIGH | BLINKUP_FAST);              
+              
+        imp.wakeup(10, function() {
                 //#server.log("Factory blink-up done");
             // allow test to run again here
             SUCCESS_LED_GREEN.write(1);
@@ -2899,7 +2907,7 @@ function init()
 //**********************************************************************
 // main
 // Only run in the factory with a specified SSID
-if (imp.getssid() == SSID)
+if (SSID_LIST.find(imp.getssid()) != null)
     init();
 //else
     //#server.log("ERROR: SSID does not match pre-configured factory SSID");
