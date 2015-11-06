@@ -221,7 +221,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.1.13"; // hiku-v2 firmware starts with 2.0.00
+const cFirmwareVersion = "2.1.14"; // hiku-v2 firmware starts with 2.0.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -1166,9 +1166,17 @@ function stopScanRecord()
     }
     else if(gPendingAudio)
     {
-        //spin off the scheduler to do the pending data case
-        hwPiezo.playSound("success-local");
-        imp.wakeup(0.5, handlePendingAudio);
+        //local secs;
+        //secs = (hardware.millis()-gAudioTimer)/1000.0;
+        //log(format("pending audio time elapsed %d", secs));
+        //if (secs >= 0.4){
+            log("scheduling handlePendingAudio");
+            //spin off the scheduler to do the pending data case
+            hwPiezo.playSound("success-local");
+            imp.wakeup(0.5, handlePendingAudio);
+        //} else {
+        //    log("discarding data, quick press");
+        //}
     }
     else
     {
@@ -1213,12 +1221,13 @@ function handlePin1Int()
         pressed += BTN_N.read();
         log(format("interrupt, pressed = %d",pressed));
         if (pressed != 0){
-            //imp.wakeup(0.001 function(){
+            imp.wakeup(0.001 function(){
                 log("interrupt, calling stopscanrecord");
                 stopScanRecord();
+                //sendLastBuffer();
                 updateDeviceState(DeviceState.BUTTON_RELEASED);
                 updateDeviceState(DeviceState.IDLE);                   
-            //});
+            });
 
         }
         gInstantOnMode = 0;
