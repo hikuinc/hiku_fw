@@ -1,12 +1,16 @@
-greasonString <- "Unknown";     //reason for wakeup
-gUpdateMode <- 0;               //set flag to indicate when new squirrel code is being downloaded + housekeeping
-
 // Copyright 2015 Katmandu Technology, Inc. All rights reserved. Confidential.
 // Setup the server to behave when we have the no-wifi condition
+
 local entryTime = hardware.millis();
 server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, 30);
-local sendBufferSize = 48*1024; // 24K send buffer size
-local oldsize = imp.setsendbuffersize(sendBufferSize);
+local oldsize = imp.setsendbuffersize(48*1024);
+
+// Instant On Related declarations
+greasonString <- "Unknown";     //reason for wakeup
+gUpdateMode <- 0;               //set flag to indicate when new squirrel code is being downloaded + housekeeping
+gInstantOnMode <-0;
+gButtonCallBackFired <-0;
+gPendingTimer <- null;
 
 // TODO put back this in the flash functions
 imp.setpoweren(true);
@@ -21,10 +25,6 @@ if (imp.getssid() != "")
     imp.wakeup(0.000001, function() {server.connect(null, 2);});
 }
 
-gPendingTimer <- null;
-
-is_hiku004 <- true;
-
 //TODO: uncomment to do runtime detection
 hardware.pinQ.configure(DIGITAL_IN_PULLUP);
 local is_hiku004_rev10 = (hardware.pinQ.read() == 1);
@@ -33,42 +33,30 @@ is_hiku004_rev10 = is_hiku004_rev10 && (hardware.pinQ.read() == 0);
 
 //is_hiku004_rev10 = false;
 
-if (is_hiku004) {
-    CPU_INT             <- hardware.pinW;
-    CPU_INT_RESET       <- hardware.pinY;
-    EIMP_AUDIO_IN       <- hardware.pinN; // "EIMP-AUDIO_IN" in schematics
-    EIMP_AUDIO_OUT      <- hardware.pinC; // "EIMP-AUDIO_OUT" in schematics
-    IMON                <- hardware.pinE;
-    I2C_IF              <- hardware.i2cFG;
-    SCL_OUT             <- hardware.pinF;
-    SDA_OUT             <- hardware.pinG;
-    BATT_VOLT_MEASURE   <- hardware.pinH;
-    BTN_N               <- hardware.pinX;
-    ACOK_N              <- hardware.pinA;
-    AUDIO_UART          <- hardware.uartUVGD;
-    SCAN_CMD            <- hardware.pinU;
-    IMP_ST_CLK          <- hardware.pinM;
-    NRST                <- hardware.pinS;
-    BOOT0               <- hardware.pinK;
-    if (is_hiku004_rev10) {
-        ACCEL_INT           <- hardware.pinT;
-        VREF_EN             <- hardware.pinN;
-    } else {
-        ACCEL_INT           <- hardware.pinQ;
-        VREF_EN             <- hardware.pinT;
-    }
+CPU_INT             <- hardware.pinW;
+CPU_INT_RESET       <- hardware.pinY;
+EIMP_AUDIO_IN       <- hardware.pinN; // "EIMP-AUDIO_IN" in schematics
+EIMP_AUDIO_OUT      <- hardware.pinC; // "EIMP-AUDIO_OUT" in schematics
+IMON                <- hardware.pinE;
+I2C_IF              <- hardware.i2cFG;
+SCL_OUT             <- hardware.pinF;
+SDA_OUT             <- hardware.pinG;
+BATT_VOLT_MEASURE   <- hardware.pinH;
+BTN_N               <- hardware.pinX;
+ACOK_N              <- hardware.pinA;
+AUDIO_UART          <- hardware.uartUVGD;
+SCAN_CMD            <- hardware.pinU;
+IMP_ST_CLK          <- hardware.pinM;
+NRST                <- hardware.pinS;
+BOOT0               <- hardware.pinK;
+if (is_hiku004_rev10) {
+    ACCEL_INT           <- hardware.pinT;
+    VREF_EN             <- hardware.pinN;
 } else {
-    CPU_INT             <- hardware.pin1;
-    EIMP_AUDIO_IN       <- hardware.pin2; // "EIMP-AUDIO_IN" in schematics
-    EIMP_AUDIO_OUT      <- hardware.pin5; // "EIMP-AUDIO_OUT" in schematics
-    RXD_IN_FROM_SCANNER <- hardware.pin7;
-    I2C_IF              <- hardware.i2c89;
-    SCL_OUT             <- hardware.pin8;
-    SDA_OUT             <- hardware.pin9;
-    BATT_VOLT_MEASURE   <- hardware.pinB;
-    //CHARGE_DISABLE_H    <- hardware.pinC;
-    SCANNER_UART        <- hardware.uart57;
+    ACCEL_INT           <- hardware.pinQ;
+    VREF_EN             <- hardware.pinT;
 }
+
 
 /********************  END ************/
 
@@ -82,11 +70,6 @@ CPU_INT_RESET.write(1);
 
 // Always enable blinkup to keep LED flashing; power costs are negligible
 imp.enableblinkup(true);
-
-responseTime <- 0;
-gStartScanRecord <- 0;
-
-afterConnect <- hardware.millis() - entryTime;
 
 const SCAN_DEBUG_SAMPLES = 1024;
 const IMAGE_COLUMNS = 1016;
@@ -202,16 +185,6 @@ if (!("nv" in getroottable()))
           };
 }
 
-if(!("setup" in getroottable()))
-{
-    setup <- {
-                 ssid="",
-                 pass="",
-                 barcode_scanned=false,
-                 time=0.0,
-             }
-}
-
 // Get the Sleep Duration early on
 if( nv.sleep_count != 0 )
 {
@@ -219,7 +192,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.1.12"; // hiku-v2 firmware starts with 2.0.00
+const cFirmwareVersion = "2.1.15"; // hiku-v2 firmware starts with 2.0.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -243,8 +216,6 @@ const PENDING_CANCEL_TIME = 10.0 // 10 seconds
 const BLINK_UP_BUTTON_COUNT = 3;
 
 const CONNECT_RETRY_TIME = 45; // for now 45 seconds retry time
-
-const SETUP_BARCODE_PREFIX = "4H1KU5"
 
 // use the factory BSSID to ensure scanning the special barcodes
 // on the hiku box only works in the factory
@@ -312,9 +283,11 @@ gstm32UpdateOnceFlag <-0;
 gAudioUartCallBackFired <-false;
 gUARTconfigured <- false;
 
+/*
 lines_scanned <- 0;
 scan_byte_cnt <- 0;
 scanner_error <- false;
+*/
 
 // offline audio buffer
 local audio_start_address = AUDIO_MEM_BASE_START;
@@ -404,11 +377,14 @@ logDeviceOnline();
 
 function audioUartCallback()
 {
+    log(format("instant on mode = %d", gInstantOnMode));
+
+    
     gAudioUartCallBackFired = true;
     local buf_ptr = 0;
     local string_len;
     local log_buf = false;
-     local packet_complete;
+    local packet_complete;
     
     local flags = AUDIO_UART.flags();
     local flag = 0x0;
@@ -482,36 +458,6 @@ function audioUartCallback()
                    
                      if ((connection_available || server.isconnected() ) && !gPendingAudio)
                      {
-                        log("Sending audio chunks");
-                        /*
-                        if(gPendingAudio)
-                        {
-                            agent.send("startAudioUpload", "");
-                            imp.sleep(0.100); // we need this to leave enough time to get a valid audio token!
-                            local totalSize = audio_end_address - audio_start_address;
-                            local numPayload = totalSize/1000;
-                            local buffer = blob();
-                            for(local i =0; i < numPayload; i++)
-                            {
-                                
-                                buffer.writeblob(read_flash(audio_start_address, 1000));
-                                audio_start_address +=buffer.tell();
-                                agent.send("uploadAudioChunk", {buffer=buffer, length=buffer.tell()});
-                                buffer.seek(0,'b');
-                                imp.sleep(0.100);
-                            }
-                            
-                            if (audio_end_address > audio_start_address)
-                            {
-                                buffer.writeblob(read_flash(audio_start_address, (audio_end_address - audio_start_address)));
-                                audio_start_address +=buffer.tell();                                
-                                agent.send("uploadAudioChunk", {buffer=buffer, length=buffer.tell()});  
-                                buffer.seek(0,'b');
-                            }
-                            gPendingAudio = 0;
-                            imp.sleep(0.100);
-                        }
-                        */
                         log(format("Sending Audio Chunks=%d, pendingAudio=%d",gAudioChunkCount,gPendingAudio));
                         agent.send("uploadAudioChunk", {buffer=audio_pkt_blob, length=audio_pkt_blob.tell()});
                      }
@@ -523,14 +469,6 @@ function audioUartCallback()
                      }
                     gAudioChunkCount++;
                     audio_pkt_blob.seek(0,'b');
-                 //local firstTime = (audio_end_address == AUDIO_MEM_BASE_START);
-                 //write_flash(audio_pkt_blob,audio_pkt_blob.tell());
-                 /*
-                 if (firstTime)
-                 {
-                    imp.wakeup(0.001,function(){gAudioUploader.startAudio()});   
-                 }
-                 */
                }
                audio_pkt_blob.writestring(packet_state.char_string.slice(buf_ptr, buf_ptr+packet_state.pay_len));
                buf_ptr += packet_state.pay_len;
@@ -616,26 +554,9 @@ function audioUartCallback()
       packet_state.state = PS_OUT_OF_SYNC;
    }
 
-/*
-   if (packet_state.state == PS_LEN_FIELD+1) {
-       server.log("Preamble found!");
-       server.log(format("ptr 0x%x type 0x%x len 0x%x", buf_ptr, packet_state.type, packet_state.pay_len));
-       packet_state.state = 0;
-   }
-*/
    packet_state.char_string = packet_state.char_string.slice(buf_ptr);
    string_len = packet_state.char_string.len();
   } while (packet_complete && (string_len >= PS_LEN_FIELD_LOW));
-}
-
-function audioUartCallBackTemp()
-{
-    log("Audio callback Temp is called!");
-    imp.wakeup(0.001,audioUartCallback);
-    if (!gStopScanRecord)
-    {
-        imp.wakeup(0.800, audioUartCallBackTemp);   
-    }
 }
 
 //**********************************************************************
@@ -643,7 +564,6 @@ function audioUartCallBackTemp()
 function startScanRecord() 
 {
     gAudioUartCallBackFired = false;
-    gStartScanRecord = hardware.millis() - entryTime;
     // Trigger the mic recording
     gAudioBufferOverran = false;
     gAudioChunkCount = 0;
@@ -662,9 +582,11 @@ function startScanRecord()
     // HACK requires SCAN_DEBUG_SAMPLES * FLASH_BLOCK to be a multiple of BLOCKSIZE
     //for (local i=0; i<((SCAN_DEBUG_SAMPLES * FLASH_BLOCK)/BLOCKSIZE); i++)
     //  hardware.spiflash.erasesector(i*BLOCKSIZE);
+    /*
     lines_scanned = 0;
     scan_byte_cnt = 0;
     scanner_error = false;
+    */
     //IMP_ST_CLK.configure(PWM_OUT, 0.000000125, 0.5);
     NRST.configure(DIGITAL_OUT);
     NRST.write(0);
@@ -672,7 +594,6 @@ function startScanRecord()
     BOOT0.write(0);
     //NRST.write(1);
     
-    responseTime = hardware.millis() - entryTime;
     // turn on voltage to STM32F0
     //pmic_val = pmic.read(0x00);
     //pmic.write(0x00, pmic_val | 0x08);
@@ -775,6 +696,7 @@ BTN_N.configure(DIGITAL_IN);
 for(local i=0; i<15; i++)
 {
     pressed += BTN_N.read();
+    //log(pressed);
     // clear interrupts
     CPU_INT_RESET.write(0);
     CPU_INT_RESET.write(1); 
@@ -785,15 +707,15 @@ for(local i=0; i<15; i++)
 log(format("Press Count: %d",pressed));
 if (pressed == 0 && imp.getssid() != "")
 {
+    log("inside pressed=0 logic");
+    gInstantOnMode = 1;
     gButtonState = ButtonState.BUTTON_DOWN;
     // skip scanner command mode and start scanning/recording audio immediately
     //startScanRecord();
     //SCAN_CMD.configure(DIGITAL_OUT, 0);
     //AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS | NO_TX, audioUartCallback);
     //NRST.write(1);
-    
-    
-    gStartScanRecord = hardware.millis() - entryTime;
+
     // Trigger the mic recording
     gAudioBufferOverran = false;
     gAudioChunkCount = 0;
@@ -812,9 +734,11 @@ if (pressed == 0 && imp.getssid() != "")
     // HACK requires SCAN_DEBUG_SAMPLES * FLASH_BLOCK to be a multiple of BLOCKSIZE
     //for (local i=0; i<((SCAN_DEBUG_SAMPLES * FLASH_BLOCK)/BLOCKSIZE); i++)
     //  hardware.spiflash.erasesector(i*BLOCKSIZE);
+    /*
     lines_scanned = 0;
     scan_byte_cnt = 0;
     scanner_error = false;
+    */
     //IMP_ST_CLK.configure(PWM_OUT, 0.000000125, 0.5);
     NRST.configure(DIGITAL_OUT);
     NRST.write(0);
@@ -822,7 +746,6 @@ if (pressed == 0 && imp.getssid() != "")
     BOOT0.write(0);
     //NRST.write(1);
     
-    responseTime = hardware.millis() - entryTime;
     // turn on voltage to STM32F0
     //pmic_val = pmic.read(0x00);
     //pmic.write(0x00, pmic_val | 0x08);
@@ -1136,7 +1059,7 @@ function init_audio_sector(sector)
 // it must support that. 
 function stopScanRecord()
 {
-    server.log("#BUTTON RELEASE!");
+    log("inside stopscanrecord");
     // Put STM32F0 in reset mode
     NRST.write(0);
     if (gDeviceState != DeviceState.SCAN_CAPTURED)
@@ -1158,9 +1081,17 @@ function stopScanRecord()
     }
     else if(gPendingAudio)
     {
-        //spin off the scheduler to do the pending data case
-        hwPiezo.playSound("success-local");
-        imp.wakeup(0.5, handlePendingAudio);
+        //local secs;
+        //secs = (hardware.millis()-gAudioTimer)/1000.0;
+        //log(format("pending audio time elapsed %d", secs));
+        //if (secs >= 0.4){
+            log("scheduling handlePendingAudio");
+            //spin off the scheduler to do the pending data case
+            hwPiezo.playSound("success-local");
+            imp.wakeup(0.5, handlePendingAudio);
+        //} else {
+        //    log("discarding data, quick press");
+        //}
     }
     else
     {
@@ -1193,13 +1124,37 @@ function stopScanRecord()
 // --- handle interrupts here --- 
 function handlePin1Int()
 {
+    //log("inside INTERRUPT handler!");
+    if (gInstantOnMode && !gButtonCallBackFired){
+        log("interrupt, handling quick press ");
+
+        local pressed = 0;
+        //BTN_N.configure(DIGITAL_OUT,1);
+        //BTN_N.configure(DIGITAL_IN);
+        pressed += BTN_N.read();
+        pressed += BTN_N.read();
+        pressed += BTN_N.read();
+        log(format("interrupt, pressed = %d",pressed));
+        if (pressed != 0){
+            imp.wakeup(0.001 function(){
+                log("interrupt, calling stopscanrecord");
+                stopScanRecord();
+                //sendLastBuffer();
+                updateDeviceState(DeviceState.BUTTON_RELEASED);
+                updateDeviceState(DeviceState.IDLE);                   
+            });
+
+        }
+        gInstantOnMode = 0;
+    }
+    
     //local regInterruptSource = 0;
     //local reg = 0;
     
     local pinState = CPU_INT.read();
 
-	// clear the interrupt on Silego
-	CPU_INT_RESET.write(0);
+    // clear the interrupt on Silego
+    CPU_INT_RESET.write(0);
     CPU_INT_RESET.write(1);
 
     // Get the active interrupt sources
@@ -1214,125 +1169,14 @@ function handlePin1Int()
         log(format("handlePin1Int: fallEdge time=%d ms, hardware.pin1=%d", hardware.millis(),pinState));
         return;
     }
-    
-    // HACK replace ACOK_N.read() for charging start/stop with I2C call to LP3923 or monitoring of charging current (IMON)
-    local ACOK_N_val = ACOK_N.read() ? 0 : 1;
-    
-    if (ACOK_N_val)
-    {
-        //server.log("Charger Plugged In");
-    }
-    else
-    {
-        //server.log("Charger Removed");
-    }
-    
-    if (!BTN_N.read())
-    {
-        if (gButtonState == ButtonState.BUTTON_DOWN)
-        {
-            /*
-            log("stopping scan!!!!");
-            gButtonState == ButtonState.BUTTON_UP;
-            stopScanRecord();
-            */
-        }
-
-    }
-    else
-    {
-        //server.log("Button Interrupt did not fire");
-    }
-    
-    
-    if (ACCEL_INT.read())
-    {
-        //server.log("Accelerometer Interrupt Fired");
-    }
-    else
-    {
-        //server.log("Accelerometer Interrupt Fired");
-    }
-    //regInterruptSource = (ACOK_N_val << 7) | ((BTN_N.read() ? 0 : 1) << 2) | (ACOK_N_val << 1) | (ACCEL_INT.read() & 1);
 }
+
 CPU_INT_RESET.write(0);
 CPU_INT_RESET.write(1);
 CPU_INT.configure(DIGITAL_IN_WAKEUP, handlePin1Int);
 justBeforeHandleInt <- hardware.millis() - entryTime;
-/*
-if (gButtonState == ButtonState.BUTTON_DOWN)
-{
-    log("Starting to capture data");
-    imp.wakeup(0.001, function(){ startScanRecord(); });
-    //startScanRecord();
-    //audioUartCallback();
-}
-*/
 
 // --- end of interrupt handling ---
-
-
-// Device Setup Related functions
-function determineSetupBarcode(barcode)
-{
-   // local patternString = format("\b%s\b",SETUP_BARCODE_PREFIX);
-    local pattern = regexp(@"\b4H1KU");
-    local res = pattern.search(barcode);
-    local tempBarcode = barcode;
-    log(format("Barcode to Match: %s",barcode));
-    log("result: "+res);
-    // result is null which means its not the setup barcode
-    if( res == null)
-    {
-       log("regex didn't fint a setup barcode");
-       return false;
-    }
-    
-    // At this time we have a barcode that has either an ssid or a password
-    // decode it by stripping the first character which identifies an ssid if its 5
-    // identifies a password if its a 6
-    
-    local barcodeType = tempBarcode.slice(res.end, res.end+1);
-    local setupCode = tempBarcode.slice(res.end+1, tempBarcode.len());
-    
-    if(barcodeType == "5")
-    {
-        // This is the SSID
-        setup.ssid = setupCode;
-    }
-    else if( barcodeType == "6")
-    {
-        // This is the password
-        setup.pass = setupCode;
-    }
-    
-    
-    log(" setupCode: "+setupCode+" type: "+barcodeType);
-    
-    if(setup.ssid !="" && setup.pass !="")
-    {
-       imp.wakeup(0.1 function(){
-            ChangeWifi(setup.ssid, setup.pass);
-            setup.ssid = setup.pass = "";
-       });
-    }
-    
-    return true;
-}
-
-function ChangeWifi(ssid, password) {
-    log("device disconnecting");
-    // wait for wifi buffer to empty before disconnecting
-    server.flush(60);
-    server.disconnect();
-    
-    // change the wificonfiguration and then reconnect
-    imp.setwificonfiguration(ssid, password);
-    server.connect();
-    
-    // log that we're connected to make sure it worked
-    log("device reconnected to " + ssid);
-}
 
 
 //======================================================================
@@ -1737,12 +1581,14 @@ class PushButton
         
         connection = connection_available;
         
+        //buttonCallback();
+        
         if (gButtonState == ButtonState.BUTTON_DOWN)
         {
             updateDeviceState(DeviceState.SCAN_RECORD);
         }        
         
-        
+        log(format("entered pushbutton class %d", hardware.millis()));
     }
     
     function connectionStatusCb(status)
@@ -1780,11 +1626,12 @@ class PushButton
     // Imp is idle.
     function buttonCallback()
     {
+        gButtonCallBackFired = 1;
         // Sample the button multiple times to debounce. Total time 
         // taken is (numSamples-1)*sleepSecs
         
         // clear the interrupt on Silego
-    	CPU_INT_RESET.write(0);
+        CPU_INT_RESET.write(0);
         CPU_INT_RESET.write(1);
         
         local state = readState();
@@ -1917,87 +1764,24 @@ class PushButton
                     
                 } else {
                     gButtonState = ButtonState.BUTTON_UP;
-                    server.log("Else Case!!!!! ---------------------------");
+                    log("AudioUartCallback not fired!!!!!");
                     if (gUARTconfigured){
-                        
+                        log("uart configured - stopping");
                         stopScanRecord();
                         server.log("switching states herer");
                         updateDeviceState(DeviceState.SCAN_CAPTURED);
                         updateDeviceState(DeviceState.BUTTON_RELEASED);
                         updateDeviceState(DeviceState.IDLE);                          
                     } else {
+                        log("uart not configured");
                         imp.wakeup(0.100, function(){
-                            server.log("IN THE ELSE YO");
+                            log("uart not configured - stopping");
                             stopScanRecord();
-                            server.log("switching states herer");
-                            //updateDeviceState(DeviceState.SCAN_CAPTURED);   
                             updateDeviceState(DeviceState.BUTTON_RELEASED);
                             updateDeviceState(DeviceState.IDLE);                              
                         });
                     }
                 }                
-                
-                /*log("buttonCallback case 2");
-                if (gAudioUartCallBackFired == true){
-                    
-                    log("buttonCallback case 2: audioUartCallbackFired");
-                    
-                    // Button in released state
-                    if (gButtonState == ButtonState.BUTTON_DOWN)
-                    {
-                        log("BUTTON RELEASED!");
-                    
-                        //Turn off scanner light right away if button released. Otherwise, it feels laggy. Before, it was not being turned off until stopScanRecord is being called [EM]
-                        //NRST.write(0);
-                    
-                        gButtonState = ButtonState.BUTTON_UP;
-
-                        local oldState = gDeviceState;
-                        updateDeviceState(DeviceState.BUTTON_RELEASED);
-    
-                        if (oldState == DeviceState.SCAN_RECORD)
-                        {
-                            // Audio captured. Stop sampling and send it. 
-                            // Note that we only call sendLastBuffer in
-                            // the case that we want to capture the audio, 
-                            // so it cannot be inside stopScanRecord, which 
-                            // is called in multiple places. 
-                            // We have two uses of imp.onidle(), one during 
-                            // the IDLE state and one when not idle.  They 
-                            // must be kept separate, as only one onidle 
-                            // callback is supported at a time. 
-                            log("calling stopScanRecrod");
-                            if (gPendingAudio)
-                            {
-                                imp.wakeup(0.001,stopScanRecord);
-                            }
-                            if ((connection_available || server.isconnected()) && !gPendingAudio)
-                            {
-                                stopScanRecord();
-                                imp.onidle(sendLastBuffer); 
-                            }
-                            
-                        }
-                        // No more work to do, so go to idle
-                        updateDeviceState(DeviceState.IDLE);            
-                    
-                    } 
-                    
-                } else {
-                    gButtonState = ButtonState.BUTTON_UP;
-                    log("buttonCallback case 2: audioUartCallback NOT Fired");
-                    
-                    if (SCAN_CMD.read() == 0) {
-                        log("TX pin is low");
-                        //quick press case: a scan is not available and scanner light remains on - so turn off STM32 
-                        NRST.write(0);
-                        AUDIO_UART.disable();
-                    } else if (SCAN_CMD.read() == 1) {
-                        log("TX pin is high");
-                    }
-                    
-                }*/
-                
                 break;
             default:
                 // Button is in transition (not settled)
@@ -2144,12 +1928,6 @@ agent.on("uploadCompleted", function(result) {
     hwPiezo.playSound(result);
 });
 
-/*
-agent.on("devicePage", function(result){
-    hwPiezo.playPageTone();
-});*/
-
-
 
 function handlePendingAudio()
 {
@@ -2230,6 +2008,7 @@ function handlePendingAudio()
 
 function handlePendingBarcode()
 {
+    log("inside handlePendingBarcode");
     if(connection_available || server.isconnected())
     {
         cancelPendingTimer();
@@ -2259,17 +2038,18 @@ function handlePendingBarcode()
                          //hwPiezo.playSound("success-local");
                       }
             gPendingBarcode = null;
-            //init_audio_memory();
-            if (gDeviceState == DeviceState.SCAN_CAPTURED){
-                updateDeviceState(DeviceState.BUTTON_RELEASED);  
-                updateDeviceState(DeviceState.IDLE);            
-            } else {
-                updateDeviceState(DeviceState.IDLE);            
-            }
+            
+            //if (gDeviceState == DeviceState.SCAN_CAPTURED && !gButtonCallBackFired){
+            //    updateDeviceState(DeviceState.BUTTON_RELEASED);  
+            //    updateDeviceState(DeviceState.IDLE);            
+            //} else {
+            //    updateDeviceState(DeviceState.IDLE);            
+            //}
         }
     }
     else
     {
+        log("dit");
         pmic.write(0x02, 0x1);
         gPendingBarcodeTimerThree = imp.wakeup(1.5,function(){hwPiezo.playSound("pending")});
         gPendingBarcodeTimerTwo = imp.wakeup(1.5, handlePendingBarcode);
@@ -2570,27 +2350,6 @@ function print(str)
 
 
 //**********************************************************************
-function init_nv_items()
-{
-    log(format("sleep_count=%d setup_required=%s", 
-                    nv.sleep_count, (nv.setup_required?"yes":"no")));
-    //log(format("Bootup Reason: %xh", nv.boot_up_reason));
-}
-
-function init_unused_pins(i2cDev)
-{
-    /*
-    hardware.pinA.configure(DIGITAL_IN_PULLUP);
-    hardware.pin6.configure(DIGITAL_IN_PULLUP);
-    hardware.pinB.configure(DIGITAL_IN_PULLUP);
-    hardware.pinC.configure(DIGITAL_IN_PULLUP);
-    hardware.pinD.configure(DIGITAL_IN_PULLUP);
-    hardware.pinE.configure(DIGITAL_IN_PULLUP);
-    */
-    //gInitTime.init_unused = hardware.millis() - gInitTime.init_unused;
-}
-
-//**********************************************************************
 // Do pre-sleep configuration and initiate deep sleep
 function preSleepHandler() {
     updateDeviceState( DeviceState.PRE_SLEEP);
@@ -2653,7 +2412,7 @@ function preSleepHandler() {
         if( (gDeviceState == DeviceState.IDLE) || (gDeviceState == DeviceState.PRE_SLEEP) )
         {
             CPU_INT_RESET.write(0); // make sure interrupts are cleared
-            CPU_INT_RESET.write(1);	// make sure interrupts are cleared	
+            CPU_INT_RESET.write(1); // make sure interrupts are cleared 
             gAccelInterrupted = false;
             log("preSleepHandler: enabled the hysteresis timer");
             gAccelHysteresis.enable();
@@ -2666,16 +2425,10 @@ function preSleepHandler() {
         // only thing that would wake up the device is the button press
         hwAccelerometer.disableInterrupts();
         CPU_INT_RESET.write(0); // make sure interrupts are cleared
-        CPU_INT_RESET.write(1);	// make sure interrupts are cleared	
+        CPU_INT_RESET.write(1); // make sure interrupts are cleared 
         gAccelInterrupted = false;
         sleepHandler();
     }
-}
-
-
-function configurePinsBeforeSleep()
-{
-    hwPiezo.disable();
 }
 
 //**********************************************************************
@@ -2705,7 +2458,7 @@ function sleepHandler()
     nv.sleep_duration = time();
     server.disconnect();
     
-    configurePinsBeforeSleep();
+    hwPiezo.disable();
     
     // clear interrupts
     CPU_INT_RESET.write(0);
@@ -2838,11 +2591,6 @@ function init()
         // wait 350ms after release of PS_HOLD before turning off power
         pmic.write(0x1c, 0x1);
     }
-
-
-    // This is to default unused pins so that we consume less current
-    init_unused_pins(i2cDev);
-
  
     // Charge status detect config
     chargeStatus <- ChargeStatus(1);
@@ -2850,10 +2598,6 @@ function init()
     // Button config
     hwButton <- PushButton(BTN_N);
 
-    // Microphone sampler config
-    hwMicrophone <- EIMP_AUDIO_IN;
-                       
-    log("send buffer size: new= " + sendBufferSize + " bytes, old= "+oldsize+" bytes.");        
     // Accelerometer config
     hwAccelerometer <- Accelerometer(I2C_IF, 0x18, 
                                      0);
@@ -2864,7 +2608,7 @@ function init()
                                          hwButton)
                                     );
     
-					
+                    
     gDeepSleepTimer = CancellableTimer(cActualDelayBeforeDeepSleep, preSleepHandler);
     
     if (FACTORY_BSSIDS.find(imp.getbssid()) != null) {
@@ -2888,6 +2632,7 @@ function onConnected(status)
 {   
     if (status == SERVER_CONNECTED) {
         log("Connected!!!!!!!!!! yay!!!!!");
+        gInstantOnMode = 0;
         cancelPendingTimer();
         if (gPendingAudio && !gPendingBarcode)
         {
@@ -2912,9 +2657,7 @@ function onConnected(status)
         connection_available = true;
         //imp.configure("hiku", [], []);   // this is depcrecated  
         log(format("Reconnected after unexpected disconnect: %d ",nv.disconnect_reason));
-        init_nv_items();
-        server.log(format("Response Time: %d, afterConnect=%d, justBeforeHandleInt=%d, startOfScanRecord=%d",responseTime,afterConnect,justBeforeHandleInt,gStartScanRecord));                       
-            // Send the agent our impee ID
+        // Send the agent our impee ID
         local data = { 
                         impeeId = hardware.getdeviceid(), 
                         fw_version = cFirmwareVersion,
@@ -2931,7 +2674,8 @@ function onConnected(status)
                     };
         agentSend("init_status", data);
         
-        
+        log(format("sleep_count=%d setup_required=%s", 
+                    nv.sleep_count, (nv.setup_required?"yes":"no")));
         
         if( nv.setup_required )
         {
@@ -2958,6 +2702,7 @@ if (imp.getssid() == "" && !("first_boot" in nv)) {
     imp.onidle(function () {imp.deepsleepfor(1);});
 }
 
+/*
 function heartBeat()
 {
     if(DEBUG_UART_ENABLED)
@@ -2966,20 +2711,21 @@ function heartBeat()
         log("heart beat!!");
     }
 }
+*/
 
 init_done();
 connMgr <- ConnectionManager();
 connMgr.registerCallback(onConnected.bindenv(this));
 connMgr.init_connections(); 
 init();
-heartBeat();
+//heartBeat();
 // STM32 microprocessor firmware updater
 // Copyright (c) 2014 Electric Imp
 // This file is licensed under the MIT License
 // http://opensource.org/licenses/MIT
 
 // CLASS AND FUNCTION DEFS -----------------------------------------------------
-
+/*
 function hexdump(data) {
     local i = 0;
     while (i < data.tell()) {
@@ -2990,7 +2736,7 @@ function hexdump(data) {
         server.log(line);
     }
 }
-
+*/
 // This class implements the UART bootloader command set
 // https://github.com/electricimp/reference/tree/master/hardware/stm32/UART
 class Stm32 {    
