@@ -849,7 +849,7 @@ class Piezo
             "success-server": [ [E6ShortTone,1] ],
             "failure": [ [B4LongTone,0.75] ],
             "unknown-upc": [ [B4LongTone,0.75], [silenceTone,1], [silenceTone,1], [silenceTone,1], [silenceTone,1]  ],
-            "blink-up-enabled": [ [silenceTone,1], [silenceTone,1], [silenceTone,1], [silenceTone,1], [B4LongTone,1] ]
+            "blink-up-enabled": [ [B4LongTone,1] ]
         };
 
     }
