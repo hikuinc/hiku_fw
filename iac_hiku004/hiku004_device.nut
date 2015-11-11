@@ -192,7 +192,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "2.1.17"; // hiku-v2 firmware starts with 2.0.00
+const cFirmwareVersion = "2.1.18"; // hiku-v2 firmware starts with 2.0.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -1687,6 +1687,11 @@ class PushButton
                 
                 break;
             case 2:
+                
+                if (imp.getssid() == "")
+                {
+                    return;
+                }    
                 
                 if (gAudioUartCallBackFired == true){
 
