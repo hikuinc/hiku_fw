@@ -22,7 +22,9 @@ if (!("nv" in getroottable()))
             gBatteryLevel = 0.0,
             gFwVersion = 0.0,
             at_factory = false,
-                    macAddress = null
+            macAddress = null,
+            countryCode = null,
+            deviceReady = null
           };
 }
 
@@ -38,7 +40,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "1.3.XX";
+gAgentVersion <- "2.1.04";
 
 gAudioState <- AudioStates.AudioError;
 gAudioAbort <- false;
@@ -120,9 +122,12 @@ const BATT_0_PERCENT = 43726.16;
 const PREFIX_IMP_MAC = "0c2a69";
 const PREFIX_IMP_LABELING = ".HCMGETMAC";
 const PREFIX_GENERAL = ".HFB";
+const PREFIX_OBA_CHECK = ".HCOBACHECK";
 
 const TEST_CMD_PACKAGE = "package";
 const TEST_CMD_PRINT_LABEL = "label";
+const TEST_CMD_OBA_CHECK = "obacheck";
+
 
 const IMAGE_COLUMNS = 1016;
 scanned_image <- "";
@@ -134,6 +139,11 @@ gSpecialBarcodePrefixes <- [{
     min_len = 12,
     max_len = 12,
     url = gFactoryUrl + "/factory"},{
+    // this is to check the mac address at the oba station
+    prefix = PREFIX_OBA_CHECK,
+    min_len = 11,
+    max_len = 11,
+    url = gFactoryUrl + "/factory"}, {
     // barcode for generating a 2D datamatrix barcode for the scanner at the
         // label printer in production  
     prefix = PREFIX_IMP_LABELING,
@@ -537,6 +547,30 @@ function handleSpecialBarcodes(data)
             "Accept": "application/json"}, 
             json_data);
         break;
+        
+        case PREFIX_OBA_CHECK:
+          server.log(format("Scanned label code %s", barcode));
+          if (!nv.at_factory) {
+              return false;
+          }
+          is_special = true;
+          dataToSend = {
+              "macAddress": nv.macAddress,
+              "serialNumber": nv.gImpeeId,
+              "agentUrl": http.agenturl(),
+              "command": TEST_CMD_OBA_CHECK
+              };
+          sendMixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend);
+          //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend));
+          local json_data = http.jsonencode (dataToSend);
+          server.log(json_data);
+          req = http.post(
+              gSpecialBarcodePrefixes[i]["url"],
+              {"Content-Type": "application/json", 
+              "Accept": "application/json"}, 
+              json_data);
+          break;        
+        
         case PREFIX_IMP_LABELING :
         server.log(format("Scanned label code %s", barcode));
         if (!nv.at_factory) {
@@ -557,7 +591,9 @@ function handleSpecialBarcodes(data)
         local printer_req = http.get("https://agent.electricimp.com/WQ8othFzM2Zm/printMAC?mac="+nv.macAddress, {});
         printer_req.sendasync(onMacPrintReturn);
         // Goes to test controller 20000c2a69093434
-        local iac_printer_req = http.get("https://agent.electricimp.com/TvVLVemS7PR9/printMAC?mac="+nv.macAddress, {});
+        //local iac_printer_req = http.get("https://agent.electricimp.com/TvVLVemS7PR9/printMAC?mac="+nv.macAddress+"&countryCode="+nv.countryCode, {});
+        // Goes to test controller 20000c2a69090783
+        local iac_printer_req = http.get("https://agent.electricimp.com/3qMq5k6INLiw/printMAC?mac="+nv.macAddress+"&countryCode="+nv.countryCode, {});
         iac_printer_req.sendasync(onMacPrintReturn);
         req = http.post(
             gSpecialBarcodePrefixes[i]["url"],
@@ -1076,6 +1112,11 @@ device.on("shutdownRequestReason", function(status){
 });
 
 
+device.on("deviceReady", function(data)
+{
+   nv.deviceReady = time(); 
+});
+
 //======================================================================
 // External HTTP request handling
 
@@ -1091,6 +1132,21 @@ http.onrequest(function (req, res)
         if (req.path == "/getImpeeId") 
         {
           res.send(200, nv.gImpeeId);
+        }
+        else if (req.path == "/deviceReady")
+        {
+            local result = http.urlencode({"ready":"false","time":""});
+            if (nv.deviceReady != null)
+            {
+                local c = time();
+                local d = nv.deviceReady;
+                if (c - d <= 15)
+                {
+                    result = http.urlencode({"ready":"true", "time":getUTCTimeFromDate(date(d))});
+                    //return res.send(200,result);
+                }
+            }
+            return res.send(200, result);
         }
         else if (req.path == "/shippingMode") 
         {
@@ -1244,9 +1300,11 @@ device.on("init_status", function(data) {
     nv.gSleepDuration = data.sleep_duration;
     nv.at_factory = data.at_factory;
     nv.macAddress = data.macAddress;
+    nv.countryCode = data.countryCode;
     
     //server.log(format("Device to Agent Time: %dms", (time()*1000 - data.time_stamp)));
     server.log(format("Device OS Version: %s", data.osVersion));
+    server.log(format("Device Country: %s", nv.countryCode));
     local dataToSend =  {     
               fw_version=nv.gFwVersion,
               wakeup_reason = xlate_bootreason_to_string(nv.gWakeUpReason),
@@ -1255,8 +1313,9 @@ device.on("init_status", function(data) {
               rssi = data.rssi,
               dc_reason = getDisconnectReason(data.disconnect_reason),
               os_version = data.osVersion,
-              connectTime = data.time_to_connect
-                };
+              connectTime = data.time_to_connect,
+              ssid = data.ssid,
+    };
     sendDeviceEvents(dataToSend);
     sendMixPanelEvent(MIX_PANEL_EVENT_STATUS,dataToSend);
     //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_STATUS,dataToSend));
@@ -1284,11 +1343,16 @@ device.on("chargerState", function( chargerState ){
 
 function getUTCTime()
 {
-    local str ="";
     //[dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss.SSSSSS"];
     local d=date();
+    return getUTCTimeFromDate(d);
+}
+
+function getUTCTimeFromDate(d)
+{
+    local str ="";
     str = format("%04d-%02d-%02d %02d:%02d:%02d.000000", d.year, d.month+1, d.day, d.hour, d.min, d.sec);
-    return str;
+    return str;    
 }
 
 function BlobToHexString(data) {
