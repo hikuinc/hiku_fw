@@ -1,4 +1,7 @@
 // Copyright 2013 Katmandu Technology, Inc. All rights reserved. Confidential.
+//#require "WolframDataDrop.class.nut:1.0.0"
+//batterybin <- WolframDataDrop("8d9UOqXI");
+//chargebin <- WolframDataDrop("8dcKy6pw");
 
 enum AudioStates {
   AudioRecording,  // Hiku's button has been pressed and audio is being recorded.
@@ -897,6 +900,36 @@ device.on("batteryLevel", function(data) {
     
 });
 
+//Wolfram Data Drop
+/*device.on("batteryStatus", function(data) {
+    server.log("INSIDE BATTERY STATUS " + data.timestamp + " " + data.batterylevel);
+    local dataToSend = 
+    {
+        ts = data.timestamp,
+        bl = data.batterylevel
+    }
+
+    // Send asynchronously
+
+    batterybin.sendEvent(dataToSend, function(response) {
+        server.log(response.statuscode + ": " + response.body);
+    })
+});
+
+device.on("chargeStatus", function(data) {
+    server.log("inside charge status!");
+    local dataToSend = 
+    {
+        ts = data.timestamp,
+        cc = data.chargecurrent
+    }
+
+    // Send asynchronously
+
+    chargebin.sendEvent(dataToSend, function(response) {
+        server.log(response.statuscode + ": " + response.body);
+    })
+});*/
 
 //**********************************************************************
 // Prepare to receive audio from the device
