@@ -1831,7 +1831,7 @@ class ChargeStatus
         
         //agent.send("chargeStatus", {timestamp=getUTCTime(), chargecurrent = charge_current});     //used by Wolfram Data Drop
         
-        server.log(format("Current: %06fmA, charging_state: %d", CHARGE_CURRENT_FACTOR*IMON.read(), charging_state));
+        server.log(format("Current: %06fmA, charging_state: %d", charge_current, charging_state));
         return (charging_state ? true : false);
     }
     
@@ -2372,7 +2372,7 @@ function preSleepHandler() {
 
     // Resample the ~CHG charge signal and update chargeStatus.
     // previous_state before going to sleep 
-    //chargeStatus.chargerCallback();
+    chargeStatus.chargerCallback();
     
     local charger_detect = !(ACOK_N.read());    // used to check if charger cable is plugged in. 
     
