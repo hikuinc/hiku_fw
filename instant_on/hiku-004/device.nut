@@ -1817,6 +1817,7 @@ class ChargeStatus
 
         chargerCallback(); // this will update the current state right away
         imp.wakeup(5, batteryMeasurement.bindenv(this));
+        imp.wakeup(5, chargerCallback.bindenv(this)); // call this again in 15s in case battery is already charged, then we can stop blinking blue LED
     }
     
     function isCharging()
