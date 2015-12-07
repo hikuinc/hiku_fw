@@ -1803,7 +1803,10 @@ class PushButton
 class ChargeStatus
 {
     previous_state = false; // the previous state of the charger
-
+    chargerLEDstate = false;
+    toggleLEDTimer = null;
+    toggleRunning = false;
+    
     constructor(chargePin)
     {
         ACOK_N.configure(DIGITAL_IN, chargerDetectionCB.bindenv(this));
@@ -1814,17 +1817,23 @@ class ChargeStatus
 
         chargerCallback(); // this will update the current state right away
         imp.wakeup(5, batteryMeasurement.bindenv(this));
+        imp.wakeup(5, chargerCallback.bindenv(this)); // call this again in 15s in case battery is already charged, then we can stop blinking blue LED
     }
     
     function isCharging()
     {
-        local charge_detect_n;
-        // Register charging if USB voltage is present (ACOK_N),
+        local charging_state = 0;
         // register charging stop if either USB voltage is disconnected or the measured charging current is below CHARGE_CURRENT_MIN
-        charge_detect_n = previous_state ? ACOK_N.read() || (CHARGE_CURRENT_FACTOR*IMON.read() < CHARGE_CURRENT_MIN) : ACOK_N.read();
-        server.log(format("Current: %06fmA, %d, %d", CHARGE_CURRENT_FACTOR*IMON.read(), charge_detect_n ? 0 : 1, previous_state ? 1 : 0));
-
-        return (charge_detect_n ? false : true);
+        local charge_current = CHARGE_CURRENT_FACTOR*IMON.read();
+        
+        if (charge_current > CHARGE_CURRENT_MIN) {
+            charging_state = 1;
+        }
+        
+        //agent.send("chargeStatus", {timestamp=getUTCTime(), chargecurrent = charge_current});     //used by Wolfram Data Drop
+        
+        server.log(format("Current: %06fmA, charging_state: %d", charge_current, charging_state));
+        return (charging_state ? true : false);
     }
     
     function batteryMeasurement()
@@ -1843,6 +1852,7 @@ class ChargeStatus
         //log(format("Battery Level: %d, Input Voltage: %.2f", nv.voltage_level, hardware.voltage()));
         imp.wakeup(1, function() {
             agentSend("batteryLevel", nv.voltage_level);
+            //agent.send("batteryStatus", {timestamp=getUTCTime(), batterylevel = nv.voltage_level});   //used for Wolfram Data Drop
         });
         imp.wakeup(60, batteryMeasurement.bindenv(this));
     }
@@ -1863,7 +1873,7 @@ class ChargeStatus
         log(format("USB Detection CB: %s", status));
         agentSend("usbState",status);
 
-        chargerCallback();
+        imp.wakeup(1, chargerCallback.bindenv(this));
     }
 
     //**********************************************************************
@@ -1871,24 +1881,57 @@ class ChargeStatus
     function chargerCallback()
     {
         local charging = 0;
-        
-        charging = isCharging()?1:0;
-        
-        if( previous_state != (charging==0?false:true))
-        {
-            //remove this later if decision is final -- right now playing silent tones [EM]
-            hwPiezo.playSound(previous_state?"charger-attached":"charger-removed");
-        }
-        
-        previous_state = (charging==0)? false:true; // update the previous state with the current state
-        agentSend("chargerState", previous_state); // update the charger state
+        charging = isCharging()?1:0;                // used to check if charger current is > 200mA, meaning charging is occuring. 
+        agentSend("chargerState", charging);        // update the charger state
 
-        local charge_detect_n= ACOK_N.read();
-
-        local status = charge_detect_n ? "disconnected":"connected";
-
+        local charger_detect = !(ACOK_N.read());    // used to check if charger cable is plugged in. 
+        
+        local status = charger_detect ? "connected":"disconnected";
         log(format("USB Detection: %s", status));
+        server.log(format("Charger: %s, Charging Mode: %d",status, charging));
+        
+        if (charger_detect){                        // if charger is plugged in
+            if (charging) {                         // if charging, then battery is not full  yet
+                if (!toggleRunning) {           
+                    // check if LED is toggling already. Only schedule if it's not already toggling. 
+                    // this is needed because chargerCallback() is called in multiple places. 
+                    toggleLEDTimer = imp.wakeup(0.001, toggleChargerLED.bindenv(this));
+                }
+            } else {                                // if charger is plugged in but not charging because battery is full
+                // set blue LED to fully ON and cancel LED toggling
+                if (toggleLEDTimer) imp.cancelwakeup(toggleLEDTimer);
+                toggleRunning = false;
+                pmic.write(0x00, 0x07);
+                pmic.write(0x01, 0x1b);
+            }
+            
+        } else {                                    // if charger is not plugged in
+            // set to default
+            if (toggleLEDTimer) imp.cancelwakeup(toggleLEDTimer);
+            toggleRunning = false;
+            pmic.write(0x00, 0x07);
+            pmic.write(0x01, 0x1b);            
+        
+        }   
     }
+    
+    function toggleChargerLED()
+    {
+        toggleRunning = true;
+        if (!chargerLEDstate){
+            // Enable LDO1 (drives blue LED) and keep LDO2 and LDO7 enabled.
+            pmic.write(0x00, 0x07);
+            // LDO1: set to 3.0V (charging LED) 
+            pmic.write(0x01, 0x1b);
+            chargerLEDstate = 1;
+        } else {
+            // Disable LDO1 (turn off blue LED) but keep LDO2 and LDO7 enabled.
+            pmic.write(0x00, 0x06);
+            chargerLEDstate = 0;
+        }
+        toggleLEDTimer = imp.wakeup(1.5, toggleChargerLED.bindenv(this));
+    }     
+    
 }
 
 //======================================================================
@@ -2332,7 +2375,9 @@ function preSleepHandler() {
     // previous_state before going to sleep 
     chargeStatus.chargerCallback();
     
-    if( nv.sleep_not_allowed || chargeStatus.previous_state )
+    local charger_detect = !(ACOK_N.read());    // used to check if charger cable is plugged in. 
+    
+    if( nv.sleep_not_allowed || charger_detect)
     {
         //Just for testing but we should remove it later
         //hwPiezo.playSound("device-page");
