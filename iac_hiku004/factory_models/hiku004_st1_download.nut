@@ -16,14 +16,15 @@ gRanOnce <- false;
 local connection_available = false;
 
 TEST_CONTROLLERS <- ["0c2a69090d9b", /* at hiku */
-                     "0c2a6908c47b" /* at IAC */];
+                     "0c2a6908c47b", /* at IAC (NA production line)*/
+                     "0c2a6908d765"  /* at IAC (GB production line)*/];
                      
 macAddress <- imp.getmacaddress();
 serialNumber <- hardware.getdeviceid();
 
 // MAC addresses of the factory Imps to run the blinkup/OS upgrade firmware;
 // the other Imp runs the test fixture firmware
-BLINKUP_IMP_MACS <- ["0c2a69090d9b", "0c2a6908c47b"];
+BLINKUP_IMP_MACS <- ["0c2a69090d9b", "0c2a6908c47b", "0c2a6908d765"];
 
 //
 // STM32 software
@@ -392,7 +393,7 @@ class Stm32 {
     }
     
     // Reset the STM32 and bring it up in USART bootloader mode
-    // Applies "pattern1" from "STM32 system memory boot modeÓ application note (AN2606)
+    // Applies "pattern1" from "STM32 system memory boot mode” application note (AN2606)
     // Note that the USARTs available for bootloader vary between STM32 parts
     // Input: None
     // Return: None
@@ -461,7 +462,7 @@ class Stm32 {
     
     // Read a section of device memory
     // Input: 
-    //      addr: 4-byte address. Refer to ÒSTM32 microcontroller system memory boot modeÓ application note (AN2606) for valid addresses
+    //      addr: 4-byte address. Refer to “STM32 microcontroller system memory boot mode” application note (AN2606) for valid addresses
     //      len: number of bytes to read. 0-255.
     // Return: 
     //      memory contents from addr to addr+len (blob)

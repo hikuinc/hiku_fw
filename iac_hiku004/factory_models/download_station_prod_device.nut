@@ -30,14 +30,15 @@ gRanOnce <- false;
 local connection_available = false;
 
 TEST_CONTROLLERS <- ["0c2a69090d9b", /* at hiku */
-                     "0c2a6908c47b" /* at IAC */];
+                     "0c2a6908c47b", /* at IAC (NA production line)*/
+                     "0c2a6908d765"  /* at IAC (GB production line)*/];
                      
 macAddress <- imp.getmacaddress();
 serialNumber <- hardware.getdeviceid();
 
 // MAC addresses of the factory Imps to run the blinkup/OS upgrade firmware;
 // the other Imp runs the test fixture firmware
-BLINKUP_IMP_MACS <- ["0c2a69090d9b", "0c2a6908c47b"];
+BLINKUP_IMP_MACS <- ["0c2a69090d9b", "0c2a6908c47b", "0c2a6908d765"];
 
 //
 // STM32 software

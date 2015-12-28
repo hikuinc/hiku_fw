@@ -16,7 +16,7 @@ local connection_available = false;
 testList <- array(0);
 
 TEST_CONTROLLERS <- ["0c2a6908ae09", "0c2a69090d9b", "0c2a6909342a", /* at hiku */
-                     "0c2a69092f8d", "0c2a69090783", "0c2a69090dd2", "0c2a69093434", "0c2a6908b054", "0c2a6908c47b", "0c2a6908ae0c" /* at IAC */];
+                     "0c2a69092f8d", "0c2a69090783", "0c2a69090dd2", "0c2a69093434", "0c2a6908b054", "0c2a6908c47b", "0c2a6908ae0c", "0c2a6908d75f" /* at IAC (NA production line)*/];
                      
 is_hiku004_rev10 <- true;
 
@@ -62,7 +62,7 @@ logIndividual <- false;
 
 // MAC addresses of the factory Imps to run the blinkup/OS upgrade firmware;
 // the other Imp runs the test fixture firmware
-BLINKUP_IMP_MACS <- ["0c2a69090d9b", "0c2a6908b054", "0c2a69093434"];
+BLINKUP_IMP_MACS <- ["0c2a69090d9b", "0c2a6908b054", "0c2a69093434", "0c2a6908d75f"];
 
 // timer handle for timing out devices that did not complete the button test
 // after the charging test is done
@@ -2308,7 +2308,7 @@ function audioUartCallback()
           bat_acc += (BATT_VOLT_MEASURE.read() >> 4) & 0xFFF;
     
     batt_voltage = (bat_acc/BATT_ADC_SAMPLES) * BATT_ADC_RDIV;
-    
+    imp.sleep(0.5);
     //end hack
 
     // wait with submission of charging test start to the server until after the
@@ -2781,6 +2781,7 @@ function buttonCallback()
             BLINKUP_BUTTON.configure(DIGITAL_IN_PULLDOWN, buttonCallback);
         });
       } else {
+          server.log("button pressed, connected to: " + imp.getbssid());
           local result_data_table = {serialNumber = serialNumber,
         macAddress = macAddress,
         testControl = TEST_CONTROL_MASTER_START,
