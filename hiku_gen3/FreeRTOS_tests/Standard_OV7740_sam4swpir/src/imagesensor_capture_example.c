@@ -70,9 +70,29 @@
  * Support and FAQ: visit <a href="http://www.atmel.com/design-support/">Atmel Support</a>
  */
 
+/* Standard includes. */
+#include <stdio.h>
+
+/* Kernel includes. */
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+#include "portmacro.h"
+
+#include "croutine.h"
+#include "list.h"
+#include "mpu_wrappers.h"
+#include "portable.h"
+#include "projdefs.h"
+#include "queue.h"
+#include "semphr.h"
+#include "StackMacros.h"
+#include "timers.h"
+
 #include "asf.h"
 #include "conf_board.h"
 #include "conf_clock.h"
+
 
 //~~~~~~~~~~~~~~~~ Begin FreeRTOS specific definitions ~~~~~~~~~~~~~~~~~~~~
 
@@ -86,6 +106,9 @@ signed char *pcTaskName);
 extern void vApplicationIdleHook(void);
 extern void vApplicationTickHook(void);
 extern void xPortSysTickHandler(void);
+
+xSemaphoreHandle xDisplaySemaphore = NULL;
+
 
 //~~~~~~~~~~~~~~~~ End FreeRTOS specific definitions ~~~~~~~~~~~~~~~~~~~~
 
@@ -133,9 +156,12 @@ static void vsync_handler(uint32_t ul_id, uint32_t ul_mask)
 {
 	unused(ul_id);
 	unused(ul_mask);
-
+	
 	g_ul_vsync_flag = true;
+	
 }
+
+
 
 /**
  * \brief Handler for button rising edge interrupt.
@@ -146,6 +172,21 @@ static void button_handler(uint32_t ul_id, uint32_t ul_mask)
 	unused(ul_mask);
 
 	g_ul_push_button_trigger = true;
+	
+	static signed portBASE_TYPE xHigherPriorityTaskWoken;
+	
+	xHigherPriorityTaskWoken = pdFALSE;
+	xSemaphoreGiveFromISR( xDisplaySemaphore, &xHigherPriorityTaskWoken );
+
+	if( xHigherPriorityTaskWoken != pdFALSE )
+	{
+		// We can force a context switch here.  Context switching from an
+		// ISR uses port specific syntax.  Check the demo task for your port
+		// to find the syntax required.
+		//portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+	}
+	
+	
 }
 
 /**
@@ -587,10 +628,12 @@ extern void vApplicationTickHook(void)
 //~~~~~~~~~~~~~~~ End FreeRTOS specific fcns ~~~~~~~~~~~~~~~~~~~~~~
 
 
-
+//~~~~~~~~~~~~~~~ Begin FreeRTOS task ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 /**
  * \brief This task, when activated, make LED blink at a fixed rate
  */
+
+
 static void task_led(void *pvParameters)
 {
 	UNUSED(pvParameters);
@@ -611,6 +654,29 @@ static void task_lcdscreen(void *pvParameters)
 	}
 }
 
+static void task_display(void *pvParameters)
+{
+	UNUSED(pvParameters);
+	vSemaphoreCreateBinary(xDisplaySemaphore);
+
+	for (;;){
+		
+		if (xDisplaySemaphore != NULL){
+			
+			if (xSemaphoreTake(xDisplaySemaphore, portMAX_DELAY ) == pdTRUE){		
+				ili9325_fill(COLOR_BLUE);
+				ili9325_draw_string(0, 20, (uint8_t *)"task_display");
+				ili9325_draw_string(0, 80, (uint8_t *)"from button press");				
+			}
+			
+		}
+		
+		vTaskDelay(10 / portTICK_RATE_MS);
+	}
+}
+
+
+//~~~~~~~~~~~~~~~ End FreeRTOS task ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 /**
@@ -674,6 +740,8 @@ int main(void)
 		_display();
 	}*/
 
+//~~~~~~~ FreeRTOS specific init ~~~~~~~~~~~~~~~~~~~
+
 	/* Create task to make led blink */
 	if (xTaskCreate(task_led, "Led", TASK_LED_STACK_SIZE, NULL,
 	TASK_LED_STACK_PRIORITY, NULL) != pdPASS) {
@@ -686,7 +754,16 @@ int main(void)
 		//printf("Failed to create test led task\r\n");
 	}
 
+	/* Create task to make led blink */
+	if (xTaskCreate(task_display, "Display", TASK_MONITOR_STACK_SIZE, NULL,
+	TASK_LED_STACK_PRIORITY, NULL) != pdPASS) {
+		//printf("Failed to create test led task\r\n");
+	}
+
 	vTaskStartScheduler();
+	
+//~~~~~~~ end FreeRTOS specific init ~~~~~~~~~~~~~~~~~~~	
+	
 	/* Will only get here if there was insufficient memory to create the idle task. */
 	return 0;	
 	

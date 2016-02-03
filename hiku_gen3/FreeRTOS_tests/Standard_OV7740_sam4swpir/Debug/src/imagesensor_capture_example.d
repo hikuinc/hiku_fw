@@ -1,7 +1,47 @@
 src/imagesensor_capture_example.d src/imagesensor_capture_example.o: \
- ../src/imagesensor_capture_example.c ../src/asf.h \
- ../src/ASF/sam/utils/compiler.h \
+ ../src/imagesensor_capture_example.c \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdio.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\_ansi.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\newlib.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\config.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\ieeefp.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\features.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\cdefs.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\_default_types.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stddef.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdarg.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\reent.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\_ansi.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_types.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\_types.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\lock.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\types.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_stdint.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\types.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\stdio.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/FreeRTOS.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/projdefs.h \
+ ../src/config/FreeRTOSConfig.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdint.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdint.h \
+ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_intsup.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/portable.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/portable/gcc/sam/portmacro.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/mpu_wrappers.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/task.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/list.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/semphr.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/queue.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/croutine.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/list.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/mpu_wrappers.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/portable.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/projdefs.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/queue.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/StackMacros.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/timers.h \
+ ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/task.h \
+ ../src/asf.h ../src/ASF/sam/utils/compiler.h \
  ../src/ASF/common/utils/parts.h \
  ../src/ASF/sam/utils/preprocessor/preprocessor.h \
  ../src/ASF/sam/utils/preprocessor/tpaste.h \
@@ -11,12 +51,6 @@ src/imagesensor_capture_example.d src/imagesensor_capture_example.o: \
  ../src/ASF/sam/utils/header_files/io.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/sam4s.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/sam4s16c.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdint.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdint.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\_default_types.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\features.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_intsup.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_stdint.h \
  ../src/ASF/thirdparty/CMSIS/Include/core_cm4.h \
  ../src/ASF/thirdparty/CMSIS/Include/core_cmInstr.h \
  ../src/ASF/thirdparty/CMSIS/Include/core_cmFunc.h \
@@ -80,21 +114,6 @@ src/imagesensor_capture_example.d src/imagesensor_capture_example.o: \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_rtc.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_gpbr.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/pio/pio_sam4s16c.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdio.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\_ansi.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\newlib.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\config.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\ieeefp.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\cdefs.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdarg.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\reent.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\_ansi.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_types.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\_types.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\lock.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\types.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\types.h \
- c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\stdio.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdbool.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdlib.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\stdlib.h \
@@ -117,26 +136,7 @@ src/imagesensor_capture_example.d src/imagesensor_capture_example.o: \
  ../src/ASF/sam/components/display/aat31xx/aat31xx.h \
  ../src/ASF/sam/components/display/ili9325/ili9325.h \
  ../src/config/conf_ili9325.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/FreeRTOS.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/projdefs.h \
- ../src/config/FreeRTOSConfig.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/portable.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/portable/gcc/sam/portmacro.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/mpu_wrappers.h \
  ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/FreeRTOS_CLI.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/StackMacros.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/croutine.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/list.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/list.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/mpu_wrappers.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/portable.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/projdefs.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/queue.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/semphr.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/queue.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/task.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/timers.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/task.h \
  ../src/ASF/common/services/gpio/gpio.h \
  ../src/ASF/common/services/gpio/sam_gpio/sam_gpio.h \
  ../src/ASF/sam/drivers/pio/pio.h \
@@ -153,11 +153,91 @@ src/imagesensor_capture_example.d src/imagesensor_capture_example.o: \
  ../src/config/conf_uart_serial.h \
  ../src/ASF/sam/drivers/pio/pio_handler.h
 
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdio.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\_ansi.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\newlib.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\config.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\ieeefp.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\features.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\cdefs.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\_default_types.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stddef.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdarg.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\reent.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\_ansi.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_types.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\_types.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\lock.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\types.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_stdint.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\types.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\stdio.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/FreeRTOS.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/projdefs.h:
+
+../src/config/FreeRTOSConfig.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdint.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdint.h:
+
+c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_intsup.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/portable.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/portable/gcc/sam/portmacro.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/mpu_wrappers.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/task.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/list.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/semphr.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/queue.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/croutine.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/list.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/mpu_wrappers.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/portable.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/projdefs.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/queue.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/StackMacros.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/timers.h:
+
+../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/task.h:
+
 ../src/asf.h:
 
 ../src/ASF/sam/utils/compiler.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stddef.h:
 
 ../src/ASF/common/utils/parts.h:
 
@@ -176,18 +256,6 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gc
 ../src/ASF/sam/utils/cmsis/sam4s/include/sam4s.h:
 
 ../src/ASF/sam/utils/cmsis/sam4s/include/sam4s16c.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdint.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdint.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\_default_types.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\features.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_intsup.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_stdint.h:
 
 ../src/ASF/thirdparty/CMSIS/Include/core_cm4.h:
 
@@ -315,36 +383,6 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 
 ../src/ASF/sam/utils/cmsis/sam4s/include/pio/pio_sam4s16c.h:
 
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdio.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\_ansi.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\newlib.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\config.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\ieeefp.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\cdefs.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdarg.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\reent.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\_ansi.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_types.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\_types.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\lock.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\types.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\types.h:
-
-c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\stdio.h:
-
 c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdbool.h:
 
 c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdlib.h:
@@ -393,45 +431,7 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 
 ../src/config/conf_ili9325.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/FreeRTOS.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/projdefs.h:
-
-../src/config/FreeRTOSConfig.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/portable.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/portable/gcc/sam/portmacro.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/mpu_wrappers.h:
-
 ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/FreeRTOS_CLI.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/StackMacros.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/croutine.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/list.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/list.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/mpu_wrappers.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/portable.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/projdefs.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/queue.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/semphr.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/queue.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/task.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/timers.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/task.h:
 
 ../src/ASF/common/services/gpio/gpio.h:
 
