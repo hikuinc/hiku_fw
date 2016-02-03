@@ -2,20 +2,6 @@
 # Automatically-generated file. Do not edit or delete the file
 ################################################################################
 
-src\ASF\thirdparty\freertos\freertos-7.3.0\source\FreeRTOS_CLI.c
-
-src\ASF\thirdparty\freertos\freertos-7.3.0\source\list.c
-
-src\ASF\thirdparty\freertos\freertos-7.3.0\source\portable\gcc\sam\port.c
-
-src\ASF\thirdparty\freertos\freertos-7.3.0\source\portable\memmang\heap_4.c
-
-src\ASF\thirdparty\freertos\freertos-7.3.0\source\queue.c
-
-src\ASF\thirdparty\freertos\freertos-7.3.0\source\tasks.c
-
-src\ASF\thirdparty\freertos\freertos-7.3.0\source\timers.c
-
 src\ASF\common\services\clock\sam4s\sysclk.c
 
 src\ASF\common\services\delay\sam\cycle_counter.c
@@ -59,6 +45,20 @@ src\ASF\sam\utils\cmsis\sam4s\source\templates\gcc\startup_sam4s.c
 src\ASF\sam\utils\cmsis\sam4s\source\templates\system_sam4s.c
 
 src\ASF\sam\utils\syscalls\gcc\syscalls.c
+
+src\ASF\thirdparty\FreeRTOS\Source\event_groups.c
+
+src\ASF\thirdparty\FreeRTOS\Source\list.c
+
+src\ASF\thirdparty\FreeRTOS\Source\portable\gcc\sam\port.c
+
+src\ASF\thirdparty\FreeRTOS\Source\portable\memmang\heap_4.c
+
+src\ASF\thirdparty\FreeRTOS\Source\queue.c
+
+src\ASF\thirdparty\FreeRTOS\Source\tasks.c
+
+src\ASF\thirdparty\FreeRTOS\Source\timers.c
 
 src\imagesensor_capture_example.c
 

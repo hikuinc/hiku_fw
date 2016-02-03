@@ -67,7 +67,7 @@
 
 // From module: FreeRTOS mini Real-Time Kernel
 #include <FreeRTOS.h>
-#include <FreeRTOS_CLI.h>
+//#include <FreeRTOS_CLI.h>
 #include <StackMacros.h>
 #include <croutine.h>
 #include <list.h>

@@ -173,18 +173,18 @@ static void button_handler(uint32_t ul_id, uint32_t ul_mask)
 
 	g_ul_push_button_trigger = true;
 	
-	static signed portBASE_TYPE xHigherPriorityTaskWoken;
+	//static signed portBASE_TYPE xHigherPriorityTaskWoken;
 	
-	xHigherPriorityTaskWoken = pdFALSE;
-	xSemaphoreGiveFromISR( xDisplaySemaphore, &xHigherPriorityTaskWoken );
+	//HigherPriorityTaskWoken = pdFALSE;
+	//xSemaphoreGiveFromISR( xDisplaySemaphore, &xHigherPriorityTaskWoken );
 
-	if( xHigherPriorityTaskWoken != pdFALSE )
-	{
+	//if( xHigherPriorityTaskWoken != pdFALSE )
+	//{
 		// We can force a context switch here.  Context switching from an
 		// ISR uses port specific syntax.  Check the demo task for your port
 		// to find the syntax required.
 		//portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
-	}
+	//}
 	
 	
 }
@@ -755,10 +755,10 @@ int main(void)
 	}
 
 	/* Create task to make led blink */
-	if (xTaskCreate(task_display, "Display", TASK_MONITOR_STACK_SIZE, NULL,
-	TASK_LED_STACK_PRIORITY, NULL) != pdPASS) {
+	//if (xTaskCreate(task_display, "Display", TASK_MONITOR_STACK_SIZE, NULL,
+	//TASK_LED_STACK_PRIORITY, NULL) != pdPASS) {
 		//printf("Failed to create test led task\r\n");
-	}
+	//}
 
 	vTaskStartScheduler();
 	

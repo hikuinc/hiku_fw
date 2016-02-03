@@ -19,30 +19,30 @@ src/imagesensor_capture_example.d src/imagesensor_capture_example.o: \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_stdint.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\types.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\stdio.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/FreeRTOS.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/projdefs.h \
- ../src/config/FreeRTOSConfig.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/FreeRTOS.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdint.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdint.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_intsup.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/portable.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/portable/gcc/sam/portmacro.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/mpu_wrappers.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/task.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/list.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/semphr.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/queue.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/croutine.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/list.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/mpu_wrappers.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/portable.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/projdefs.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/queue.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/StackMacros.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/timers.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/task.h \
- ../src/asf.h ../src/ASF/sam/utils/compiler.h \
- ../src/ASF/common/utils/parts.h \
+ ../src/config/FreeRTOSConfig.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/projdefs.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/portable.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/deprecated_definitions.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/portable/gcc/sam/portmacro.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/mpu_wrappers.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/task.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/list.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/semphr.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/queue.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/croutine.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/list.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/mpu_wrappers.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/portable.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/projdefs.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/queue.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/StackMacros.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/timers.h \
+ ../src/ASF/thirdparty/FreeRTOS/Source/include/task.h ../src/asf.h \
+ ../src/ASF/sam/utils/compiler.h ../src/ASF/common/utils/parts.h \
  ../src/ASF/sam/utils/preprocessor/preprocessor.h \
  ../src/ASF/sam/utils/preprocessor/tpaste.h \
  ../src/ASF/sam/utils/preprocessor/stringz.h \
@@ -135,9 +135,7 @@ src/imagesensor_capture_example.d src/imagesensor_capture_example.o: \
  ../src/ASF/common/services/delay/sam/cycle_counter.h \
  ../src/ASF/sam/components/display/aat31xx/aat31xx.h \
  ../src/ASF/sam/components/display/ili9325/ili9325.h \
- ../src/config/conf_ili9325.h \
- ../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/FreeRTOS_CLI.h \
- ../src/ASF/common/services/gpio/gpio.h \
+ ../src/config/conf_ili9325.h ../src/ASF/common/services/gpio/gpio.h \
  ../src/ASF/common/services/gpio/sam_gpio/sam_gpio.h \
  ../src/ASF/sam/drivers/pio/pio.h \
  ../src/ASF/common/services/ioport/ioport.h \
@@ -191,11 +189,7 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 
 c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\stdio.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/FreeRTOS.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/projdefs.h:
-
-../src/config/FreeRTOSConfig.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/FreeRTOS.h:
 
 c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdint.h:
 
@@ -203,37 +197,43 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 
 c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_intsup.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/portable.h:
+../src/config/FreeRTOSConfig.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/portable/gcc/sam/portmacro.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/projdefs.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/mpu_wrappers.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/portable.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/task.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/deprecated_definitions.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/list.h:
+../src/ASF/thirdparty/FreeRTOS/Source/portable/gcc/sam/portmacro.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/semphr.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/mpu_wrappers.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/queue.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/task.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/croutine.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/list.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/list.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/semphr.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/mpu_wrappers.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/queue.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/portable.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/croutine.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/projdefs.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/list.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/queue.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/mpu_wrappers.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/StackMacros.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/portable.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/timers.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/projdefs.h:
 
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/task.h:
+../src/ASF/thirdparty/FreeRTOS/Source/include/queue.h:
+
+../src/ASF/thirdparty/FreeRTOS/Source/include/StackMacros.h:
+
+../src/ASF/thirdparty/FreeRTOS/Source/include/timers.h:
+
+../src/ASF/thirdparty/FreeRTOS/Source/include/task.h:
 
 ../src/asf.h:
 
@@ -430,8 +430,6 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 ../src/ASF/sam/components/display/ili9325/ili9325.h:
 
 ../src/config/conf_ili9325.h:
-
-../src/ASF/thirdparty/freertos/freertos-7.3.0/source/include/FreeRTOS_CLI.h:
 
 ../src/ASF/common/services/gpio/gpio.h:
 
