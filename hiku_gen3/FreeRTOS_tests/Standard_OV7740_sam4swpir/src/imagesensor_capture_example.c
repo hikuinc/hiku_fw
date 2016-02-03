@@ -600,6 +600,17 @@ static void task_led(void *pvParameters)
 	}
 }
 
+static void task_lcdscreen(void *pvParameters)
+{
+	UNUSED(pvParameters);
+	for (;;) {
+		ili9325_fill(COLOR_VIOLET);
+		ili9325_draw_string(0, 20, (uint8_t *)"FreeRTOS");
+		ili9325_draw_string(0, 80, (uint8_t *)"DEMO");
+		vTaskDelay(2000);
+	}
+}
+
 
 
 /**
@@ -665,6 +676,12 @@ int main(void)
 
 	/* Create task to make led blink */
 	if (xTaskCreate(task_led, "Led", TASK_LED_STACK_SIZE, NULL,
+	TASK_LED_STACK_PRIORITY, NULL) != pdPASS) {
+		//printf("Failed to create test led task\r\n");
+	}
+
+	/* Create task to make led blink */
+	if (xTaskCreate(task_lcdscreen, "LCD", TASK_LED_STACK_SIZE, NULL,
 	TASK_LED_STACK_PRIORITY, NULL) != pdPASS) {
 		//printf("Failed to create test led task\r\n");
 	}
