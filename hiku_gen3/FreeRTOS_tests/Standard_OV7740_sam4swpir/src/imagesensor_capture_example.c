@@ -107,7 +107,7 @@ extern void vApplicationIdleHook(void);
 extern void vApplicationTickHook(void);
 extern void xPortSysTickHandler(void);
 
-xSemaphoreHandle xDisplaySemaphore = NULL;
+SemaphoreHandle_t xDisplaySemaphore = NULL;
 
 
 //~~~~~~~~~~~~~~~~ End FreeRTOS specific definitions ~~~~~~~~~~~~~~~~~~~~
@@ -173,18 +173,12 @@ static void button_handler(uint32_t ul_id, uint32_t ul_mask)
 
 	g_ul_push_button_trigger = true;
 	
-	//static signed portBASE_TYPE xHigherPriorityTaskWoken;
+	static signed portBASE_TYPE xHigherPriorityTaskWoken;
 	
-	//HigherPriorityTaskWoken = pdFALSE;
-	//xSemaphoreGiveFromISR( xDisplaySemaphore, &xHigherPriorityTaskWoken );
+	xHigherPriorityTaskWoken = pdFALSE;
+	xSemaphoreGiveFromISR( xDisplaySemaphore, pdTRUE );
 
-	//if( xHigherPriorityTaskWoken != pdFALSE )
-	//{
-		// We can force a context switch here.  Context switching from an
-		// ISR uses port specific syntax.  Check the demo task for your port
-		// to find the syntax required.
-		//portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
-	//}
+	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 	
 	
 }
@@ -219,9 +213,11 @@ static void configure_button(void)
 	pio_handler_set(PUSH_BUTTON_PIO, PUSH_BUTTON_ID, PUSH_BUTTON_PIN_MSK,
 			PUSH_BUTTON_ATTR, button_handler);
 
+	NVIC_SetPriority((IRQn_Type)PUSH_BUTTON_ID, 15);
+
 	/* Enable PIO controller IRQs. */
 	NVIC_EnableIRQ((IRQn_Type)PUSH_BUTTON_ID);
-
+	
 	/* Enable PIO interrupt lines. */
 	pio_enable_interrupt(PUSH_BUTTON_PIO, PUSH_BUTTON_PIN_MSK);
 }
@@ -657,7 +653,8 @@ static void task_lcdscreen(void *pvParameters)
 static void task_display(void *pvParameters)
 {
 	UNUSED(pvParameters);
-	vSemaphoreCreateBinary(xDisplaySemaphore);
+	//vSemaphoreCreateBinary(xDisplaySemaphore);
+	xDisplaySemaphore = xSemaphoreCreateBinary();
 
 	for (;;){
 		
@@ -666,7 +663,8 @@ static void task_display(void *pvParameters)
 			if (xSemaphoreTake(xDisplaySemaphore, portMAX_DELAY ) == pdTRUE){		
 				ili9325_fill(COLOR_BLUE);
 				ili9325_draw_string(0, 20, (uint8_t *)"task_display");
-				ili9325_draw_string(0, 80, (uint8_t *)"from button press");				
+				ili9325_draw_string(0, 80, (uint8_t *)"from button press");		
+				
 			}
 			
 		}
@@ -755,10 +753,10 @@ int main(void)
 	}
 
 	/* Create task to make led blink */
-	//if (xTaskCreate(task_display, "Display", TASK_MONITOR_STACK_SIZE, NULL,
-	//TASK_LED_STACK_PRIORITY, NULL) != pdPASS) {
+	if (xTaskCreate(task_display, "Display", TASK_LED_STACK_SIZE, NULL,
+	TASK_LED_STACK_PRIORITY, NULL) != pdPASS) {
 		//printf("Failed to create test led task\r\n");
-	//}
+	}
 
 	vTaskStartScheduler();
 	

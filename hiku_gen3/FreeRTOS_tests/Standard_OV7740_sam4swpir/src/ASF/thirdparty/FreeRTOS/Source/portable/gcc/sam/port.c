@@ -78,9 +78,9 @@
 /* For backward compatibility, ensure configKERNEL_INTERRUPT_PRIORITY is
 defined.  The value should also ensure backward compatibility.
 FreeRTOS.org versions prior to V4.4.0 did not include this definition. */
-#ifndef configKERNEL_INTERRUPT_PRIORITY
-	#define configKERNEL_INTERRUPT_PRIORITY 255
-#endif
+//#ifndef configKERNEL_INTERRUPT_PRIORITY
+//	#define configKERNEL_INTERRUPT_PRIORITY 255
+//#endif
 
 #ifndef configSYSTICK_CLOCK_HZ
 	#define configSYSTICK_CLOCK_HZ configCPU_CLOCK_HZ
