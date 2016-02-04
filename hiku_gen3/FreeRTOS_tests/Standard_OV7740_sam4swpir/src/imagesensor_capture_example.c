@@ -108,7 +108,7 @@ extern void vApplicationTickHook(void);
 extern void xPortSysTickHandler(void);
 
 SemaphoreHandle_t xDisplaySemaphore = NULL;
-
+SemaphoreHandle_t xCameraSemaphore = NULL;
 
 //~~~~~~~~~~~~~~~~ End FreeRTOS specific definitions ~~~~~~~~~~~~~~~~~~~~
 
@@ -159,6 +159,11 @@ static void vsync_handler(uint32_t ul_id, uint32_t ul_mask)
 	
 	g_ul_vsync_flag = true;
 	
+	static signed portBASE_TYPE xHigherPriorityTaskWoken;
+	xHigherPriorityTaskWoken = pdFALSE;
+	xSemaphoreGiveFromISR(xCameraSemaphore, pdTRUE);
+	portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	
 }
 
 
@@ -193,6 +198,9 @@ static void init_vsync_interrupts(void)
 	pio_handler_set(OV7740_VSYNC_PIO, OV7740_VSYNC_ID, OV7740_VSYNC_MASK,
 			OV7740_VSYNC_TYPE, vsync_handler);
 
+	/*Set priority of vsync interrupt*/
+	NVIC_SetPriority((IRQn_Type)OV7740_VSYNC_ID, 15);
+
 	/* Enable PIO controller IRQs */
 	NVIC_EnableIRQ((IRQn_Type)OV7740_VSYNC_ID);
 }
@@ -213,6 +221,7 @@ static void configure_button(void)
 	pio_handler_set(PUSH_BUTTON_PIO, PUSH_BUTTON_ID, PUSH_BUTTON_PIN_MSK,
 			PUSH_BUTTON_ATTR, button_handler);
 
+	/*Set priority of push button interrupt*/
 	NVIC_SetPriority((IRQn_Type)PUSH_BUTTON_ID, 15);
 
 	/* Enable PIO controller IRQs. */
@@ -646,7 +655,7 @@ static void task_lcdscreen(void *pvParameters)
 		ili9325_fill(COLOR_VIOLET);
 		ili9325_draw_string(0, 20, (uint8_t *)"FreeRTOS");
 		ili9325_draw_string(0, 80, (uint8_t *)"DEMO");
-		vTaskDelay(2000);
+		vTaskDelay(5000);
 	}
 }
 
@@ -663,14 +672,65 @@ static void task_display(void *pvParameters)
 			if (xSemaphoreTake(xDisplaySemaphore, portMAX_DELAY ) == pdTRUE){		
 				ili9325_fill(COLOR_BLUE);
 				ili9325_draw_string(0, 20, (uint8_t *)"task_display");
-				ili9325_draw_string(0, 80, (uint8_t *)"from button press");		
-				
+				ili9325_draw_string(0, 80, (uint8_t *)"initializing camera");		
+			
+				//init capture dest addr + height
+				/* Enable vsync interrupt*/
+				pio_enable_interrupt(OV7740_VSYNC_PIO, OV7740_VSYNC_MASK);
+
 			}
 			
 		}
 		
 		vTaskDelay(10 / portTICK_RATE_MS);
 	}
+}
+
+static void task_camera(void *pvParameters)
+{
+	UNUSED(pvParameters);
+	xCameraSemaphore = xSemaphoreCreateBinary();
+
+	/* Set capturing destination address*/
+	g_p_uc_cap_dest_buf = (uint8_t *)CAP_DEST;
+
+	/* Set cap_rows value*/
+	g_us_cap_rows = IMAGE_HEIGHT;
+
+	for (;;){
+		
+		if (xCameraSemaphore != NULL){
+			
+			if (xSemaphoreTake(xCameraSemaphore, portMAX_DELAY ) == pdTRUE){				
+				
+				/* Disable vsync interrupt*/
+				pio_disable_interrupt(OV7740_VSYNC_PIO, OV7740_VSYNC_MASK);
+				/* Enable pio capture*/
+				pio_capture_enable(OV7740_DATA_BUS_PIO);
+				/* Capture data and send it to external SRAM memory thanks to PDC feature */
+				pio_capture_to_buffer(OV7740_DATA_BUS_PIO, g_p_uc_cap_dest_buf, (g_us_cap_line * g_us_cap_rows) >> 2);
+
+				/* Wait end of capture*/
+				while (!((OV7740_DATA_BUS_PIO->PIO_PCISR & PIO_PCIMR_RXBUFF) == PIO_PCIMR_RXBUFF)) {
+					
+				}
+
+				/* Disable pio capture*/
+				pio_capture_disable(OV7740_DATA_BUS_PIO);				
+								
+				/* LCD display information*/
+				ili9325_fill(COLOR_RED);
+				ili9325_draw_string(0, 20, (uint8_t *)"Picture saved");
+				
+				_display();
+			
+			}
+			
+		}
+		
+		vTaskDelay(10 / portTICK_RATE_MS);
+	}
+
 }
 
 
@@ -757,6 +817,12 @@ int main(void)
 	TASK_LED_STACK_PRIORITY, NULL) != pdPASS) {
 		//printf("Failed to create test led task\r\n");
 	}
+	
+	/* Create task to make led blink */
+	if (xTaskCreate(task_camera, "Camera", TASK_LED_STACK_SIZE, NULL,
+	TASK_LED_STACK_PRIORITY, NULL) != pdPASS) {
+		//printf("Failed to create test led task\r\n");
+	}	
 
 	vTaskStartScheduler();
 	
