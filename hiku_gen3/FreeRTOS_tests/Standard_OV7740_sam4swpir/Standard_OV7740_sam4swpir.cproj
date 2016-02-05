@@ -5,7 +5,7 @@
     <ProjectVersion>7.0</ProjectVersion>
     <ToolchainName>com.Atmel.ARMGCC.C</ToolchainName>
     <ProjectGuid>{8d64d572-259b-4fdf-ac77-64297d68c840}</ProjectGuid>
-    <avrdevice>ATSAM4S16C</avrdevice>
+    <avrdevice>ATSAM4SD32C</avrdevice>
     <avrdeviceseries>sam4s</avrdeviceseries>
     <OutputType>Executable</OutputType>
     <Language>C</Language>
@@ -264,13 +264,13 @@
         <board id="board.sam4s_wpir_rd" value="Add" config="" content-id="Atmel.ASF" />
       </framework-data>
     </AsfFrameworkConfig>
-    <avrtool>com.atmel.avrdbg.tool.atmelice</avrtool>
-    <avrtoolserialnumber>J41800022570</avrtoolserialnumber>
-    <avrdeviceexpectedsignature>0x28AC0CE0</avrdeviceexpectedsignature>
+    <avrtool>com.atmel.avrdbg.tool.edbg</avrtool>
+    <avrtoolserialnumber>ATML1803050200007330</avrtoolserialnumber>
+    <avrdeviceexpectedsignature>0x29A70EE0</avrdeviceexpectedsignature>
     <com_atmel_avrdbg_tool_atmelice>
       <ToolOptions>
         <InterfaceProperties>
-          <JtagDbgClock>7500000</JtagDbgClock>
+          <JtagDbgClock>0</JtagDbgClock>
         </InterfaceProperties>
         <InterfaceName>JTAG</InterfaceName>
       </ToolOptions>
@@ -278,8 +278,8 @@
       <ToolNumber>J41800022570</ToolNumber>
       <ToolName>Atmel-ICE</ToolName>
     </com_atmel_avrdbg_tool_atmelice>
-    <avrtoolinterface>JTAG</avrtoolinterface>
-    <avrtoolinterfaceclock>7500000</avrtoolinterfaceclock>
+    <avrtoolinterface>SWD</avrtoolinterface>
+    <avrtoolinterfaceclock>2000000</avrtoolinterfaceclock>
     <PercepioTrace>
       <TargetOS>FreeRTOSv8</TargetOS>
       <Frequency>64000000</Frequency>
@@ -334,6 +334,17 @@
       <ApplicationOutput30>String</ApplicationOutput30>
       <ApplicationOutput31>String</ApplicationOutput31>
     </PercepioTrace>
+    <com_atmel_avrdbg_tool_edbg>
+      <ToolOptions>
+        <InterfaceProperties>
+          <SwdClock>2000000</SwdClock>
+        </InterfaceProperties>
+        <InterfaceName>SWD</InterfaceName>
+      </ToolOptions>
+      <ToolType>com.atmel.avrdbg.tool.edbg</ToolType>
+      <ToolNumber>ATML1803050200007330</ToolNumber>
+      <ToolName>EDBG</ToolName>
+    </com_atmel_avrdbg_tool_edbg>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
@@ -403,7 +414,7 @@
   </armgcc.linker.libraries.Libraries>
   <armgcc.linker.libraries.LibrarySearchPaths>
     <ListValues>
-      <Value>../src/ASF/thirdparty/CMSIS/Lib/GCC</Value>
+      <Value>..\src\ASF\thirdparty\CMSIS\Lib\GCC</Value>
     </ListValues>
   </armgcc.linker.libraries.LibrarySearchPaths>
   <armgcc.linker.optimization.GarbageCollectUnusedSections>True</armgcc.linker.optimization.GarbageCollectUnusedSections>
@@ -518,7 +529,7 @@
   </armgcc.linker.libraries.Libraries>
   <armgcc.linker.libraries.LibrarySearchPaths>
     <ListValues>
-      <Value>../src/ASF/thirdparty/CMSIS/Lib/GCC</Value>
+      <Value>..\src\ASF\thirdparty\CMSIS\Lib\GCC</Value>
     </ListValues>
   </armgcc.linker.libraries.LibrarySearchPaths>
   <armgcc.linker.optimization.GarbageCollectUnusedSections>True</armgcc.linker.optimization.GarbageCollectUnusedSections>
@@ -636,6 +647,9 @@
     <Folder Include="src\ASF\thirdparty\FreeRTOS\Source\portable\gcc\sam" />
     <Folder Include="src\ASF\thirdparty\FreeRTOS\Source\portable\memmang" />
     <Folder Include="src\config\" />
+    <Folder Include="src\hiku" />
+    <Folder Include="src\hiku\inc" />
+    <Folder Include="src\hiku\src" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\ASF\thirdparty\FreeRTOS\Source\include\stdint.readme">
@@ -1229,7 +1243,7 @@
     <Compile Include="src\ASF\thirdparty\FreeRTOS\Source\timers.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="src\imagesensor_capture_example.c">
+    <Compile Include="src\main.c">
       <SubType>compile</SubType>
     </Compile>
     <None Include="src\ASF\thirdparty\CMSIS\Lib\GCC\libarm_cortexM4l_math.a">

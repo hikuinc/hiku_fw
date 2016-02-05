@@ -60,5 +60,5 @@ src\ASF\thirdparty\FreeRTOS\Source\tasks.c
 
 src\ASF\thirdparty\FreeRTOS\Source\timers.c
 
-src\imagesensor_capture_example.c
+src\main.c
 

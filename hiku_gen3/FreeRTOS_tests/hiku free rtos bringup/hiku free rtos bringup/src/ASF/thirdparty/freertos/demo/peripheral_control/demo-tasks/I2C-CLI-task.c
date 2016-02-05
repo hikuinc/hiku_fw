@@ -238,6 +238,10 @@ static void i2c_command_task(void *pvParameters)
 	
 	xTimerStop(xLEDTimer,I2C_DONT_BLOCK);
 	vParTestSetLED(I2C_TIMER_LED, false);
+	if (params)
+	{
+		vPortFree(params);
+	}
 	
 }
 
