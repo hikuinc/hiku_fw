@@ -1,0 +1,232 @@
+<?xml version='1.0'?>
+<!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.1//EN' 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'>
+<svg version='1.1' id='top' width='8in' height='8in' preserveAspectRatio='xMidYMid' overflow='visible' viewBox='0,1.6976e-312 7.22862e-308,1.78006e-305' xmlns:xlink='http://www.w3.org/1999/xlink' xmlns='http://www.w3.org/2000/svg'>
+<defs><style type='text/css'><![CDATA[
+* { image-rendering: optimizeSpeed }
+image { opacity: .9 }
+path, line, circle { fill: none; stroke-width: .5; stroke-linejoin: round; stroke-linecap: butt; stroke-opacity: .666; fill-opacity: .666 }
+#hedge, #vedge { stroke: yellow }
+#target * { fill: none; stroke: #f24 }
+#mdot * { fill: #e2f; stroke: none }
+#ydot * { fill: yellow; stroke: none }
+#cross * { stroke: #44f }
+.hedge { marker: url(#hedge) }
+.vedge { marker: url(#vedge) }
+.scanner .hedge, .scanner .vedge { stroke-width: 8 }
+.finder .hedge, .finder .vedge { /*stroke: #a0c;*/ stroke-width: .9 }
+.cluster { stroke: #a0c; stroke-width: 1; stroke-opacity: .45 }
+.cluster.valid { stroke: #c0a; stroke-width: 1; stroke-opacity: .666 }
+.h.cluster { marker: url(#vedge) }
+.v.cluster { marker: url(#hedge) }
+.centers { marker: url(#target); stroke-width: 3 }
+.edge-pts { marker: url(#ydot); stroke-width: .5 }
+.align { marker: url(#mdot); stroke-width: 1.5 }
+.sampling-grid { stroke-width: .75; marker: url(#cross) }
+]]></style>
+<marker id='hedge' overflow='visible'><line x1='-2' x2='2'/></marker>
+<marker id='vedge' overflow='visible'><line y1='-2' y2='2'/></marker>
+<marker id='ydot' overflow='visible'><circle r='2'/></marker>
+<marker id='mdot' overflow='visible'><circle r='2'/></marker>
+<marker id='cross' overflow='visible'><path d='M-2,0h4 M0,-2v4'/></marker>
+<marker id='target' overflow='visible'><path d='M-4,0h8 M0,-4v8'/><circle r='2'/></marker>
+</defs>
+<image width='1.6976e-312' height='1.6976e-312' xlink:href='debug.png'/>
+<g class='scanner' transform='rotate(2.122e-314)translate(1.78006e-305,7.2286e-308)scale(4.94066e-324,7.22862e-308)'>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(5.63235e-322,7.22862e-308)scale(-0.03125)' d=''/>
+</g>
+<g class='scanner' transform='rotate(2.122e-314)translate(1.78006e-305,7.2286e-308)scale(2.122e-314,7.22862e-308)'>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+<path class='vedge' transform='translate(0,7.22862e-308)scale(0.03125)' d=''/>
+<path class='vedge' transform='translate(3.95253e-322,7.22862e-308)scale(-0.03125)' d=''/>
+</g>
+</svg>
