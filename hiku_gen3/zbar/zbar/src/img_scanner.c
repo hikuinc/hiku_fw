@@ -653,7 +653,7 @@ int zbar_scan_image (zbar_image_scanner_t *iscn,
     /* timestamp image
      * FIXME prefer video timestamp
      */
-    iscn->time = _zbar_timer_now();
+    iscn->time = 0;//_zbar_timer_now();
 
 #ifdef ENABLE_QRCODE
     _zbar_qr_reset(iscn->qr);
@@ -685,9 +685,9 @@ int zbar_scan_image (zbar_image_scanner_t *iscn,
     assert(cy1 <= h);
     data = img->data;
 
-    zbar_image_write_png(img, "debug.png");
-    svg_open("debug.svg", 0, 0, w, h);
-    svg_image("debug.png", w, h);
+    //zbar_image_write_png(img, "debug.png");
+    //svg_open("debug.svg", 0, 0, w, h);
+    //svg_image("debug.png", w, h);
 
     zbar_scanner_new_scan(scn);
 
