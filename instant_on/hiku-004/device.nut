@@ -1093,7 +1093,7 @@ function stopScanRecord()
 // --- handle interrupts here --- 
 function handlePin1Int()
 {
-    //log("inside INTERRUPT handler!");
+    log("inside INTERRUPT handler!");
     if (gInstantOnMode && !gButtonCallBackFired){
         log("interrupt, handling quick press ");
 
@@ -1688,6 +1688,7 @@ class PushButton
                 break;
             case 2:
                 
+                // if device in shipping mode, then ignore button release events
                 if (imp.getssid() == "")
                 {
                     return;
@@ -1720,12 +1721,14 @@ class PushButton
                             // must be kept separate, as only one onidle 
                             // callback is supported at a time. 
                             log("calling stopScanRecrod");
-                            if (gPendingAudio)
+                            if (gPendingAudio || !server.isconnected())
                             {
+                                log(" - gPendingAudio = 1");
                                 imp.wakeup(0.001,stopScanRecord);
                             }
                             if ((connection_available || server.isconnected()) && !gPendingAudio)
                             {
+                                log(" - connected + gPendingAudio = 0");
                                 stopScanRecord();
                                 imp.onidle(sendLastBuffer); 
                             }
@@ -1737,9 +1740,19 @@ class PushButton
                     } 
                     
                 } else {
+                    /*  This condition occurs during instant-on mode. 
+                        If device is sleeping and you do a quick button press, then AudioUartCallback 
+                        won't fire in time becuase button let go quickly.  
+                    */
                     gButtonState = ButtonState.BUTTON_UP;
                     log("AudioUartCallback not fired!!!!!");
+                    
+                    /*  The following conditions occur during a quick-press when device 
+                        is asleep. Sometimes, UART might get configured and other times, 
+                        it won't get configured on time. 
+                    */
                     if (gUARTconfigured){
+
                         log("uart configured - stopping");
                         stopScanRecord();
                         server.log("switching states herer");
@@ -1751,8 +1764,24 @@ class PushButton
                         imp.wakeup(0.100, function(){
                             log("uart not configured - stopping");
                             stopScanRecord();
-                            updateDeviceState(DeviceState.BUTTON_RELEASED);
-                            updateDeviceState(DeviceState.IDLE);                              
+
+
+                            if (gDeviceState == DeviceState.SCAN_RECORD){
+                                /*  When button is released before UART is configured
+                                    but device woke up with instant-on (pressed == 0)                                   
+                                */
+                                updateDeviceState(DeviceState.BUTTON_RELEASED);
+                                updateDeviceState(DeviceState.IDLE);            
+                                
+                            } else if (gDeviceState == DeviceState.IDLE){
+                                /*  When button is released before UART is configured
+                                    but device woke up with accelerometer (pressed == 15)                                   
+                                */                                
+                                updateDeviceState(DeviceState.SCAN_RECORD);
+                                updateDeviceState(DeviceState.SCAN_CAPTURED);
+                                updateDeviceState(DeviceState.BUTTON_RELEASED);
+                                updateDeviceState(DeviceState.IDLE);                              
+                            }
                         });
                     }
                 }                
