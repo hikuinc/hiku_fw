@@ -379,6 +379,7 @@ function logDeviceOnline() {
     }
     
     server.log("Reason for waking/reboot: " + greasonString);
+    
 } 
 
 logDeviceOnline();
@@ -849,7 +850,8 @@ class Piezo
             "success-server": [ [E6ShortTone,1] ],
             "failure": [ [B4LongTone,0.75] ],
             "unknown-upc": [ [B4LongTone,0.75], [silenceTone,1], [silenceTone,1], [silenceTone,1], [silenceTone,1]  ],
-            "blink-up-enabled": [ [B4LongTone,1] ]
+            "blink-up-enabled": [ [B4LongTone,1] ], 
+            "hw-reset": [ [E6ShortTone,1], [silenceTone,1], [silenceTone,1], [E7ExtraShortTone,1]  ]
         };
 
     }
@@ -983,6 +985,12 @@ hwPiezo <- Piezo(EIMP_AUDIO_OUT);
 server.log("wakeup reason = " + greasonString);
 server.log("FREE MEMORY = " + imp.getmemoryfree());
 
+if (hardware.wakereason() == 8){
+    // Play a tone to indicate HW reset has occured
+    hwPiezo.playSound("hw-reset");
+}
+
+
 // - SPI Flash Related functions for Audio ----
 
 
@@ -1101,21 +1109,23 @@ function handlePin1Int()
             this conditional block when woken up with a button press. 
         */
         
-        
         log("interrupt, handling quick press ");
 
         local pressed = 0;
-        //BTN_N.configure(DIGITAL_OUT,1);
-        //BTN_N.configure(DIGITAL_IN);
         pressed += BTN_N.read();
         pressed += BTN_N.read();
         pressed += BTN_N.read();
         log(format("interrupt, pressed = %d",pressed));
+        
+        /* 
+            if BTN_N.read !=0, then button has been released and we need to 
+            handle the state machine otherwise the buttoncallback fcn will 
+            try to force bad states. 
+        */
         if (pressed != 0){
             imp.wakeup(0.001 function(){
                 log("interrupt, calling stopscanrecord");
                 stopScanRecord();
-                //sendLastBuffer();
                 updateDeviceState(DeviceState.BUTTON_RELEASED);
                 updateDeviceState(DeviceState.IDLE);
                 /*  
@@ -3466,7 +3476,7 @@ if (gUpdateMode){
 }
 //=========================
 
-
 server.log("Ready");
 server.log(imp.getsoftwareversion());
 agent.send("deviceReady", "");
+log(format("Reason for waking/reboot: %s", greasonString));
