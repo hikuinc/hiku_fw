@@ -1095,6 +1095,13 @@ function handlePin1Int()
 {
     log("inside INTERRUPT handler!");
     if (gInstantOnMode && !gButtonCallBackFired){
+        /*
+            This condition is used when button has been pressed and released
+            before the button callback classes are initialized. Device usually enters
+            this conditional block when woken up with a button press. 
+        */
+        
+        
         log("interrupt, handling quick press ");
 
         local pressed = 0;
@@ -1110,11 +1117,17 @@ function handlePin1Int()
                 stopScanRecord();
                 //sendLastBuffer();
                 updateDeviceState(DeviceState.BUTTON_RELEASED);
-                updateDeviceState(DeviceState.IDLE);                   
+                updateDeviceState(DeviceState.IDLE);
+                /*  
+                    reset button state to indicate button has been released already
+                    this affects the states in the buttoncallback function. 
+                */
+                gButtonState = ButtonState.BUTTON_UP;
             });
 
         }
         gInstantOnMode = 0;
+
     }
     
     //local regInterruptSource = 0;
@@ -1617,7 +1630,7 @@ class PushButton
         switch(state) 
         {
             case 0:
-                log("buttonCallback case 1");
+                log("buttonCallback case 0");
                 /*
                 // Button in held state
                 if( hwPiezo.isPaging() )
@@ -1675,6 +1688,7 @@ class PushButton
                     }
                     */
             //agentSend("button","Pressed");
+                    log("button down, start scan record");
                     updateDeviceState(DeviceState.SCAN_RECORD);
                     gButtonState = ButtonState.BUTTON_DOWN;
                     //log("Button state change: DOWN");
