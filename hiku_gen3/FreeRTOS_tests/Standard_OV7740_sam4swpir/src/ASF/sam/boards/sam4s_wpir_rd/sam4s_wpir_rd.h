@@ -208,52 +208,17 @@
 /******************************* UART definition ******************************/
 
 /** UART pins (UTXD0 and URXD0) definitions, PA9,10. */
-//#define PINS_UART                      (PIO_PA9A_URXD0 | PIO_PA10A_UTXD0)
-//#define PINS_UART_FLAGS                (PIO_PERIPH_A | PIO_DEFAULT)
-//
-//#define PINS_UART_MASK                 PIO_PA9A_URXD0 | PIO_PA10A_UTXD0
-//#define PINS_UART_PIO                  PIOA
-//#define PINS_UART_ID                   ID_PIOA
-//#define PINS_UART_TYPE                 PIO_PERIPH_A
-//#define PINS_UART_ATTR                 PIO_DEFAULT
+#define PINS_UART                      (PIO_PA9A_URXD0 | PIO_PA10A_UTXD0)
+#define PINS_UART_FLAGS                (PIO_PERIPH_A | PIO_DEFAULT)
 
-/** UART1 pins (UTXD1 and URXD1) definitions, PB2,PB3. */
-#define PINS_UART        (PIO_PB2A_URXD1 | PIO_PB3A_UTXD1)
-#define PINS_UART_FLAGS    (PIO_PERIPH_A | PIO_DEFAULT)
+#define PINS_UART_MASK                 PIO_PA9A_URXD0 | PIO_PA10A_UTXD0
+#define PINS_UART_PIO                  PIOA
+#define PINS_UART_ID                   ID_PIOA
+#define PINS_UART_TYPE                 PIO_PERIPH_A
+#define PINS_UART_ATTR                 PIO_DEFAULT
 
-#define PINS_UART_MASK PIO_PB2A_URXD1 | PIO_PB3A_UTXD1
-#define PINS_UART_PIO PIOB
-#define PINS_UART_ID ID_PIOB
-#define PINS_UART_TYPE PIO_PERIPH_A
-#define PINS_UART_ATTR PIO_DEFAULT
-
-#define CONSOLE_UART                   UART1
-#define CONSOLE_UART_ID                ID_UART1
-
-#ifdef HIKU_HW
-/** USART1 pins (TXD1 and RXD1) definitions, PA21,2. */
-
-//#define PINS_USART1        (PIO_PB2A_URXD1| PIO_PB3A_UTXD1)
-//#define PINS_USART1_FLAGS  (IOPORT_MODE_MUX_A)
-//
-//#define PINS_USART1_PORT   IOPORT_PIOB
-//#define PINS_USART1_MASK   (PIO_PB2A_URXD1| PIO_PB3A_UTXD1)
-//#define PINS_USART1_PIO    PIOB
-//#define PINS_USART1_ID     ID_PIOB
-//#define PINS_USART1_TYPE   PIO_PERIPH_B
-//#define PINS_USART1_ATTR   PIO_DEFAULT
-
-#define PINS_USART1        (PIO_PA21A_RXD1| PIO_PA22A_TXD1)
-#define PINS_USART1_FLAGS  (IOPORT_MODE_MUX_A)
-
-#define PINS_USART1_PORT   IOPORT_PIOA
-#define PINS_USART1_MASK   (PIO_PA21A_RXD1| PIO_PA22A_TXD1)
-#define PINS_USART1_PIO    PIOA
-#define PINS_USART1_ID     ID_PIOA
-#define PINS_USART1_TYPE   PIO_PERIPH_A
-#define PINS_USART1_ATTR   PIO_DEFAULT
-
-#endif /* HIKU_HW */
+#define CONSOLE_UART                   UART0
+#define CONSOLE_UART_ID                ID_UART0
 
 /******************************* EBI definition ******************************/
 /** EBI Data Bus pins */
@@ -545,7 +510,7 @@
 /******************************* LCD definition
  *********************************/
 /** board has an ILI9325 external component to manage LCD. */
-//#define BOARD_LCD_ILI9325
+#define BOARD_LCD_ILI9325
 
 /** Backlight pin. */
 #define BOARD_BACKLIGHT_PIN            {PIO_PC13, PIOC, ID_PIOC, \

@@ -83,9 +83,9 @@
 
 // ===== USB Clock Source Options   (Fusb = FpllX / USB_div)
 // Use div effective value here.
-#define CONFIG_USBCLK_SOURCE        USBCLK_SRC_PLL0
+//#define CONFIG_USBCLK_SOURCE        USBCLK_SRC_PLL0
 //#define CONFIG_USBCLK_SOURCE        USBCLK_SRC_PLL1
-#define CONFIG_USBCLK_DIV           2
+//#define CONFIG_USBCLK_DIV           2
 
 // ===== Target frequency (System clock)
 // - XTAL frequency: 12MHz
