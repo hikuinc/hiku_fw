@@ -43,7 +43,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "2.1.06";
+gAgentVersion <- "2.1.07";
 
 gAudioState <- AudioStates.AudioError;
 gAudioAbort <- false;
@@ -102,6 +102,7 @@ const MIX_PANEL_EVENT_BATTERY = "DeviceBatteryLevel";
 const MIX_PANEL_EVENT_CONNECTIVITY = "DeviceConnectivity";
 const MIX_PANEL_EVENT_CONFIG = "DeviceConfig";
 const MIX_PANEL_EVENT_STATUS = "DeviceStatus";
+const MIX_PANEL_EVENT_BUTTON_TIMEOUT = "DeviceButtonTimeout";
 
 // Heroku server base URL   
 //gBaseUrl <- "https://app-staging.hiku.us/api/v1";
@@ -1144,10 +1145,20 @@ device.on("shutdownRequestReason", function(status){
     agentLog(format("Hiku shutting down. Reason=%d", status));
 });
 
+device.on("buttonTimeout", function(data) {
+    
+    agentLog(format("Button timeout occurred: %d", data.instantonTimeout)); 
+    //sendMixPanelEvent(MIX_PANEL_EVENT_BUTTON_TIMEOUT,{"timeoutSource": (data.instantonTimeout?"instant-on":"standard") });
+    //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_BUTTON_TIMEOUT, (data.instantonTimeout?"instant-on":"standard") ));
+
+});
+
+
 
 device.on("deviceReady", function(data)
 {
    nv.deviceReady = time(); 
+   server.log("deviceReady was called!!");
 });
 
 //======================================================================
@@ -1173,7 +1184,7 @@ http.onrequest(function (req, res)
             {
                 local c = time();
                 local d = nv.deviceReady;
-                if (c - d <= 15)
+                if (c - d <= 30)
                 {
                     result = http.urlencode({"ready":"true", "time":getUTCTimeFromDate(date(d))});
                     //return res.send(200,result);

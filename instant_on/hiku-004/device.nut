@@ -11,6 +11,8 @@ gUpdateMode <- 0;               //set flag to indicate when new squirrel code is
 gInstantOnMode <-0;
 gButtonCallBackFired <-0;
 gPendingTimer <- null;
+gInstantButtonTimer <- null;
+gInstantTimeout <-0;
 
 // TODO put back this in the flash functions
 imp.setpoweren(true);
@@ -690,6 +692,11 @@ function log(str)
 
 // --- Logging End ---
 
+
+/*
+    ~~~~~~~~~~~~~~~~~   BEGIN INSTANT-ON LOGIC  ~~~~~~~~~~~~~~~~~ 
+*/
+
 // Button
 enum ButtonState
 {
@@ -713,12 +720,14 @@ for(local i=0; i<15; i++)
 }
 
 
+
 log(format("Press Count: %d",pressed));
 if (pressed == 0 && imp.getssid() != "")
 {
     log("inside pressed=0 logic");
     gInstantOnMode = 1;
     gButtonState = ButtonState.BUTTON_DOWN;
+    
     // skip scanner command mode and start scanning/recording audio immediately
     //startScanRecord();
     //SCAN_CMD.configure(DIGITAL_OUT, 0);
@@ -793,6 +802,13 @@ if (pressed == 0 && imp.getssid() != "")
     
     gAudioTimer = hardware.millis();    
 }
+
+/*
+    ~~~~~~~~~~~~~~~~~   END INSTANT-ON LOGIC  ~~~~~~~~~~~~~~~~~ 
+*/
+
+
+
 
 //======================================================================
 // Handles all audio output
@@ -1101,7 +1117,7 @@ function stopScanRecord()
 // --- handle interrupts here --- 
 function handlePin1Int()
 {
-    log("inside INTERRUPT handler!");
+    //log("inside INTERRUPT handler!");
     if (gInstantOnMode && !gButtonCallBackFired){
         /*
             This condition is used when button has been pressed and released
@@ -1395,6 +1411,28 @@ class CancellableTimer
     }
 }
 
+/*
+    Create a button timer for instant-on case. It's done here because all the 
+    appropriate classes need to be initialized fully before they can be used. 
+*/
+if (gInstantOnMode == 1){
+    gInstantButtonTimer = CancellableTimer(cButtonTimeout, function(){
+                                    gPendingAudio = 0;
+                                    gPendingBarcode = 0;
+                                    updateDeviceState(DeviceState.BUTTON_TIMEOUT);
+                                    stopScanRecord();
+                                    gInstantTimeout = 1;
+                                    gInstantButtonTimer.disable();
+                                    
+                                    if (server.isconnected()){
+                                        agent.send("buttonTimeout", {instantonTimeout=1});
+                                    }
+                                    
+                                    log("instant-on timeout reached. Aborting scan and record.");                                    
+                            });
+    gInstantButtonTimer.enable();
+}
+
 
 //======================================================================
 // Handles any I2C device
@@ -1607,6 +1645,9 @@ class PushButton
     {
         updateDeviceState(DeviceState.BUTTON_TIMEOUT);
         stopScanRecord();
+        if (server.isconnected()){
+            agent.send("buttonTimeout", {instantonTimeout=0});
+        }        
         //hwPiezo.playSound("timeout");
         log("Timeout reached. Aborting scan and record.");
     }
@@ -1717,6 +1758,16 @@ class PushButton
                 {
                     return;
                 }    
+                
+                /*
+                    When instant-on is activated, then the 6s timeout timer is also activated. 
+                    If button is held longer than 6s, then the timeout handler will disable the timer. 
+                    And if button is released before 6s, then the following condition will disable the timer.
+                */
+                if (gInstantButtonTimer){
+                    log("disabling instant-on button timer")
+                    gInstantButtonTimer.disable();
+                }
                 
                 if (gAudioUartCallBackFired == true){
 
@@ -2456,8 +2507,6 @@ function preSleepHandler() {
         log("preSleepHandler: clear out all the pending accel interrupts");
         hwAccelerometer.clearAccelInterruptUntilCleared();
 
-        // perform STM32 software upgrade before going to sleep if software version doesn't match
-        
         init_audio_memory();
         
         AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS);
@@ -2704,6 +2753,11 @@ function onConnected(status)
 {   
     if (status == SERVER_CONNECTED) {
         log("Connected!!!!!!!!!! yay!!!!!");
+        
+        if (gInstantTimeout == 1){
+            agent.send("buttonTimeout", {instantonTimeout=1});
+        }
+        
         gInstantOnMode = 0;
         cancelPendingTimer();
         if (gPendingAudio && !gPendingBarcode)
@@ -2757,6 +2811,11 @@ function onConnected(status)
             log("Setup Completed!");
         }
         nv.disconnect_reason = 0;
+        
+        if (gUpdateMode == 0)
+        {
+            agent.send("deviceReady", "");
+        }
         
     }
     else
@@ -3473,10 +3532,10 @@ if (gUpdateMode){
     updateSTM32();
     NRST.write(0);
     gUpdateMode = 0;
+    agent.send("deviceReady", "");
 }
 //=========================
 
 server.log("Ready");
 server.log(imp.getsoftwareversion());
-agent.send("deviceReady", "");
 log(format("Reason for waking/reboot: %s", greasonString));
