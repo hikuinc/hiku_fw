@@ -11,7 +11,7 @@ src/ASF/sam/boards/sam4s_wpir_rd/init.d \
  ../src/ASF/sam/utils/preprocessor/preprocessor.h \
  ../src/ASF/sam/utils/header_files/io.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/sam4s.h \
- ../src/ASF/sam/utils/cmsis/sam4s/include/sam4sd32c.h \
+ ../src/ASF/sam/utils/cmsis/sam4s/include/sam4s16c.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdint.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdint.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\_default_types.h \
@@ -26,7 +26,6 @@ src/ASF/sam/boards/sam4s_wpir_rd/init.d \
  ../src/ASF/sam/utils/cmsis/sam4s/include/component/component_acc.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/component/component_adc.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/component/component_chipid.h \
- ../src/ASF/sam/utils/cmsis/sam4s/include/component/component_cmcc.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/component/component_crccu.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/component/component_dacc.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/component/component_efc.h \
@@ -65,7 +64,6 @@ src/ASF/sam/boards/sam4s_wpir_rd/init.d \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_dacc.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_acc.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_crccu.h \
- ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_cmcc.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_smc.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_matrix.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_pmc.h \
@@ -73,7 +71,6 @@ src/ASF/sam/boards/sam4s_wpir_rd/init.d \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_chipid.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_uart1.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_efc0.h \
- ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_efc1.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_pioa.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_piob.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_pioc.h \
@@ -83,7 +80,7 @@ src/ASF/sam/boards/sam4s_wpir_rd/init.d \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_wdt.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_rtc.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_gpbr.h \
- ../src/ASF/sam/utils/cmsis/sam4s/include/pio/pio_sam4sd32c.h \
+ ../src/ASF/sam/utils/cmsis/sam4s/include/pio/pio_sam4s16c.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdio.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\_ansi.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\newlib.h \
@@ -106,19 +103,12 @@ src/ASF/sam/boards/sam4s_wpir_rd/init.d \
  ../src/ASF/common/utils/interrupt.h \
  ../src/ASF/common/utils/interrupt/interrupt_sam_nvic.h \
  ../src/ASF/common/boards/board.h \
- ../src/ASF/sam/boards/sam4s_ek2/sam4s_ek2.h \
+ ../src/ASF/sam/boards/sam4s_wpir_rd/sam4s_wpir_rd.h \
+ ../src/config/conf_board.h \
  ../src/ASF/sam/utils/cmsis/sam4s/include/system_sam4s.h \
- ../src/config/conf_board.h ../src/ASF/common/services/gpio/gpio.h \
+ ../src/ASF/common/services/gpio/gpio.h \
  ../src/ASF/common/services/gpio/sam_gpio/sam_gpio.h \
- ../src/ASF/sam/drivers/pio/pio.h \
- ../src/ASF/common/services/ioport/ioport.h \
- ../src/ASF/common/services/ioport/sam/ioport_pio.h \
- ../src/ASF/common/services/clock/sysclk.h ../src/config/conf_clock.h \
- ../src/ASF/common/services/clock/sam4s/sysclk.h \
- ../src/ASF/common/services/clock/osc.h \
- ../src/ASF/common/services/clock/sam4s/osc.h \
- ../src/ASF/sam/drivers/pmc/pmc.h ../src/ASF/common/services/clock/pll.h \
- ../src/ASF/common/services/clock/sam4s/pll.h
+ ../src/ASF/sam/drivers/pio/pio.h
 
 ../src/ASF/sam/utils/compiler.h:
 
@@ -140,7 +130,7 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gc
 
 ../src/ASF/sam/utils/cmsis/sam4s/include/sam4s.h:
 
-../src/ASF/sam/utils/cmsis/sam4s/include/sam4sd32c.h:
+../src/ASF/sam/utils/cmsis/sam4s/include/sam4s16c.h:
 
 c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdint.h:
 
@@ -169,8 +159,6 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 ../src/ASF/sam/utils/cmsis/sam4s/include/component/component_adc.h:
 
 ../src/ASF/sam/utils/cmsis/sam4s/include/component/component_chipid.h:
-
-../src/ASF/sam/utils/cmsis/sam4s/include/component/component_cmcc.h:
 
 ../src/ASF/sam/utils/cmsis/sam4s/include/component/component_crccu.h:
 
@@ -248,8 +236,6 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 
 ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_crccu.h:
 
-../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_cmcc.h:
-
 ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_smc.h:
 
 ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_matrix.h:
@@ -263,8 +249,6 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_uart1.h:
 
 ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_efc0.h:
-
-../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_efc1.h:
 
 ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_pioa.h:
 
@@ -284,7 +268,7 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 
 ../src/ASF/sam/utils/cmsis/sam4s/include/instance/instance_gpbr.h:
 
-../src/ASF/sam/utils/cmsis/sam4s/include/pio/pio_sam4sd32c.h:
+../src/ASF/sam/utils/cmsis/sam4s/include/pio/pio_sam4s16c.h:
 
 c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdio.h:
 
@@ -330,34 +314,14 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 
 ../src/ASF/common/boards/board.h:
 
-../src/ASF/sam/boards/sam4s_ek2/sam4s_ek2.h:
-
-../src/ASF/sam/utils/cmsis/sam4s/include/system_sam4s.h:
+../src/ASF/sam/boards/sam4s_wpir_rd/sam4s_wpir_rd.h:
 
 ../src/config/conf_board.h:
+
+../src/ASF/sam/utils/cmsis/sam4s/include/system_sam4s.h:
 
 ../src/ASF/common/services/gpio/gpio.h:
 
 ../src/ASF/common/services/gpio/sam_gpio/sam_gpio.h:
 
 ../src/ASF/sam/drivers/pio/pio.h:
-
-../src/ASF/common/services/ioport/ioport.h:
-
-../src/ASF/common/services/ioport/sam/ioport_pio.h:
-
-../src/ASF/common/services/clock/sysclk.h:
-
-../src/config/conf_clock.h:
-
-../src/ASF/common/services/clock/sam4s/sysclk.h:
-
-../src/ASF/common/services/clock/osc.h:
-
-../src/ASF/common/services/clock/sam4s/osc.h:
-
-../src/ASF/sam/drivers/pmc/pmc.h:
-
-../src/ASF/common/services/clock/pll.h:
-
-../src/ASF/common/services/clock/sam4s/pll.h:

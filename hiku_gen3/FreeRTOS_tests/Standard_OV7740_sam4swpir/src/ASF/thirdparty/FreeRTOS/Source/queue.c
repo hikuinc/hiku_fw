@@ -1221,9 +1221,8 @@ Queue_t * const pxQueue = ( Queue_t * ) xQueue;
 	/* Normally a mutex would not be given from an interrupt, especially if
 	there is a mutex holder, as priority inheritance makes no sense for an
 	interrupts, only tasks. */
-	//configASSERT( !( ( pxQueue->uxQueueType == queueQUEUE_IS_MUTEX ) && ( pxQueue->pxMutexHolder != NULL ) ) );
-	//configASSERT( (!(pxQueue->uxQueueType == queueQUEUE_IS_MUTEX ) && ( pxQueue->pxMutexHolder != NULL ) ) );
-	
+	configASSERT( !( ( pxQueue->uxQueueType == queueQUEUE_IS_MUTEX ) && ( pxQueue->pxMutexHolder != NULL ) ) );
+
 	/* RTOS ports that support interrupt nesting have the concept of a maximum
 	system call (or maximum API call) interrupt priority.  Interrupts that are
 	above the maximum system call priority are kept permanently enabled, even

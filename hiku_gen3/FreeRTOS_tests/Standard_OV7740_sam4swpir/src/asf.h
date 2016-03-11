@@ -65,22 +65,9 @@
 // From module: Display - ILI9325 LCD Controller
 #include <ili9325.h>
 
-// From module: FreeRTOS - PDC Interface Layer
-#include <freertos_peripheral_control.h>
-#include <freertos_peripheral_control_private.h>
-
-// From module: FreeRTOS - TWI Interface Layer
-#include <freertos_twi_master.h>
-
-// From module: FreeRTOS - UART Interface Layer
-#include <freertos_uart_serial.h>
-
-// From module: FreeRTOS - USART Interface Layer
-#include <freertos_usart_serial.h>
-
 // From module: FreeRTOS mini Real-Time Kernel
 #include <FreeRTOS.h>
-#include <FreeRTOS_CLI.h>
+//#include <FreeRTOS_CLI.h>
 #include <StackMacros.h>
 #include <croutine.h>
 #include <list.h>
@@ -104,14 +91,8 @@
 // From module: Interrupt management - SAM implementation
 #include <interrupt.h>
 
-// From module: MATRIX - Bus Matrix
-#include <matrix.h>
-
 // From module: OV7740 CMOS image sensor
 #include <ov7740.h>
-
-// From module: PDC - Peripheral DMA Controller Example
-#include <pdc.h>
 
 // From module: PIO - Parallel Input/Output Controller
 #include <pio.h>
@@ -129,21 +110,11 @@
 // From module: SMC - Static Memory Controller
 #include <smc.h>
 
-// From module: Sleep manager - SAM implementation
-#include <sam/sleepmgr.h>
-#include <sleepmgr.h>
-
 // From module: Standard serial I/O (stdio) - SAM implementation
 #include <stdio_serial.h>
 
 // From module: System Clock Control - SAM4S implementation
 #include <sysclk.h>
-
-// From module: TWI - Two-Wire Interface - SAM implementation
-#include <sam_twi/twi_master.h>
-#include <sam_twi/twi_slave.h>
-#include <twi_master.h>
-#include <twi_slave.h>
 
 // From module: TWI - Two-wire Interface
 #include <twi.h>
@@ -156,16 +127,6 @@
 
 // From module: USART - Univ. Syn Async Rec/Trans
 #include <usart.h>
-
-// From module: USB CDC Protocol
-#include <usb_protocol_cdc.h>
-
-// From module: USB Device CDC (Single Interface Device)
-#include <udi_cdc.h>
-
-// From module: USB Device Stack Core (Common API)
-#include <udc.h>
-#include <udd.h>
 
 // From module: pio_handler support enabled
 #include <pio_handler.h>
