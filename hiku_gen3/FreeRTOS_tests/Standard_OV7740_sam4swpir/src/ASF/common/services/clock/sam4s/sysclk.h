@@ -273,7 +273,7 @@ extern "C" {
  * USB is not required.
  */
 #ifdef __DOXYGEN__
-# define CONFIG_USBCLK_SOURCE
+#define CONFIG_USBCLK_SOURCE
 #endif
 
 /**

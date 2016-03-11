@@ -76,7 +76,6 @@
  * memory management pages of http://www.FreeRTOS.org for more information.
  */
 #include <stdlib.h>
-#include <string.h>
 
 /* Defining MPU_WRAPPERS_INCLUDED_FROM_API_FILE prevents task.h from redefining
 all the API functions to use the MPU wrappers.  That should only be done when
@@ -298,24 +297,6 @@ void *pvReturn = NULL;
 	return pvReturn;
 }
 /*-----------------------------------------------------------*/
-
-/*custom fcn for calloc - not included with FreeRTOS by default*/
-void *pvPortCalloc(size_t count, size_t size)
-{
-	void *p;
-
-	// allocate 'count' objects of size 'size'
-	p = pvPortMalloc(count * size);
-	if (p) {
-		// zero the memory 
-		memset(p, 0, count * size);
-	}
-	return p;
-}
-
-
-/*-----------------------------------------------------------*/
-
 
 void vPortFree( void *pv )
 {

@@ -49,6 +49,16 @@
 #include "conf_board.h"
 #include "gpio.h"
 
+#ifdef HIKU_HW
+#include "ioport.h"
+#define ioport_set_port_peripheral_mode(port, masks, mode) \
+	do {\
+		ioport_set_port_mode(port, masks, mode);\
+		ioport_disable_port(port, masks);\
+	} while (0)
+#endif /* HIKU_HW */
+
+#if BOARD == SAM4S_WPIR_RD
 void board_init(void)
 {
 	/* Disable the watchdog */
@@ -67,11 +77,6 @@ void board_init(void)
 	gpio_configure_pin(ADC0_AD0_GPIO, ADC0_AD0_FLAGS);
 	gpio_configure_pin(ADC0_AD4_GPIO, ADC0_AD4_FLAGS);
 	gpio_configure_pin(ADC0_AD5_GPIO, ADC0_AD5_FLAGS);
-#endif
-
-	/* Configure UART pins */
-#ifdef CONF_BOARD_UART_CONSOLE
-	gpio_configure_group(PINS_UART_PIO, PINS_UART, PINS_UART_FLAGS);
 #endif
 
 	/* Configure TWI pins */
@@ -171,4 +176,15 @@ void board_init(void)
 	gpio_configure_pin(OV_DATA_BUS_D8, OV_DATA_BUS_FLAGS);
 	gpio_configure_pin(OV_DATA_BUS_D9, OV_DATA_BUS_FLAGS);
 #endif
+
+	/* Configure UART pins */
+	#ifdef CONF_BOARD_UART_CONSOLE
+	gpio_configure_group(PINS_UART1_PIO, PINS_UART1, PINS_UART1_FLAGS);
+	#endif
+
+#ifdef HIKU_HW
+	//ioport_set_port_peripheral_mode(PINS_USART1, PINS_USART1, PINS_USART1_FLAGS);
+#endif /* HIKU_HW */
 }
+
+#endif /* BOARD == SAM4S_WPIR_RD */

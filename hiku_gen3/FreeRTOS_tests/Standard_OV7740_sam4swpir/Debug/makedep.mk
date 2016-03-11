@@ -6,13 +6,33 @@ src\ASF\common\services\clock\sam4s\sysclk.c
 
 src\ASF\common\services\delay\sam\cycle_counter.c
 
+src\ASF\common\services\freertos\sam\freertos_peripheral_control.c
+
+src\ASF\common\services\freertos\sam\freertos_twi_master.c
+
+src\ASF\common\services\freertos\sam\freertos_uart_serial.c
+
+src\ASF\common\services\freertos\sam\freertos_usart_serial.c
+
 src\ASF\common\services\serial\usart_serial.c
+
+src\ASF\common\services\sleepmgr\sam\sleepmgr.c
+
+src\ASF\common\services\usb\class\cdc\device\udi_cdc.c
+
+src\ASF\common\services\usb\class\cdc\device\udi_cdc_desc.c
+
+src\ASF\common\services\usb\udc\udc.c
 
 src\ASF\common\utils\interrupt\interrupt_sam_nvic.c
 
 src\ASF\common\utils\stdio\read.c
 
 src\ASF\common\utils\stdio\write.c
+
+src\ASF\sam\boards\sam4s_ek2\init.c
+
+src\ASF\sam\boards\sam4s_ek2\led.c
 
 src\ASF\sam\boards\sam4s_wpir_rd\init.c
 
@@ -26,6 +46,10 @@ src\ASF\sam\components\display\ili9325\ili9325.c
 
 src\ASF\sam\drivers\ebi\smc\smc.c
 
+src\ASF\sam\drivers\matrix\matrix.c
+
+src\ASF\sam\drivers\pdc\pdc.c
+
 src\ASF\sam\drivers\pio\pio.c
 
 src\ASF\sam\drivers\pio\pio_handler.c
@@ -38,6 +62,8 @@ src\ASF\sam\drivers\twi\twi.c
 
 src\ASF\sam\drivers\uart\uart.c
 
+src\ASF\sam\drivers\udp\udp_device.c
+
 src\ASF\sam\drivers\usart\usart.c
 
 src\ASF\sam\utils\cmsis\sam4s\source\templates\gcc\startup_sam4s.c
@@ -47,6 +73,8 @@ src\ASF\sam\utils\cmsis\sam4s\source\templates\system_sam4s.c
 src\ASF\sam\utils\syscalls\gcc\syscalls.c
 
 src\ASF\thirdparty\FreeRTOS\Source\event_groups.c
+
+src\ASF\thirdparty\FreeRTOS\Source\FreeRTOS_CLI.c
 
 src\ASF\thirdparty\FreeRTOS\Source\list.c
 
@@ -60,29 +88,23 @@ src\ASF\thirdparty\FreeRTOS\Source\tasks.c
 
 src\ASF\thirdparty\FreeRTOS\Source\timers.c
 
-src\ASF\thirdparty\zbar\code128.c
+src\hiku\commands\CLI-commands.c
 
-src\ASF\thirdparty\zbar\code39.c
+src\hiku\tasks\I2C-CLI-task.c
 
-src\ASF\thirdparty\zbar\config.c
+src\hiku\tasks\UART-CLI-task.c
 
-src\ASF\thirdparty\zbar\decoder.c
+src\hiku\tasks\USART-CLI-task.c
 
-src\ASF\thirdparty\zbar\ean.c
+src\hiku\tasks\USART-echo-tasks.c
 
-src\ASF\thirdparty\zbar\error.c
+src\hiku\tasks\USB-CDC-CLI-task.c
 
-src\ASF\thirdparty\zbar\image.c
+src\hiku\utils\partest.c
 
-src\ASF\thirdparty\zbar\img_scanner.c
+src\hiku\utils\run-time-stats-utils.c
 
-src\ASF\thirdparty\zbar\refcnt.c
+src\main.c
 
-src\ASF\thirdparty\zbar\scanner.c
-
-src\ASF\thirdparty\zbar\svg.c
-
-src\ASF\thirdparty\zbar\symbol.c
-
-src\imagesensor_capture_example.c
+src\main_display.c
 

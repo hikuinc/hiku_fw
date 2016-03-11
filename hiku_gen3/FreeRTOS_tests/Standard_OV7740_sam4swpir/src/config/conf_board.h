@@ -48,19 +48,19 @@
 #define CONF_BOARD_H_INCLUDED
 
 /** Enable AAT3155 component to control LCD backlight. */
-#define CONF_BOARD_AAT3155
+//#define CONF_BOARD_AAT3155
 
 /** Enable ILI9325 component to control LCD. */
-#define CONF_BOARD_ILI9325
+//#define CONF_BOARD_ILI9325
 
 /** Enable OV7740 image sensor. */
-#define CONF_BOARD_OV7740_IMAGE_SENSOR
+//#define CONF_BOARD_OV7740_IMAGE_SENSOR
 
 /** Configure TWI0 pins (for OV7740  communications). */
-#define CONF_BOARD_TWI0
+//#define CONF_BOARD_TWI0
 
 /** Configure PCK0 pins (for OV7740  communications). */
-#define CONF_BOARD_PCK0
+//#define CONF_BOARD_PCK0
 
 /* Enable SRAM. */
 #define CONF_BOARD_SRAM
@@ -86,6 +86,8 @@
 #define IMAGE_WIDTH                    (320UL)
 #define IMAGE_HEIGHT                   (240UL)
 
+
+#ifdef CONF_BOARD_OV7740_IMAGE_SENSOR
 /* Image sensor board defines. */
 // Image sensor Power pin.
 #define OV_POWER_PIO                   OV_SW_OVT_PIO
@@ -98,5 +100,6 @@
 // Image sensor data pin.
 #define OV7740_DATA_BUS_PIO            OV_DATA_BUS_PIO
 #define OV7740_DATA_BUS_ID             OV_DATA_BUS_ID
+#endif /* CONF_BOARD_OV7740_IMAGE_SENSOR */
 
 #endif /* CONF_BOARD_H_INCLUDED */
