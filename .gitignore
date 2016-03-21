@@ -1,1 +1,9 @@
 *.swp
+*.bin
+hiku_gen3/baseline/Debug/src/ASF/common/services/clock/sam4s/sysclk.o
+*.o
+*.o
+hiku_gen3/baseline/Debug/hiku_gen3_freertos_sam4s.srec
+*.map
+hiku_gen3/baseline/Debug/hiku_gen3_freertos_sam4s.lss
+*.d
