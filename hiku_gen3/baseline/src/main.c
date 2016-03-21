@@ -291,8 +291,9 @@
 
 /* Demo includes. */
 #include "partest.h"
-#include "hiku-tasks.h"
+#include "conf_board.h"
 #include "conf_hiku.h"
+#include "hiku-tasks.h"
 
 /* ASF includes. */
 #include "sysclk.h"
@@ -319,6 +320,7 @@
 
 #ifdef HIKU_HW
 #define mainTWI_I2C_TASK_PRIORITY              (tskIDLE_PRIORITY + 1)
+#define mainSCANNER_TASK_PRIORITY			   (tskIDLE_PRIORITY + 1)
 #endif /* HIKU_HW */
 
 /* The stack sizes allocated to the various tasks. */
@@ -331,6 +333,7 @@
 
 #ifdef HIKU_HW
 #define mainTWI_I2C_TASK_STACK_SIZE  (configMINIMAL_STACK_SIZE * 2)
+#define mainSCANNER_TASK_STACK_SIZE  (configMINIMAL_STACK_SIZE * 2)
 #endif /* HIKU_HW */
 
 /* When mainDEMONSTRATE_ASYNCHRONOUS_API is set to 1, the SPI and TWI
@@ -444,7 +447,17 @@ int main(void)
 		mainTWI_I2C_TASK_PRIORITY,
 		0);
 	}
-	#endif /* confINCLUDE_TWI_EEPROM_TASK */
+	#endif
+	
+	#if (defined confINCLUDE_SCANNER)
+	{
+		create_scanner_task(BOARD_TWI_I2C,
+		mainSCANNER_TASK_STACK_SIZE,
+		mainSCANNER_TASK_PRIORITY,
+		0);		
+	}
+	#endif
+	
 #endif /* HIKU_HW */
 
 

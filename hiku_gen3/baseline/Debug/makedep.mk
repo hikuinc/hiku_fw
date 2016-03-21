@@ -90,6 +90,8 @@ src\ASF\thirdparty\FreeRTOS\Source\timers.c
 
 src\hiku\commands\CLI-commands.c
 
+src\hiku\tasks\scanner_task.c
+
 src\hiku\tasks\I2C-CLI-task.c
 
 src\hiku\tasks\UART-CLI-task.c
@@ -99,6 +101,8 @@ src\hiku\tasks\USART-CLI-task.c
 src\hiku\tasks\USART-echo-tasks.c
 
 src\hiku\tasks\USB-CDC-CLI-task.c
+
+src\hiku\utils\hiku_utils.c
 
 src\hiku\utils\partest.c
 

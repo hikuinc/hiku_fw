@@ -100,4 +100,12 @@ portBASE_TYPE set_asynchronous_api);
 portBASE_TYPE did_twi_i2c_test_pass(void);
 #endif /* confINCLUDE_TWI_I2C_TASK */
 
+#if (defined confINCLUDE_SCANNER)
+#include "freertos_twi_master.h"
+void create_scanner_task(Twi *twi_base, uint16_t stack_depth_words,
+unsigned portBASE_TYPE task_priority,
+portBASE_TYPE set_asynchronous_api);
+portBASE_TYPE did_scanner_test_pass(void);
+#endif /* confINCLUDE_SCANNER_TASK */
+
 #endif /* HIKU_TASKS_H */

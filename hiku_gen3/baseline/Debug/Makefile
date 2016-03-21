@@ -170,11 +170,13 @@ C_SRCS +=  \
 ../src/ASF/thirdparty/FreeRTOS/Source/tasks.c \
 ../src/ASF/thirdparty/FreeRTOS/Source/timers.c \
 ../src/hiku/commands/CLI-commands.c \
+../src/hiku/tasks/scanner_task.c \
 ../src/hiku/tasks/I2C-CLI-task.c \
 ../src/hiku/tasks/UART-CLI-task.c \
 ../src/hiku/tasks/USART-CLI-task.c \
 ../src/hiku/tasks/USART-echo-tasks.c \
 ../src/hiku/tasks/USB-CDC-CLI-task.c \
+../src/hiku/utils/hiku_utils.c \
 ../src/hiku/utils/partest.c \
 ../src/hiku/utils/run-time-stats-utils.c \
 ../src/main.c \
@@ -232,11 +234,13 @@ src/ASF/thirdparty/FreeRTOS/Source/queue.o \
 src/ASF/thirdparty/FreeRTOS/Source/tasks.o \
 src/ASF/thirdparty/FreeRTOS/Source/timers.o \
 src/hiku/commands/CLI-commands.o \
+src/hiku/tasks/scanner_task.o \
 src/hiku/tasks/I2C-CLI-task.o \
 src/hiku/tasks/UART-CLI-task.o \
 src/hiku/tasks/USART-CLI-task.o \
 src/hiku/tasks/USART-echo-tasks.o \
 src/hiku/tasks/USB-CDC-CLI-task.o \
+src/hiku/utils/hiku_utils.o \
 src/hiku/utils/partest.o \
 src/hiku/utils/run-time-stats-utils.o \
 src/main.o \
@@ -287,11 +291,13 @@ src/ASF/thirdparty/FreeRTOS/Source/queue.o \
 src/ASF/thirdparty/FreeRTOS/Source/tasks.o \
 src/ASF/thirdparty/FreeRTOS/Source/timers.o \
 src/hiku/commands/CLI-commands.o \
+src/hiku/tasks/scanner_task.o \
 src/hiku/tasks/I2C-CLI-task.o \
 src/hiku/tasks/UART-CLI-task.o \
 src/hiku/tasks/USART-CLI-task.o \
 src/hiku/tasks/USART-echo-tasks.o \
 src/hiku/tasks/USB-CDC-CLI-task.o \
+src/hiku/utils/hiku_utils.o \
 src/hiku/utils/partest.o \
 src/hiku/utils/run-time-stats-utils.o \
 src/main.o \
@@ -342,11 +348,13 @@ src/ASF/thirdparty/FreeRTOS/Source/queue.d \
 src/ASF/thirdparty/FreeRTOS/Source/tasks.d \
 src/ASF/thirdparty/FreeRTOS/Source/timers.d \
 src/hiku/commands/CLI-commands.d \
+src/hiku/tasks/scanner_task.d \
 src/hiku/tasks/I2C-CLI-task.d \
 src/hiku/tasks/UART-CLI-task.d \
 src/hiku/tasks/USART-CLI-task.d \
 src/hiku/tasks/USART-echo-tasks.d \
 src/hiku/tasks/USB-CDC-CLI-task.d \
+src/hiku/utils/hiku_utils.d \
 src/hiku/utils/partest.d \
 src/hiku/utils/run-time-stats-utils.d \
 src/main.d \
@@ -397,11 +405,13 @@ src/ASF/thirdparty/FreeRTOS/Source/queue.d \
 src/ASF/thirdparty/FreeRTOS/Source/tasks.d \
 src/ASF/thirdparty/FreeRTOS/Source/timers.d \
 src/hiku/commands/CLI-commands.d \
+src/hiku/tasks/scanner_task.d \
 src/hiku/tasks/I2C-CLI-task.d \
 src/hiku/tasks/UART-CLI-task.d \
 src/hiku/tasks/USART-CLI-task.d \
 src/hiku/tasks/USART-echo-tasks.d \
 src/hiku/tasks/USB-CDC-CLI-task.d \
+src/hiku/utils/hiku_utils.d \
 src/hiku/utils/partest.d \
 src/hiku/utils/run-time-stats-utils.d \
 src/main.d \
@@ -422,6 +432,10 @@ LINKER_SCRIPT_DEP+=  \
 
 
 # AVR32/GNU C Compiler
+
+
+
+
 
 
 

@@ -41,8 +41,8 @@
  *
  */
 
-#ifndef CONF_EXAMPLE_H
-#define CONF_EXAMPLE_H
+#ifndef CONF_HIKU_H
+#define CONF_HIKU_H
 
 #define HIKU_HW
 
@@ -52,6 +52,8 @@
 
 /* Comment/Uncomment the following definitions to enable/disable to corresponding tasks. */
 /* Note: only the listed tasks have hardware support. */
+
+#define confINCLUDE_SCANNER
 
 #define confINCLUDE_UART_CLI
 //#define confINCLUDE_USART_ECHO_TASKS
@@ -97,4 +99,4 @@
 #define LED2_GPIO						(0UL)
 #define LED2_ACTIVE_LEVEL				(0UL)
 
-#endif /* CONF_EXAMPLE_H */
+#endif /* CONF_HIKU_H */
