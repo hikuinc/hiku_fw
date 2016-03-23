@@ -7,7 +7,7 @@ enum AudioStates {
   AudioRecording,  // Hiku's button has been pressed and audio is being recorded.
   AudioFinished,   // The button has been released and the audio has to be interpreted by
                    // the server. This is the case if only audio was recorded or if the audio
-		   // is to add an entry to an unknown barcode (superscan).
+           // is to add an entry to an unknown barcode (superscan).
   AudioFinishedBarcode, // The button has been released and the server can ignore the audio
   AudioError       // The most recent audio recording encountered an error. This state is also
                    // used on agent initialization.
@@ -17,18 +17,18 @@ if (!("nv" in getroottable()))
 {
     nv <- { 
             gImpeeId = "", 
-    	    gChargerState = "removed" , 
-    	    gLinkedRecordTimeout = null,
-			gBootTime = 0.0,
-			gSleepDuration = 0.0,
-			gWakeUpReason = 0x0000,
-			gBatteryLevel = 0.0,
-			gFwVersion = 0.0,
-			at_factory = false,
-	        macAddress = null,
-	        countryCode = null,
-	        deviceReady = null
-    	  };
+            gChargerState = "removed" , 
+            gLinkedRecordTimeout = null,
+            gBootTime = 0.0,
+            gSleepDuration = 0.0,
+            gWakeUpReason = 0x0000,
+            gBatteryLevel = 0.0,
+            gFwVersion = 0.0,
+            at_factory = false,
+            macAddress = null,
+            countryCode = null,
+            deviceReady = null
+          };
 }
 
 // use a round robin table to do logging
@@ -36,14 +36,14 @@ const MAX_TABLE_COUNT = 5; // going to have 5 buffers
 const MAX_LOG_COUNT = 30;
 gLogTableIndex <- 0;
 gLogTable <- [{count=0,data=""},
-	      {count=0,data=""},
-	      {count=0,data=""},
-	      {count=0,data=""},
-	      {count=0,data=""}];
+          {count=0,data=""},
+          {count=0,data=""},
+          {count=0,data=""},
+          {count=0,data=""}];
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "2.1.04";
+gAgentVersion <- "2.1.05";
 
 gAudioState <- AudioStates.AudioError;
 gAudioAbort <- false;
@@ -74,25 +74,25 @@ gEndUploadData <- null;
 gEan <- ""; // stored EAN for a superscan
                      
 local boot_reasons = [
-						"accelerometer", 
-						"charger_status", 
-						"button", 
-						"touch", 
-						"not-used", 
-						"not-used",
-						"not-used",
-						"charger-det", 
-					  ];
+                        "accelerometer", 
+                        "charger_status", 
+                        "button", 
+                        "touch", 
+                        "not-used", 
+                        "not-used",
+                        "not-used",
+                        "charger-det", 
+                      ];
 
 gAuthData <-{
-			    app_id="e3a8ccb635d08ce76b407ec644",
-    			secret="c923b1e09386",
-			};
-			
+                app_id="e3a8ccb635d08ce76b407ec644",
+                secret="c923b1e09386",
+            };
+            
 gMixPanelData <- {
-		    url="https://api.mixpanel.com/track/",
-		    token="d4dca732e8c83981405c87c65ae3e834",
-		 };
+            url="https://api.mixpanel.com/track/",
+            token="d4dca732e8c83981405c87c65ae3e834",
+         };
 
 const MIX_PANEL_EVENT_DEVICE_BUTTON = "DeviceButton";
 const MIX_PANEL_EVENT_BARCODE = "DeviceScan";
@@ -102,13 +102,14 @@ const MIX_PANEL_EVENT_BATTERY = "DeviceBatteryLevel";
 const MIX_PANEL_EVENT_CONNECTIVITY = "DeviceConnectivity";
 const MIX_PANEL_EVENT_CONFIG = "DeviceConfig";
 const MIX_PANEL_EVENT_STATUS = "DeviceStatus";
+const MIX_PANEL_EVENT_BUTTON_TIMEOUT = "DeviceButtonTimeout";
 
-// Heroku server base URL	
+// Heroku server base URL   
 //gBaseUrl <- "https://app-staging.hiku.us/api/v1";
 gBaseUrl <- "https://app.hiku.us/api/v1";
 gFactoryUrl <- "https://hiku-mfgdb.herokuapp.com/api/v1";
 
-gServerUrl <- gBaseUrl + "/list";	
+gServerUrl <- gBaseUrl + "/list";   
 
 gBatteryUrl <- gBaseUrl + "/device";
 
@@ -137,27 +138,27 @@ scanned_image <- "";
 lines_scanned <- 0;
 
 gSpecialBarcodePrefixes <- [{
-	// MAC addresses of Electric Imp modules printed as barcodes at the factory
-	prefix = PREFIX_IMP_MAC,
-	min_len = 12,
-	max_len = 12,
-	url = gFactoryUrl + "/factory"},{
-	// this is to check the mac address at the oba station
-	prefix = PREFIX_OBA_CHECK,
-	min_len = 11,
-	max_len = 11,
-	url = gFactoryUrl + "/factory"}, {
-	// barcode for generating a 2D datamatrix barcode for the scanner at the
-        // label printer in production	
-	prefix = PREFIX_IMP_LABELING,
-	min_len = 10,
-	max_len = 10,
-	url = gFactoryUrl + "/factory"},{
-	// general special barcodes
-	prefix = PREFIX_GENERAL,
-	min_len = 5,
-	max_len = 64,
-	url = null
+    // MAC addresses of Electric Imp modules printed as barcodes at the factory
+    prefix = PREFIX_IMP_MAC,
+    min_len = 12,
+    max_len = 12,
+    url = gFactoryUrl + "/factory"},{
+    // this is to check the mac address at the oba station
+    prefix = PREFIX_OBA_CHECK,
+    min_len = 11,
+    max_len = 11,
+    url = gFactoryUrl + "/factory"}, {
+    // barcode for generating a 2D datamatrix barcode for the scanner at the
+        // label printer in production  
+    prefix = PREFIX_IMP_LABELING,
+    min_len = 10,
+    max_len = 10,
+    url = gFactoryUrl + "/factory"},{
+    // general special barcodes
+    prefix = PREFIX_GENERAL,
+    min_len = 5,
+    max_len = 64,
+    url = null
     }];
 
 //======================================================================
@@ -171,10 +172,10 @@ function sendMixPanelEvent(event, parameters)
   defaultParam["time"] <- time();
   
   local data = {
-	    "event":event,
-	    "properties":defaultParam,
+        "event":event,
+        "properties":defaultParam,
          };
-	 
+     
   local request = {data=http.base64encode(http.jsonencode(data))};
   
     // Create and send the request
@@ -228,13 +229,13 @@ function sendDeviceEvents(data)
     local mySig = http.hash.sha256(gAuthData.app_id+gAuthData.secret+timeStr);
     mySig = BlobToHexString(mySig);       
     
-	data = {    
+    data = {    
             "sig": mySig,
             "time": timeStr, 
             "app_id": gAuthData.app_id,
-			serialNumber = nv.gImpeeId,
-			 logData = http.jsonencode(data) };
-			 	 
+            serialNumber = nv.gImpeeId,
+             logData = http.jsonencode(data) };
+                 
     data = http.urlencode( data );
     server.log("AGENT: "+data);
 
@@ -276,12 +277,12 @@ function sendBatteryLevelToHikuServer(data)
     //data = http.jsonencode(data);
     
     newData = {
-    			"batteryLevel":data.batteryLevel,
-    			"token": nv.gImpeeId,
+                "batteryLevel":data.batteryLevel,
+                "token": nv.gImpeeId,
                 "sig": mySig,
                 "time": timeStr,              
                 "app_id": gAuthData.app_id
-    		  };
+              };
     
     data = http.urlencode( newData );
     server.log("AGENT: "+data);
@@ -317,7 +318,7 @@ function onCompleteEvent(m)
             // Handle the various non-OK responses.  Nothing to do for "ok". 
             if (body.status != "ok")
             {
-		server.log(format("AGENT: Battery Event - Error: %s", body.errMsg));
+        server.log(format("AGENT: Battery Event - Error: %s", body.errMsg));
             }
         }
         catch(e)
@@ -353,12 +354,12 @@ function sendBeepToHikuServer(data)
     }
     
     if(data.scandata != "") {
-	if (handleSpecialBarcodes(data)) {
-	    if (gAudioState != AudioStates.AudioError) {
-		gAudioState = AudioStates.AudioFinishedBarcode;
-	    }
-	    return;
-	}
+    if (handleSpecialBarcodes(data)) {
+        if (gAudioState != AudioStates.AudioError) {
+        gAudioState = AudioStates.AudioFinishedBarcode;
+        }
+        return;
+    }
     }
     
     local timeStr = getUTCTime();
@@ -378,7 +379,7 @@ function sendBeepToHikuServer(data)
         {
             agentLog("record linked");
             data.scandata = gLinkedRecord;
-	          is_superscan = true;
+              is_superscan = true;
         }
         gLinkedRecord = ""; 
         nv.gLinkedRecordTimeout = null;
@@ -386,53 +387,53 @@ function sendBeepToHikuServer(data)
     
     if ( data.scandata == "" )
     {
-        	newData = {
-        		        "audioToken": gAudioToken,
-        			      "audioType": "alaw",
-        			      "token": nv.gImpeeId,
+            newData = {
+                        "audioToken": gAudioToken,
+                          "audioType": "alaw",
+                          "token": nv.gImpeeId,
                     "sig": mySig,
                     "app_id": gAuthData.app_id,
                     "time": timeStr,
-        		  };  
-        	if (gAudioState != AudioStates.AudioError) {
-    	  gAudioState = AudioStates.AudioFinished;
-    	  sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFinished"});
-    	  //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFinished"}));
-    	}
+                  };  
+            if (gAudioState != AudioStates.AudioError) {
+          gAudioState = AudioStates.AudioFinished;
+          sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFinished"});
+          //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioFinished"}));
+        }
     }
     else 
     {
       if (is_superscan) 
       {
-    	  newData = {
-    	    "ean":format("%s",data.scandata),
-    	    "audioToken": gAudioToken,
-    	    "audioType": "alaw",    			
-    	    "token": nv.gImpeeId,
-    	    "sig": mySig,
-    	    "app_id": gAuthData.app_id,
-    	    "time": timeStr,
-    	  };   
-	if (gAudioState != AudioStates.AudioError) {
-	  gAudioState = AudioStates.AudioFinished;
-	  sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"CrowdSourced","barcode":data.scandata});
-	  //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"CrowdSourced","barcode":data.scandata}));
-	}
+          newData = {
+            "ean":format("%s",data.scandata),
+            "audioToken": gAudioToken,
+            "audioType": "alaw",                
+            "token": nv.gImpeeId,
+            "sig": mySig,
+            "app_id": gAuthData.app_id,
+            "time": timeStr,
+          };   
+    if (gAudioState != AudioStates.AudioError) {
+      gAudioState = AudioStates.AudioFinished;
+      sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"CrowdSourced","barcode":data.scandata});
+      sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"CrowdSourced","barcode":data.scandata}));
+    }
       } else {
-	  newData = {
-	    "ean":data.scandata,
-	    "audioType": "alaw",    			
-	    "token": nv.gImpeeId,
-	    "sig": mySig,
-	    "app_id": gAuthData.app_id,
-	    "time": timeStr,
-	  };   
-    	   if (gAudioState != AudioStates.AudioError) {
-	          gAudioState = AudioStates.AudioFinishedBarcode;
-	       }
-	    }
-	    sendMixPanelEvent(MIX_PANEL_EVENT_BARCODE,{"status":"Scanned", "barcode":data.scandata});
-	    //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_BARCODE,{"status":"Scanned", "barcode":data.scandata}));
+      newData = {
+        "ean":data.scandata,
+        "audioType": "alaw",                
+        "token": nv.gImpeeId,
+        "sig": mySig,
+        "app_id": gAuthData.app_id,
+        "time": timeStr,
+      };   
+           if (gAudioState != AudioStates.AudioError) {
+              gAudioState = AudioStates.AudioFinishedBarcode;
+           }
+        }
+        sendMixPanelEvent(MIX_PANEL_EVENT_BARCODE,{"status":"Scanned", "barcode":data.scandata});
+        //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_BARCODE,{"status":"Scanned", "barcode":data.scandata}));
       // save EAN in case of a superscan
       gEan = newData.ean;
     }
@@ -475,7 +476,7 @@ function onBeepReturn(res) {
     {
         // Parse the response (in JSON format)
         local body = http.jsondecode(res.body);
-		local body = body.response;
+        local body = body.response;
         try 
         {
             // Handle the various non-OK responses.  Nothing to do for "ok". 
@@ -493,7 +494,7 @@ function onBeepReturn(res) {
                 {
                     returnString = "failure";
                 }
-				agentLog(format("Beep Error: %s",http.jsonencode(body)));
+                agentLog(format("Beep Error: %s",http.jsonencode(body)));
             }
         }
         catch(e)
@@ -521,128 +522,128 @@ function handleSpecialBarcodes(data)
     local dataToSend = null;
     // test the barcode against all known special barcode prefixes
     for (local i=0; i<gSpecialBarcodePrefixes.len() && !is_special; i++) {
-	local prefix = gSpecialBarcodePrefixes[i]["prefix"];
-	local min_len = gSpecialBarcodePrefixes[i]["min_len"];
-	local max_len = gSpecialBarcodePrefixes[i]["max_len"];
-	local barcode_len = barcode.len();
-	if ((barcode_len >= min_len) && (barcode_len <= max_len)) {
-	    local temp = barcode.slice(0,prefix.len());
-  	    server.log("Original Barcode: "+barcode+" Sliced Barcode: "+temp);
-	    if (temp == prefix)
-		switch (prefix) {
-	    case PREFIX_IMP_MAC :
-		server.log(format("Scanned MAC %s", barcode));
-		if (!nv.at_factory) {
-		    return false;
-		}
-		dataToSend = {
-			"macAddress": nv.macAddress,
-			"serialNumber": nv.gImpeeId,
-			"scannedMacAddress": barcode,
-			"command": TEST_CMD_PACKAGE
-    		    };
-		is_special = true;
-		local json_data = http.jsonencode (dataToSend);
-		server.log(json_data);
-		req = http.post(
-		    gSpecialBarcodePrefixes[i]["url"],
-		    {"Content-Type": "application/json", 
-			"Accept": "application/json"}, 
-		    json_data);
-		break;
-		
-		case PREFIX_OBA_CHECK:
-		  server.log(format("Scanned label code %s", barcode));
-		  if (!nv.at_factory) {
-			  return false;
-		  }
-		  is_special = true;
-		  dataToSend = {
-			  "macAddress": nv.macAddress,
-			  "serialNumber": nv.gImpeeId,
-			  "agentUrl": http.agenturl(),
-			  "command": TEST_CMD_OBA_CHECK
-			  };
-		  sendMixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend);
-		  //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend));
-		  local json_data = http.jsonencode (dataToSend);
-		  server.log(json_data);
-		  req = http.post(
-			  gSpecialBarcodePrefixes[i]["url"],
-			  {"Content-Type": "application/json", 
-			  "Accept": "application/json"}, 
-			  json_data);
-		  break;		
-		
-	    case PREFIX_IMP_LABELING :
-		server.log(format("Scanned label code %s", barcode));
-		if (!nv.at_factory) {
-		    return false;
-		}
-		is_special = true;
-		dataToSend = {
-			"macAddress": nv.macAddress,
-			"serialNumber": nv.gImpeeId,
-			"agentUrl": http.agenturl(),
-			"command": TEST_CMD_PRINT_LABEL
-    		    };
-		sendMixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend);
-		//sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend));
-		local json_data = http.jsonencode (dataToSend);
-		server.log(json_data);
-		// HACK HACK HACK
-		local printer_req = http.get("https://agent.electricimp.com/WQ8othFzM2Zm/printMAC?mac="+nv.macAddress, {});
-		printer_req.sendasync(onMacPrintReturn);
-		// Goes to test controller 20000c2a69093434
-		//local iac_printer_req = http.get("https://agent.electricimp.com/TvVLVemS7PR9/printMAC?mac="+nv.macAddress+"&countryCode="+nv.countryCode, {});
-		// Goes to test controller 20000c2a69090783
-		local iac_printer_req = http.get("https://agent.electricimp.com/3qMq5k6INLiw/printMAC?mac="+nv.macAddress+"&countryCode="+nv.countryCode, {});
-		iac_printer_req.sendasync(onMacPrintReturn);
-		req = http.post(
-		    gSpecialBarcodePrefixes[i]["url"],
-		    {"Content-Type": "application/json", 
-			"Accept": "application/json"}, 
-		    json_data);
-		break;
-	    case PREFIX_GENERAL :
-		server.log(format("Scanned special barcode %s", barcode));
-		is_special = true;
-		local timeStr = getUTCTime();
-		local mySig = http.hash.sha256(gAuthData.app_id+gAuthData.secret+timeStr);
-		mySig = BlobToHexString(mySig);
-		
-		server.log(format("Current Impee Id=%s Valid ImpeeId=%s",nv.gImpeeId, data.serial));
-		nv.gImpeeId = data.serial;
-		
-		local newData = {
-    		    "frob":data.scandata,   			
-    		    "token": nv.gImpeeId,
+    local prefix = gSpecialBarcodePrefixes[i]["prefix"];
+    local min_len = gSpecialBarcodePrefixes[i]["min_len"];
+    local max_len = gSpecialBarcodePrefixes[i]["max_len"];
+    local barcode_len = barcode.len();
+    if ((barcode_len >= min_len) && (barcode_len <= max_len)) {
+        local temp = barcode.slice(0,prefix.len());
+        server.log("Original Barcode: "+barcode+" Sliced Barcode: "+temp);
+        if (temp == prefix)
+        switch (prefix) {
+        case PREFIX_IMP_MAC :
+        server.log(format("Scanned MAC %s", barcode));
+        if (!nv.at_factory) {
+            return false;
+        }
+        dataToSend = {
+            "macAddress": nv.macAddress,
+            "serialNumber": nv.gImpeeId,
+            "scannedMacAddress": barcode,
+            "command": TEST_CMD_PACKAGE
+                };
+        is_special = true;
+        local json_data = http.jsonencode (dataToSend);
+        server.log(json_data);
+        req = http.post(
+            gSpecialBarcodePrefixes[i]["url"],
+            {"Content-Type": "application/json", 
+            "Accept": "application/json"}, 
+            json_data);
+        break;
+        
+        case PREFIX_OBA_CHECK:
+          server.log(format("Scanned label code %s", barcode));
+          if (!nv.at_factory) {
+              return false;
+          }
+          is_special = true;
+          dataToSend = {
+              "macAddress": nv.macAddress,
+              "serialNumber": nv.gImpeeId,
+              "agentUrl": http.agenturl(),
+              "command": TEST_CMD_OBA_CHECK
+              };
+          sendMixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend);
+          //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend));
+          local json_data = http.jsonencode (dataToSend);
+          server.log(json_data);
+          req = http.post(
+              gSpecialBarcodePrefixes[i]["url"],
+              {"Content-Type": "application/json", 
+              "Accept": "application/json"}, 
+              json_data);
+          break;        
+        
+        case PREFIX_IMP_LABELING :
+        server.log(format("Scanned label code %s", barcode));
+        if (!nv.at_factory) {
+            return false;
+        }
+        is_special = true;
+        dataToSend = {
+            "macAddress": nv.macAddress,
+            "serialNumber": nv.gImpeeId,
+            "agentUrl": http.agenturl(),
+            "command": TEST_CMD_PRINT_LABEL
+                };
+        sendMixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend);
+        //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend));
+        local json_data = http.jsonencode (dataToSend);
+        server.log(json_data);
+        // HACK HACK HACK
+        local printer_req = http.get("https://agent.electricimp.com/WQ8othFzM2Zm/printMAC?mac="+nv.macAddress, {});
+        printer_req.sendasync(onMacPrintReturn);
+        // Goes to test controller 20000c2a69093434
+        //local iac_printer_req = http.get("https://agent.electricimp.com/TvVLVemS7PR9/printMAC?mac="+nv.macAddress+"&countryCode="+nv.countryCode, {});
+        // Goes to test controller 20000c2a69090783
+        local iac_printer_req = http.get("https://agent.electricimp.com/3qMq5k6INLiw/printMAC?mac="+nv.macAddress+"&countryCode="+nv.countryCode, {});
+        iac_printer_req.sendasync(onMacPrintReturn);
+        req = http.post(
+            gSpecialBarcodePrefixes[i]["url"],
+            {"Content-Type": "application/json", 
+            "Accept": "application/json"}, 
+            json_data);
+        break;
+        case PREFIX_GENERAL :
+        server.log(format("Scanned special barcode %s", barcode));
+        is_special = true;
+        local timeStr = getUTCTime();
+        local mySig = http.hash.sha256(gAuthData.app_id+gAuthData.secret+timeStr);
+        mySig = BlobToHexString(mySig);
+        
+        server.log(format("Current Impee Id=%s Valid ImpeeId=%s",nv.gImpeeId, data.serial));
+        nv.gImpeeId = data.serial;
+        
+        local newData = {
+                "frob":data.scandata,               
+                "token": nv.gImpeeId,
                     "sig": mySig,
                     "app_id": gAuthData.app_id,
                     "time": timeStr,
                     "serialNumber": nv.gImpeeId,
-    		};
-		
-		dataToSend = {"frob":data.scandata, "command":"ExternalAppAuthentication"};
-		local url = gSetupUrl+"/"+data.scandata;
-		server.log("Put URL: "+url);
-		// URL-encode the whole thing
-		dataToSend = http.urlencode(newData);
-		server.log(dataToSend);
-		req = http.put(
-		    url,
-		    {"Content-Type": "application/x-www-form-urlencoded", 
-			"Accept": "application/json"}, 
-		    dataToSend);
-		break;
-	    }
-	}
+            };
+        
+        dataToSend = {"frob":data.scandata, "command":"ExternalAppAuthentication"};
+        local url = gSetupUrl+"/"+data.scandata;
+        server.log("Put URL: "+url);
+        // URL-encode the whole thing
+        dataToSend = http.urlencode(newData);
+        server.log(dataToSend);
+        req = http.put(
+            url,
+            {"Content-Type": "application/x-www-form-urlencoded", 
+            "Accept": "application/json"}, 
+            dataToSend);
+        break;
+        }
+    }
     }
     if (!is_special)
-	return false;
-	
+    return false;
+    
     sendMixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend);
-    //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend));	
+    //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CONFIG,dataToSend));   
     // Create and send the request
     agentLog("Sending special barcode to server...");
             
@@ -675,14 +676,14 @@ function onSpecialBarcodeReturn(res) {
     {
         // Parse the response (in JSON format)
         local body = http.jsondecode(res.body);
-		local body = body.response;
+        local body = body.response;
         try 
         {
             // Handle the various non-OK responses.  Nothing to do for "ok". 
             if (body.status != "ok")
             {
                 returnString = "failure";
-				agentLog(format("AGENT: Beep Error: %s",http.jsonencode(body)));
+                agentLog(format("AGENT: Beep Error: %s",http.jsonencode(body)));
             }
         }
         catch(e)
@@ -733,12 +734,12 @@ function sendLogToServer(data)
     local mySig = http.hash.sha256(gAuthData.app_id+gAuthData.secret+timeStr);
     mySig = BlobToHexString(mySig);
     data = {    
-			"sig": mySig,
-			"time":timeStr,
+            "sig": mySig,
+            "time":timeStr,
             "app_id": gAuthData.app_id,
-			serialNumber = nv.gImpeeId,
-			logData = http.jsonencode(data)
-		   };
+            serialNumber = nv.gImpeeId,
+            logData = http.jsonencode(data)
+           };
     data = http.urlencode(data);
     server.log("sendToLogServer: "+data);
 
@@ -778,11 +779,11 @@ function onComplete(m)
             //dumpTable(body);
             if (body.status != "ok")
             {
-				server.log(format("AGENT: Log Status - Error: %s", body.errMsg));
+                server.log(format("AGENT: Log Status - Error: %s", body.errMsg));
             }
             else
             {
-            	server.log(format("AGENT: Log Status Success: %s", http.jsonencode(body.data)));
+                server.log(format("AGENT: Log Status Success: %s", http.jsonencode(body.data)));
             }
         }
         catch(e)
@@ -805,95 +806,95 @@ device.on("uploadBeep", function(data) {
 device.on("batteryLevel", function(data) {
 
     agentLog(format("Battery Level Raw Reading: %d", 
-                   data));	
-	if( data >= 59760 ) // >= 4.10V battery voltage
-	{
-		data = 100;
-	}
-	else if ( data < 59760 && data >= 59031 ) // >= 4.05 V battery voltage
-	{
-		data = 95;
-	}	
-	else if ( data < 59031 && data >= 58302 ) // >= 4.00V battery voltage
-	{
-		data = 90;
-	}	
-	else if ( data < 58302 && data >= 57719 ) // >= 3.96V battery voltage
-	{
-		data = 85;
-	}
-	else if ( data < 57719 && data >= 57136 ) // >= 3.92V battery voltage
-	{
-		data = 80;
-	}
-	else if ( data < 57136 && data >= 56699 ) // >= 3.89V battery voltage
-	{
-		data = 75;
-	}
-	else if ( data < 56699 && data >= 56407 ) // >= 3.87V battery voltage
-	{
-		data = 70;
-	}
-	else if ( data < 56407 && data >= 56043 ) // >= 3.845V battery voltage
-	{
-		data = 65;
-	}
-	else if ( data < 56043 && data >= 55678 ) // >= 3.82V battery voltage
-	{
-		data = 60;
-	}
-	else if ( data < 55678 && data >= 55460 ) // >= 3.805V battery voltage
-	{
-		data = 55;
-	} 	
-	else if ( data < 55460 && data >= 55241 ) // >= 3.79V battery voltage
-	{
-		data = 50;
-	} 
-	else if ( data < 55241 && data >= 54950 ) // >= 3.77V battery voltage
-	{
-		data = 45;
-	}
-	else if( data < 54950 && data >= 54658 ) // >= 3.75V battery voltage
-	{
-		data = 40;
-	}
-	else if( data < 54658 && data >= 54294 ) // >= 3.725V battery voltage
-	{
-		data = 35;
-	}
-	else if( data < 54294 && data >= 53929 ) // >= 3.70V battery voltage
-	{
-		data = 30;
-	}
-	else if( data < 53929 && data >= 53565 ) // >= 3.675V battery voltage
-	{
-		data = 25;
-	}	
-	else if( data < 53565 && data >= 53200 ) // >= 3.65V battery voltage
-	{
-		data = 20;
-	}
-	else if( data < 53200 && data >= 52763 ) // >= 3.62V battery voltage
-	{
-		data = 15;
-	}
-	else if( data < 52763 && data >= 51014) // >= 3.5V battery voltage
-	{
-		data = 10;
-	}	
-	else if( data < 51014 && data >= 50285 ) // >= 3.45V battery voltage
-	{
-		data = 5;
-	}			
-	else if( data < 50285 ) // <3.40V battery voltage
-	{
-		// This means we are below 5% and its 43726.16722 for 0%
-		// Perhaps we should give finer granular percentage here until it hits 1% to 0%
-		data = 1;
-	}
+                   data));  
+    if( data >= 59760 ) // >= 4.10V battery voltage
+    {
+        data = 100;
+    }
+    else if ( data < 59760 && data >= 59031 ) // >= 4.05 V battery voltage
+    {
+        data = 95;
+    }   
+    else if ( data < 59031 && data >= 58302 ) // >= 4.00V battery voltage
+    {
+        data = 90;
+    }   
+    else if ( data < 58302 && data >= 57719 ) // >= 3.96V battery voltage
+    {
+        data = 85;
+    }
+    else if ( data < 57719 && data >= 57136 ) // >= 3.92V battery voltage
+    {
+        data = 80;
+    }
+    else if ( data < 57136 && data >= 56699 ) // >= 3.89V battery voltage
+    {
+        data = 75;
+    }
+    else if ( data < 56699 && data >= 56407 ) // >= 3.87V battery voltage
+    {
+        data = 70;
+    }
+    else if ( data < 56407 && data >= 56043 ) // >= 3.845V battery voltage
+    {
+        data = 65;
+    }
+    else if ( data < 56043 && data >= 55678 ) // >= 3.82V battery voltage
+    {
+        data = 60;
+    }
+    else if ( data < 55678 && data >= 55460 ) // >= 3.805V battery voltage
+    {
+        data = 55;
+    }   
+    else if ( data < 55460 && data >= 55241 ) // >= 3.79V battery voltage
+    {
+        data = 50;
+    } 
+    else if ( data < 55241 && data >= 54950 ) // >= 3.77V battery voltage
+    {
+        data = 45;
+    }
+    else if( data < 54950 && data >= 54658 ) // >= 3.75V battery voltage
+    {
+        data = 40;
+    }
+    else if( data < 54658 && data >= 54294 ) // >= 3.725V battery voltage
+    {
+        data = 35;
+    }
+    else if( data < 54294 && data >= 53929 ) // >= 3.70V battery voltage
+    {
+        data = 30;
+    }
+    else if( data < 53929 && data >= 53565 ) // >= 3.675V battery voltage
+    {
+        data = 25;
+    }   
+    else if( data < 53565 && data >= 53200 ) // >= 3.65V battery voltage
+    {
+        data = 20;
+    }
+    else if( data < 53200 && data >= 52763 ) // >= 3.62V battery voltage
+    {
+        data = 15;
+    }
+    else if( data < 52763 && data >= 51014) // >= 3.5V battery voltage
+    {
+        data = 10;
+    }   
+    else if( data < 51014 && data >= 50285 ) // >= 3.45V battery voltage
+    {
+        data = 5;
+    }           
+    else if( data < 50285 ) // <3.40V battery voltage
+    {
+        // This means we are below 5% and its 43726.16722 for 0%
+        // Perhaps we should give finer granular percentage here until it hits 1% to 0%
+        data = 1;
+    }
 
-	nv.gBatteryLevel = data;
+    nv.gBatteryLevel = data;
 
     sendBatteryLevelToHikuServer({batteryLevel=data});
     sendMixPanelEvent(MIX_PANEL_EVENT_BATTERY,{"status":nv.gBatteryLevel});
@@ -966,11 +967,11 @@ device.on("startAudioUpload", function(data) {
           // FIXME don't send agent URL in the clear over HTTP
           "agentUrl": http.agenturl(),
           "agentAudioRate": 8000,
-    	  "token": nv.gImpeeId,
+          "token": nv.gImpeeId,
           "sig": mySig,
           "app_id": gAuthData.app_id,
           "time": timeStr,
-    };    	
+    };      
     
     data = http.urlencode( newData );
     
@@ -1034,9 +1035,9 @@ device.on("usbState",function(str){
 });
 
 device.on("deviceLog", function(str){
-	// this needs to be changed post to an http url
-	server.log(format("DEVICE: %s",str));
-	sendLogToServer(format("%s DEVICE: %s",getUTCTime(), str));
+    // this needs to be changed post to an http url
+    server.log(format("DEVICE: %s",str));
+    sendLogToServer(format("%s DEVICE: %s",getUTCTime(), str));
 });
 
 //**********************************************************************
@@ -1070,8 +1071,8 @@ device.on("endAudioUpload", function(data) {
     {
         agentLog("Error: found barcode when expected only audio data");
         gAudioState = AudioStates.AudioError;
-	sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioUploadEndFail","barcode":data.scandata});
-	//sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioUploadEndFail","barcode":data.scandata}));
+    sendMixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioUploadEndFail","barcode":data.scandata});
+    //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_SPEAK,{"status":"AudioUploadEndFail","barcode":data.scandata}));
     }
 
     local sendToDebugServer = false;
@@ -1141,13 +1142,23 @@ device.on("uploadAudioChunk", function(data) {
 });
 
 device.on("shutdownRequestReason", function(status){
-	agentLog(format("Hiku shutting down. Reason=%d", status));
+    agentLog(format("Hiku shutting down. Reason=%d", status));
 });
+
+device.on("buttonTimeout", function(data) {
+    
+    agentLog(format("Button timeout occurred: %d", data.instantonTimeout)); 
+    //sendMixPanelEvent(MIX_PANEL_EVENT_BUTTON_TIMEOUT,{"timeoutSource": (data.instantonTimeout?"instant-on":"standard") });
+    sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_BUTTON_TIMEOUT, (data.instantonTimeout?"instant-on":"standard") ));
+
+});
+
 
 
 device.on("deviceReady", function(data)
 {
    nv.deviceReady = time(); 
+   server.log("deviceReady was called!!");
 });
 
 //======================================================================
@@ -1173,7 +1184,7 @@ http.onrequest(function (req, res)
             {
                 local c = time();
                 local d = nv.deviceReady;
-                if (c - d <= 15)
+                if (c - d <= 30)
                 {
                     result = http.urlencode({"ready":"true", "time":getUTCTimeFromDate(date(d))});
                     //return res.send(200,result);
@@ -1187,16 +1198,16 @@ http.onrequest(function (req, res)
           // safer implementation should require the device to call back the 
           // backend confirming that it is entering shipping mode
           device.send("shippingMode",1);
-    	  res.send(200, "OK");
+          res.send(200, "OK");
         } 
         else if (req.path == "/devicePage") 
         {
           //device.send("devicePage",1);
-    	    res.send(200, "OK");
+            res.send(200, "OK");
         } 
         else if( req.path == "/getAgentVersion" )
         {   
-    	    res.send(200,gAgentVersion);
+            res.send(200,gAgentVersion);
         }
         else if( req.path == "/audio/" + gAudioToken)
         {
@@ -1211,10 +1222,10 @@ http.onrequest(function (req, res)
           } 
           //agentLog(format("AUDIOPOINTER %d len %d", gAudioReadPointer, audioLen));
     
-    	    res.header("Content-Type", "audio/x-wav");
-    	    res.header("audioState", gAudioState);
+            res.header("Content-Type", "audio/x-wav");
+            res.header("audioState", gAudioState);
 
-    	    res.send(200, audioSubstring);
+            res.send(200, audioSubstring);
         }
         else if (req.path == "/erase" || req.path == "/erase/") {
             res.header("Access-Control-Allow-Origin", "*");
@@ -1231,7 +1242,7 @@ http.onrequest(function (req, res)
         }
         //else if( req.path == "/getAudioRecording" )
         //{
-    	//    res.send(200, gAudioString);
+        //    res.send(200, gAudioString);
         //} 
         else
         {
@@ -1291,36 +1302,36 @@ function getDisconnectReason(reason)
 
 function xlate_bootreason_to_string(boot_reason)
 {
-	local reason = "";
-	local pin = 0;
-	for( pin =0; pin < 8; pin ++ )
-	{
-		if( boot_reason & ( 1 << pin ) )
-		{
-			reason += boot_reasons[pin];
-		}
-	}
-	if( reason == "")
-	{
-		reason = "COLDBOOT";
-	}
-	return reason;
+    local reason = "";
+    local pin = 0;
+    for( pin =0; pin < 8; pin ++ )
+    {
+        if( boot_reason & ( 1 << pin ) )
+        {
+            reason += boot_reasons[pin];
+        }
+    }
+    if( reason == "")
+    {
+        reason = "COLDBOOT";
+    }
+    return reason;
 }
 
 
 function updateImpeeId(data)
 {
-	nv.gImpeeId = data
+    nv.gImpeeId = data
     server.log(format("Impee Id got Updated: %s", nv.gImpeeId));
     sendDeviceEvents(
-    					{  	  
-    						  fw_version=nv.gFwVersion,
-    						  wakeup_reason = xlate_bootreason_to_string(nv.gWakeUpReason),
-    						  boot_time = nv.gBootTime,
-    						  sleep_duration = nv.gSleepDuration,
-    						  rssi = data.rssi,
-    					}
-    				);	
+                        {     
+                              fw_version=nv.gFwVersion,
+                              wakeup_reason = xlate_bootreason_to_string(nv.gWakeUpReason),
+                              boot_time = nv.gBootTime,
+                              sleep_duration = nv.gSleepDuration,
+                              rssi = data.rssi,
+                        }
+                    );  
 }
 
 
@@ -1338,16 +1349,16 @@ device.on("init_status", function(data) {
     //server.log(format("Device to Agent Time: %dms", (time()*1000 - data.time_stamp)));
     server.log(format("Device OS Version: %s", data.osVersion));
     server.log(format("Device Country: %s", nv.countryCode));
-    local dataToSend =  {  	  
-		      fw_version=nv.gFwVersion,
-		      wakeup_reason = xlate_bootreason_to_string(nv.gWakeUpReason),
-		      boot_time = nv.gBootTime,
-		      sleep_duration = nv.gSleepDuration,
-		      rssi = data.rssi,
-		      dc_reason = getDisconnectReason(data.disconnect_reason),
-		      os_version = data.osVersion,
-		      connectTime = data.time_to_connect,
-		      ssid = data.ssid,
+    local dataToSend =  {     
+              fw_version=nv.gFwVersion,
+              wakeup_reason = xlate_bootreason_to_string(nv.gWakeUpReason),
+              boot_time = nv.gBootTime,
+              sleep_duration = nv.gSleepDuration,
+              rssi = data.rssi,
+              dc_reason = getDisconnectReason(data.disconnect_reason),
+              os_version = data.osVersion,
+              connectTime = data.time_to_connect,
+              ssid = data.ssid,
     };
     sendDeviceEvents(dataToSend);
     sendMixPanelEvent(MIX_PANEL_EVENT_STATUS,dataToSend);
@@ -1360,9 +1371,9 @@ device.on("init_status", function(data) {
 // @param: chargerState of True means Charger is attached, false otherwise
 device.on("chargerState", function( chargerState ){
     nv.gChargerState = chargerState;
-    local dataToSend = {  	  
-    		   charger_state = nv.gChargerState?"charging":"not charging",
-    		 }
+    local dataToSend = {      
+               charger_state = nv.gChargerState?"charging":"not charging",
+             }
     sendDeviceEvents(dataToSend);
     sendMixPanelEvent(MIX_PANEL_EVENT_CHARGER,dataToSend);
     //sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_CHARGER,dataToSend));
@@ -1376,9 +1387,9 @@ device.on("chargerState", function( chargerState ){
 
 function getUTCTime()
 {
-	//[dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss.SSSSSS"];
-	local d=date();
-	return getUTCTimeFromDate(d);
+    //[dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss.SSSSSS"];
+    local d=date();
+    return getUTCTimeFromDate(d);
 }
 
 function getUTCTimeFromDate(d)
