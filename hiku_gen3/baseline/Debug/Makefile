@@ -179,8 +179,7 @@ C_SRCS +=  \
 ../src/hiku/utils/hiku_utils.c \
 ../src/hiku/utils/partest.c \
 ../src/hiku/utils/run-time-stats-utils.c \
-../src/main.c \
-../src/main_display.c
+../src/main.c
 
 
 PREPROCESSING_SRCS += 
@@ -243,8 +242,7 @@ src/hiku/tasks/USB-CDC-CLI-task.o \
 src/hiku/utils/hiku_utils.o \
 src/hiku/utils/partest.o \
 src/hiku/utils/run-time-stats-utils.o \
-src/main.o \
-src/main_display.o
+src/main.o
 
 OBJS_AS_ARGS +=  \
 src/ASF/common/services/clock/sam4s/sysclk.o \
@@ -300,8 +298,7 @@ src/hiku/tasks/USB-CDC-CLI-task.o \
 src/hiku/utils/hiku_utils.o \
 src/hiku/utils/partest.o \
 src/hiku/utils/run-time-stats-utils.o \
-src/main.o \
-src/main_display.o
+src/main.o
 
 C_DEPS +=  \
 src/ASF/common/services/clock/sam4s/sysclk.d \
@@ -357,8 +354,7 @@ src/hiku/tasks/USB-CDC-CLI-task.d \
 src/hiku/utils/hiku_utils.d \
 src/hiku/utils/partest.d \
 src/hiku/utils/run-time-stats-utils.d \
-src/main.d \
-src/main_display.d
+src/main.d
 
 C_DEPS_AS_ARGS +=  \
 src/ASF/common/services/clock/sam4s/sysclk.d \
@@ -414,8 +410,7 @@ src/hiku/tasks/USB-CDC-CLI-task.d \
 src/hiku/utils/hiku_utils.d \
 src/hiku/utils/partest.d \
 src/hiku/utils/run-time-stats-utils.d \
-src/main.d \
-src/main_display.d
+src/main.d
 
 OUTPUT_FILE_PATH +=hiku_gen3_freertos_sam4s.elf
 
@@ -432,8 +427,6 @@ LINKER_SCRIPT_DEP+=  \
 
 
 # AVR32/GNU C Compiler
-
-
 
 
 

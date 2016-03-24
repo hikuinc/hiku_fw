@@ -99,4 +99,5 @@
 #define LED2_GPIO						(0UL)
 #define LED2_ACTIVE_LEVEL				(0UL)
 
+
 #endif /* CONF_HIKU_H */

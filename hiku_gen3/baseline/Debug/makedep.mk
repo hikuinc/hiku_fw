@@ -110,5 +110,3 @@ src\hiku\utils\run-time-stats-utils.c
 
 src\main.c
 
-src\main_display.c
-

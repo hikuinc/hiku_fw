@@ -1541,9 +1541,6 @@
     <Compile Include="src\main.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="src\main_display.c">
-      <SubType>compile</SubType>
-    </Compile>
     <None Include="src\ASF\thirdparty\CMSIS\Lib\GCC\libarm_cortexM4l_math.a">
       <SubType>compile</SubType>
     </None>
