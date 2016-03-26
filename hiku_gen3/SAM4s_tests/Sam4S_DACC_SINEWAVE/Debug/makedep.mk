@@ -18,6 +18,8 @@ src\ASF\sam\boards\sam4s_ek2\led.c
 
 src\ASF\sam\drivers\dacc\dacc.c
 
+src\ASF\sam\drivers\pdc\pdc.c
+
 src\ASF\sam\drivers\pio\pio.c
 
 src\ASF\sam\drivers\pio\pio_handler.c
@@ -25,6 +27,8 @@ src\ASF\sam\drivers\pio\pio_handler.c
 src\ASF\sam\drivers\pmc\pmc.c
 
 src\ASF\sam\drivers\pmc\sleep.c
+
+src\ASF\sam\drivers\tc\tc.c
 
 src\ASF\sam\drivers\uart\uart.c
 
