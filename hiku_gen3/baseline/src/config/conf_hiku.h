@@ -44,8 +44,6 @@
 #ifndef CONF_HIKU_H
 #define CONF_HIKU_H
 
-#define HIKU_HW
-
 #define BOARD_USART_CLI  USART1
 #define BOARD_USART      USART1
 
@@ -54,6 +52,7 @@
 /* Note: only the listed tasks have hardware support. */
 
 #define confINCLUDE_SCANNER
+#define confINCLUDE_WIFI
 
 #define confINCLUDE_UART_CLI
 //#define confINCLUDE_USART_ECHO_TASKS

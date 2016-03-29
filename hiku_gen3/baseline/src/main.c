@@ -294,6 +294,8 @@
 #include "conf_board.h"
 #include "conf_hiku.h"
 #include "hiku-tasks.h"
+#include "conf_uart_serial.h"
+#include "stdio_serial.h"
 
 /* ASF includes. */
 #include "sysclk.h"
@@ -321,6 +323,7 @@
 #ifdef HIKU_HW
 #define mainTWI_I2C_TASK_PRIORITY              (tskIDLE_PRIORITY + 1)
 #define mainSCANNER_TASK_PRIORITY			   (tskIDLE_PRIORITY + 1)
+#define mainWIFI_TASK_PRIORITY			   (tskIDLE_PRIORITY + 1)
 #endif /* HIKU_HW */
 
 /* The stack sizes allocated to the various tasks. */
@@ -334,6 +337,7 @@
 #ifdef HIKU_HW
 #define mainTWI_I2C_TASK_STACK_SIZE  (configMINIMAL_STACK_SIZE * 2)
 #define mainSCANNER_TASK_STACK_SIZE  (configMINIMAL_STACK_SIZE * 2)
+#define mainWIFI_TASK_STACK_SIZE  (configMINIMAL_STACK_SIZE * 2)
 #endif /* HIKU_HW */
 
 /* When mainDEMONSTRATE_ASYNCHRONOUS_API is set to 1, the SPI and TWI
@@ -391,6 +395,13 @@ int main(void)
 	See the comments at the top of this file. */
 	#if (defined confINCLUDE_UART_CLI)
 	{
+		const usart_serial_options_t uart_serial_options = {
+			.baudrate =		CONF_UART_BAUDRATE,
+			.charlength =	CONF_UART_CHAR_LENGTH,
+			.paritytype =	CONF_UART_PARITY,
+			.stopbits =		CONF_UART_STOP_BITS,
+		};
+		stdio_serial_init(CONSOLE_UART, &uart_serial_options);
 		create_uart_cli_task(CONSOLE_UART,
 				mainUART_CLI_TASK_STACK_SIZE,
 				mainUART_CLI_TASK_PRIORITY);
@@ -458,6 +469,11 @@ int main(void)
 	}
 	#endif
 	
+	#if (defined confINCLUDE_WIFI)
+	{
+		create_wifi_task(BOARD_TWI_I2C,mainWIFI_TASK_STACK_SIZE, mainWIFI_TASK_PRIORITY,0);
+	}
+	#endif
 #endif /* HIKU_HW */
 
 

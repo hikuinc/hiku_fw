@@ -1,9 +1,9 @@
 /**
  * \file
  *
- * \brief Serial USART service configuration.
+ * \brief WINC1500 Send Email Example.
  *
- * Copyright (C) 2014-2015 Atmel Corporation. All rights reserved.
+ * Copyright (c) 2015 Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -40,22 +40,47 @@
  * \asf_license_stop
  *
  */
-/*
- * Support and FAQ: visit <a href="http://www.atmel.com/design-support/">Atmel Support</a>
- */
 
-#ifndef CONF_USART_SERIAL_H
-#define CONF_USART_SERIAL_H
+static const char g_ccB64Tbl[64]
+	= "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-/** UART Interface */
-#define CONF_UART				CONSOLE_UART
-/** Baudrate setting */
-#define CONF_UART_BAUDRATE		(115200UL)
-/** Character length setting */
-#define CONF_UART_CHAR_LENGTH	US_MR_CHRL_8_BIT
-/** Parity setting */
-#define CONF_UART_PARITY		US_MR_PAR_NO
-/** Stop bits setting */
-#define CONF_UART_STOP_BITS		US_MR_NBSTOP_1_BIT
+void ConvertToBase64(char *pcOutStr, const char *pccInStr, int iLen);
 
-#endif/* CONF_USART_SERIAL_H_INCLUDED */
+void ConvertToBase64(char *pcOutStr, const char *pccInStr, int iLen)
+{
+	const char *pccIn = (const char *)pccInStr;
+	char *pcOut;
+	int iCount;
+	pcOut = pcOutStr;
+
+	/* Loop in for Multiple of 24Bits and Convert to Base 64 */
+	for (iCount = 0; iLen - iCount >= 3; iCount += 3, pccIn += 3) {
+		*pcOut++ = g_ccB64Tbl[pccIn[0] >> 2];
+		*pcOut++ = g_ccB64Tbl[((pccIn[0] & 0x03) << 4) | (pccIn[1] >> 4)];
+		*pcOut++ = g_ccB64Tbl[((pccIn[1] & 0x0F) << 2) | (pccIn[2] >> 6)];
+		*pcOut++ = g_ccB64Tbl[pccIn[2] & 0x3f];
+	}
+
+	/* Check if String is not multiple of 3 Bytes */
+	if (iCount != iLen) {
+		unsigned char ucLastByte;
+
+		*pcOut++ = g_ccB64Tbl[pccIn[0] >> 2];
+		ucLastByte = ((pccIn[0] & 0x03) << 4);
+
+		if (iLen - iCount > 1) {
+			/* If there are 2 Extra Bytes */
+			ucLastByte |= (pccIn[1] >> 4);
+			*pcOut++ = g_ccB64Tbl[ucLastByte];
+			*pcOut++ = g_ccB64Tbl[((pccIn[1] & 0x0F) << 2)];
+		} else {
+			/* If there is only 1 Extra Byte */
+			*pcOut++ = g_ccB64Tbl[ucLastByte];
+			*pcOut++ = '=';
+		}
+
+		*pcOut++ = '=';
+	}
+
+	*pcOut  = '\0';
+}

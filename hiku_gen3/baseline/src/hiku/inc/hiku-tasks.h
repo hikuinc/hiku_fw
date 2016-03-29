@@ -52,7 +52,7 @@ void vRegisterCLICommands(void);
 #if (defined confINCLUDE_UART_CLI)
 #include "uart.h"
 void create_uart_cli_task(Uart *uart_base, uint16_t stack_depth_words,
-		unsigned portBASE_TYPE task_priority);
+unsigned long task_priority);
 void uart_cli_output(const uint8_t *message_string);
 #endif
 
@@ -68,8 +68,7 @@ portBASE_TYPE are_usart_echo_tasks_still_running(void);
 #endif
 
 #if (defined confINCLUDE_CDC_CLI)
-void create_usb_cdc_cli_task(uint16_t stack_depth_words,
-		unsigned portBASE_TYPE task_priority);
+void create_usb_cdc_cli_task(uint16_t stack_depth_words,unsigned long task_priority);
 void cdc_cli_output(const uint8_t const *message_string);
 
 #endif
@@ -106,6 +105,13 @@ void create_scanner_task(Twi *twi_base, uint16_t stack_depth_words,
 unsigned portBASE_TYPE task_priority,
 portBASE_TYPE set_asynchronous_api);
 portBASE_TYPE did_scanner_test_pass(void);
-#endif /* confINCLUDE_SCANNER_TASK */
+#endif /* confINCLUDE_SCANNER */
+
+#if (defined confINCLUDE_WIFI)
+void create_wifi_task(Twi *twi_base, uint16_t stack_depth_words,
+unsigned portBASE_TYPE task_priority,
+portBASE_TYPE set_asynchronous_api);
+portBASE_TYPE did_wifi_test_pass(void);
+#endif /* confINCLUDE_WIFI */
 
 #endif /* HIKU_TASKS_H */
