@@ -72,6 +72,7 @@
 
 /* Standard includes. */
 #include <stdio.h>
+#include "teststring.h"
 
 /* Kernel includes. */
 #include "FreeRTOS.h"
@@ -93,6 +94,7 @@
 #include "conf_board.h"
 #include "conf_clock.h"
 
+#include "zbar.h"
 
 //~~~~~~~~~~~~~~~~ Begin FreeRTOS specific definitions ~~~~~~~~~~~~~~~~~~~~
 
@@ -111,6 +113,18 @@ SemaphoreHandle_t xDisplaySemaphore = NULL;
 SemaphoreHandle_t xCameraSemaphore = NULL;
 
 //~~~~~~~~~~~~~~~~ End FreeRTOS specific definitions ~~~~~~~~~~~~~~~~~~~~
+
+
+//#define malloc(size) pvPortMalloc(size)
+//#define calloc(size) pvPortCalloc(size)
+//#define free(ptr) vPortFree(ptr)
+
+
+#define RAWDATA  (0x63000000UL);
+volatile uint8_t * g_zbar_raw_data = (uint8_t *)RAWDATA;
+volatile uint8_t *g_zbar_raw_data_begin;
+
+volatile uint8_t *tempend;
 
 /* Uncomment this macro to work in black and white mode */
 #define DEFAULT_MODE_COLORED
@@ -425,6 +439,65 @@ static void start_capture(void)
 	g_ul_vsync_flag = false;
 }
 
+void task_zbar(void){
+	
+	uint8_t ulcursor;
+	
+	zbar_image_scanner_t *scanner = NULL;
+	/* create a reader */
+	scanner = zbar_image_scanner_create();
+	/* configure the reader */
+	zbar_image_scanner_set_config(scanner, 0, ZBAR_CFG_ENABLE, 1);
+	
+	uint8_t * temp = (uint8_t *)CAP_DEST;
+	
+	/* wrap image data */
+	zbar_image_t *image = zbar_image_create();
+	zbar_image_set_format(image, zbar_fourcc('G','R','E','Y'));
+	zbar_image_set_size(image, IMAGE_WIDTH, IMAGE_HEIGHT);
+	zbar_image_set_data(image, temp, IMAGE_WIDTH * IMAGE_HEIGHT, zbar_image_free_data);
+
+	/*manual raw data string test*/
+	//zbar_image_t *image = zbar_image_create();
+	//zbar_image_set_format(image, zbar_fourcc('Y','8','0','0'));
+	//zbar_image_set_size(image, 6, 190);
+	//zbar_image_set_data(image, temp, 6 * 190, zbar_image_free_data);
+
+	/* scan the image for barcodes */
+	int n = zbar_scan_image(scanner, image);
+
+	/* extract results */
+	const zbar_symbol_t *symbol = zbar_image_first_symbol(image);
+	for(; symbol; symbol = zbar_symbol_next(symbol)) {
+		/* print the results */
+		zbar_symbol_type_t typ = zbar_symbol_get_type(symbol);
+		volatile const char *data = zbar_symbol_get_data(symbol);
+		
+		//printf("decoded %s symbol \"%s\"\n", zbar_get_symbol_name(typ), data);
+		
+		//ili9325_fill(COLOR_YELLOW);
+		//ili9325_draw_string(0, 20, (uint8_t *)"FOUND IMAGE");
+		//ili9325_draw_string(0, 20, (uint8_t *)zbar_get_symbol_name(typ));
+		//ili9325_draw_string(0, 80, (uint8_t *)data);
+
+		ili9325_draw_prepare(0, 0, IMAGE_HEIGHT, IMAGE_WIDTH);
+		ili9325_fill(COLOR_YELLOW);
+		ili9325_draw_string(0, 20, (uint8_t *)"found image");
+		ili9325_draw_string(0, 80, (uint8_t *)"UPC code");
+
+
+		
+	}
+
+	/* clean up */
+	//zbar_image_destroy(image);
+	//zbar_image_scanner_destroy(scanner);	
+	
+	
+}
+
+
+
 /**
  * \brief Configure SMC interface for SRAM.
  */
@@ -487,9 +560,13 @@ static void draw_frame_yuv_color_int( void )
 	int32_t l_green;
 	int32_t l_red;
 	uint8_t *p_uc_data;
-
+	
+	volatile uint8_t *p_y_data;
+	volatile uint32_t tempcursor;
+	
 	p_uc_data = (uint8_t *)g_p_uc_cap_dest_buf;
-
+	p_y_data = (uint8_t *)g_p_uc_cap_dest_buf;
+	
 	/* Configure LCD to draw captured picture */
 	LCD_IR(0);
 	LCD_IR(ILI9325_ENTRY_MODE);
@@ -509,7 +586,7 @@ static void draw_frame_yuv_color_int( void )
 	 * Y2,U,V. For that reason cap_line is twice bigger in color mode
 	 * than in black and white mode. */
 	for (ul_cursor = IMAGE_WIDTH * IMAGE_HEIGHT; ul_cursor != 0;
-			ul_cursor -= 2, p_uc_data += 4) {
+			ul_cursor -= 2, p_uc_data += 4, p_y_data += 2) {
 		l_y1 = p_uc_data[0]; /* Y1 */
 		l_y1 -= 16;
 		l_v = p_uc_data[3]; /* V */
@@ -532,8 +609,14 @@ static void draw_frame_yuv_color_int( void )
 		l_y2 -= 16;
 		LCD_WD( clip32_to_8((298 * l_y2 + l_blue) >> 8));
 		LCD_WD( clip32_to_8((298 * l_y2 + l_green) >> 8));
-		LCD_WD( clip32_to_8((298 * l_y2 + l_red) >> 8));
+		LCD_WD( clip32_to_8((298 * l_y2 + l_red) >> 8));				
+		
+		p_y_data[0] = p_uc_data[0];		//	Y1
+		p_y_data[1] = p_uc_data[2];		//	Y2
+		
+		tempcursor = ul_cursor;
 	}
+	task_zbar();
 }
 
 #else
@@ -545,8 +628,10 @@ static void draw_frame_yuv_bw8( void )
 {
 	volatile uint32_t ul_cursor;
 	uint8_t *p_uc_data;
-
+	uint8_t *p_rgb_data;
+	
 	p_uc_data = (uint8_t *)g_p_uc_cap_dest_buf;
+	p_rgb_data = (uint8_t *)g_p_uc_cap_dest_buf;
 
 	/* Configure LCD to draw captured picture */
 	LCD_IR(0);
@@ -564,15 +649,23 @@ static void draw_frame_yuv_bw8( void )
 	 * this data must be written three time in LCD memory.
 	 */
 	for (ul_cursor = IMAGE_WIDTH * IMAGE_HEIGHT; ul_cursor != 0;
-			ul_cursor--, p_uc_data++) {
+			ul_cursor--, p_uc_data++, p_rgb_data++) {
 		/* Black and White using Y */
 		LCD_WD( *p_uc_data );
 		LCD_WD( *p_uc_data );
 		LCD_WD( *p_uc_data );
+		*p_rgb_data = *p_uc_data;		
 	}
 }
 
 #endif
+
+
+
+
+
+
+
 
 //~~~~~~~~~~~~~~~ Begin FreeRTOS specific fcns ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -644,7 +737,7 @@ static void task_led(void *pvParameters)
 	UNUSED(pvParameters);
 	for (;;) {
 		LED_Toggle(LED0_GPIO);
-		vTaskDelay(1000);
+		vTaskDelay(500);
 	}
 }
 
@@ -692,16 +785,20 @@ static void task_camera(void *pvParameters)
 	xCameraSemaphore = xSemaphoreCreateBinary();
 
 	/* Set capturing destination address*/
-	g_p_uc_cap_dest_buf = (uint8_t *)CAP_DEST;
+	//g_p_uc_cap_dest_buf = (uint8_t *)CAP_DEST;
 
 	/* Set cap_rows value*/
-	g_us_cap_rows = IMAGE_HEIGHT;
+	//g_us_cap_rows = IMAGE_HEIGHT;
 
 	for (;;){
 		
 		if (xCameraSemaphore != NULL){
 			
 			if (xSemaphoreTake(xCameraSemaphore, portMAX_DELAY ) == pdTRUE){				
+
+				//HACK
+				g_p_uc_cap_dest_buf = (uint8_t *)CAP_DEST;
+				g_us_cap_rows = IMAGE_HEIGHT;
 				
 				/* Disable vsync interrupt*/
 				pio_disable_interrupt(OV7740_VSYNC_PIO, OV7740_VSYNC_MASK);

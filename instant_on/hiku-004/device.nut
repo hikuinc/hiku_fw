@@ -11,6 +11,8 @@ gUpdateMode <- 0;               //set flag to indicate when new squirrel code is
 gInstantOnMode <-0;
 gButtonCallBackFired <-0;
 gPendingTimer <- null;
+gInstantButtonTimer <- null;
+gInstantTimeout <-0;
 
 // TODO put back this in the flash functions
 imp.setpoweren(true);
@@ -379,6 +381,7 @@ function logDeviceOnline() {
     }
     
     server.log("Reason for waking/reboot: " + greasonString);
+    
 } 
 
 logDeviceOnline();
@@ -689,6 +692,11 @@ function log(str)
 
 // --- Logging End ---
 
+
+/*
+    ~~~~~~~~~~~~~~~~~   BEGIN INSTANT-ON LOGIC  ~~~~~~~~~~~~~~~~~ 
+*/
+
 // Button
 enum ButtonState
 {
@@ -712,12 +720,14 @@ for(local i=0; i<15; i++)
 }
 
 
+
 log(format("Press Count: %d",pressed));
 if (pressed == 0 && imp.getssid() != "")
 {
     log("inside pressed=0 logic");
     gInstantOnMode = 1;
     gButtonState = ButtonState.BUTTON_DOWN;
+    
     // skip scanner command mode and start scanning/recording audio immediately
     //startScanRecord();
     //SCAN_CMD.configure(DIGITAL_OUT, 0);
@@ -793,6 +803,13 @@ if (pressed == 0 && imp.getssid() != "")
     gAudioTimer = hardware.millis();    
 }
 
+/*
+    ~~~~~~~~~~~~~~~~~   END INSTANT-ON LOGIC  ~~~~~~~~~~~~~~~~~ 
+*/
+
+
+
+
 //======================================================================
 // Handles all audio output
 class Piezo
@@ -849,7 +866,8 @@ class Piezo
             "success-server": [ [E6ShortTone,1] ],
             "failure": [ [B4LongTone,0.75] ],
             "unknown-upc": [ [B4LongTone,0.75], [silenceTone,1], [silenceTone,1], [silenceTone,1], [silenceTone,1]  ],
-            "blink-up-enabled": [ [B4LongTone,1] ]
+            "blink-up-enabled": [ [B4LongTone,1] ], 
+            "hw-reset": [ [E6ShortTone,1], [silenceTone,1], [silenceTone,1], [E7ExtraShortTone,1]  ]
         };
 
     }
@@ -983,6 +1001,12 @@ hwPiezo <- Piezo(EIMP_AUDIO_OUT);
 server.log("wakeup reason = " + greasonString);
 server.log("FREE MEMORY = " + imp.getmemoryfree());
 
+if (hardware.wakereason() == 8){
+    // Play a tone to indicate HW reset has occured
+    hwPiezo.playSound("hw-reset");
+}
+
+
 // - SPI Flash Related functions for Audio ----
 
 
@@ -1095,26 +1119,41 @@ function handlePin1Int()
 {
     //log("inside INTERRUPT handler!");
     if (gInstantOnMode && !gButtonCallBackFired){
+        /*
+            This condition is used when button has been pressed and released
+            before the button callback classes are initialized. Device usually enters
+            this conditional block when woken up with a button press. 
+        */
+        
         log("interrupt, handling quick press ");
 
         local pressed = 0;
-        //BTN_N.configure(DIGITAL_OUT,1);
-        //BTN_N.configure(DIGITAL_IN);
         pressed += BTN_N.read();
         pressed += BTN_N.read();
         pressed += BTN_N.read();
         log(format("interrupt, pressed = %d",pressed));
+        
+        /* 
+            if BTN_N.read !=0, then button has been released and we need to 
+            handle the state machine otherwise the buttoncallback fcn will 
+            try to force bad states. 
+        */
         if (pressed != 0){
             imp.wakeup(0.001 function(){
                 log("interrupt, calling stopscanrecord");
                 stopScanRecord();
-                //sendLastBuffer();
                 updateDeviceState(DeviceState.BUTTON_RELEASED);
-                updateDeviceState(DeviceState.IDLE);                   
+                updateDeviceState(DeviceState.IDLE);
+                /*  
+                    reset button state to indicate button has been released already
+                    this affects the states in the buttoncallback function. 
+                */
+                gButtonState = ButtonState.BUTTON_UP;
             });
 
         }
         gInstantOnMode = 0;
+
     }
     
     //local regInterruptSource = 0;
@@ -1372,6 +1411,28 @@ class CancellableTimer
     }
 }
 
+/*
+    Create a button timer for instant-on case. It's done here because all the 
+    appropriate classes need to be initialized fully before they can be used. 
+*/
+if (gInstantOnMode == 1){
+    gInstantButtonTimer = CancellableTimer(cButtonTimeout, function(){
+                                    gPendingAudio = 0;
+                                    gPendingBarcode = 0;
+                                    updateDeviceState(DeviceState.BUTTON_TIMEOUT);
+                                    stopScanRecord();
+                                    gInstantTimeout = 1;
+                                    gInstantButtonTimer.disable();
+                                    
+                                    if (server.isconnected()){
+                                        agent.send("buttonTimeout", {instantonTimeout=1});
+                                    }
+                                    
+                                    log("instant-on timeout reached. Aborting scan and record.");                                    
+                            });
+    gInstantButtonTimer.enable();
+}
+
 
 //======================================================================
 // Handles any I2C device
@@ -1584,6 +1645,9 @@ class PushButton
     {
         updateDeviceState(DeviceState.BUTTON_TIMEOUT);
         stopScanRecord();
+        if (server.isconnected()){
+            agent.send("buttonTimeout", {instantonTimeout=0});
+        }        
         //hwPiezo.playSound("timeout");
         log("Timeout reached. Aborting scan and record.");
     }
@@ -1617,7 +1681,7 @@ class PushButton
         switch(state) 
         {
             case 0:
-                log("buttonCallback case 1");
+                log("buttonCallback case 0");
                 /*
                 // Button in held state
                 if( hwPiezo.isPaging() )
@@ -1675,6 +1739,7 @@ class PushButton
                     }
                     */
             //agentSend("button","Pressed");
+                    log("button down, start scan record");
                     updateDeviceState(DeviceState.SCAN_RECORD);
                     gButtonState = ButtonState.BUTTON_DOWN;
                     //log("Button state change: DOWN");
@@ -1688,10 +1753,21 @@ class PushButton
                 break;
             case 2:
                 
+                // if device in shipping mode, then ignore button release events
                 if (imp.getssid() == "")
                 {
                     return;
                 }    
+                
+                /*
+                    When instant-on is activated, then the 6s timeout timer is also activated. 
+                    If button is held longer than 6s, then the timeout handler will disable the timer. 
+                    And if button is released before 6s, then the following condition will disable the timer.
+                */
+                if (gInstantButtonTimer){
+                    log("disabling instant-on button timer")
+                    gInstantButtonTimer.disable();
+                }
                 
                 if (gAudioUartCallBackFired == true){
 
@@ -1720,12 +1796,14 @@ class PushButton
                             // must be kept separate, as only one onidle 
                             // callback is supported at a time. 
                             log("calling stopScanRecrod");
-                            if (gPendingAudio)
+                            if (gPendingAudio || !server.isconnected())
                             {
+                                log(" - gPendingAudio = 1");
                                 imp.wakeup(0.001,stopScanRecord);
                             }
                             if ((connection_available || server.isconnected()) && !gPendingAudio)
                             {
+                                log(" - connected + gPendingAudio = 0");
                                 stopScanRecord();
                                 imp.onidle(sendLastBuffer); 
                             }
@@ -1737,9 +1815,19 @@ class PushButton
                     } 
                     
                 } else {
+                    /*  This condition occurs during instant-on mode. 
+                        If device is sleeping and you do a quick button press, then AudioUartCallback 
+                        won't fire in time becuase button let go quickly.  
+                    */
                     gButtonState = ButtonState.BUTTON_UP;
                     log("AudioUartCallback not fired!!!!!");
+                    
+                    /*  The following conditions occur during a quick-press when device 
+                        is asleep. Sometimes, UART might get configured and other times, 
+                        it won't get configured on time. 
+                    */
                     if (gUARTconfigured){
+
                         log("uart configured - stopping");
                         stopScanRecord();
                         server.log("switching states herer");
@@ -1751,8 +1839,24 @@ class PushButton
                         imp.wakeup(0.100, function(){
                             log("uart not configured - stopping");
                             stopScanRecord();
-                            updateDeviceState(DeviceState.BUTTON_RELEASED);
-                            updateDeviceState(DeviceState.IDLE);                              
+
+
+                            if (gDeviceState == DeviceState.SCAN_RECORD){
+                                /*  When button is released before UART is configured
+                                    but device woke up with instant-on (pressed == 0)                                   
+                                */
+                                updateDeviceState(DeviceState.BUTTON_RELEASED);
+                                updateDeviceState(DeviceState.IDLE);            
+                                
+                            } else if (gDeviceState == DeviceState.IDLE){
+                                /*  When button is released before UART is configured
+                                    but device woke up with accelerometer (pressed == 15)                                   
+                                */                                
+                                updateDeviceState(DeviceState.SCAN_RECORD);
+                                updateDeviceState(DeviceState.SCAN_CAPTURED);
+                                updateDeviceState(DeviceState.BUTTON_RELEASED);
+                                updateDeviceState(DeviceState.IDLE);                              
+                            }
                         });
                     }
                 }                
@@ -2403,8 +2507,6 @@ function preSleepHandler() {
         log("preSleepHandler: clear out all the pending accel interrupts");
         hwAccelerometer.clearAccelInterruptUntilCleared();
 
-        // perform STM32 software upgrade before going to sleep if software version doesn't match
-        
         init_audio_memory();
         
         AUDIO_UART.configure(921600, 8, PARITY_NONE, 1, NO_CTSRTS);
@@ -2651,6 +2753,11 @@ function onConnected(status)
 {   
     if (status == SERVER_CONNECTED) {
         log("Connected!!!!!!!!!! yay!!!!!");
+        
+        if (gInstantTimeout == 1){
+            agent.send("buttonTimeout", {instantonTimeout=1});
+        }
+        
         gInstantOnMode = 0;
         cancelPendingTimer();
         if (gPendingAudio && !gPendingBarcode)
@@ -2704,6 +2811,11 @@ function onConnected(status)
             log("Setup Completed!");
         }
         nv.disconnect_reason = 0;
+        
+        if (gUpdateMode == 0)
+        {
+            agent.send("deviceReady", "");
+        }
         
     }
     else
@@ -3420,10 +3532,10 @@ if (gUpdateMode){
     updateSTM32();
     NRST.write(0);
     gUpdateMode = 0;
+    agent.send("deviceReady", "");
 }
 //=========================
 
-
 server.log("Ready");
 server.log(imp.getsoftwareversion());
-agent.send("deviceReady", "");
+log(format("Reason for waking/reboot: %s", greasonString));

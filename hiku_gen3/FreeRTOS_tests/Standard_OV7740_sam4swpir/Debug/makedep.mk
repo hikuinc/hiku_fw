@@ -60,5 +60,29 @@ src\ASF\thirdparty\FreeRTOS\Source\tasks.c
 
 src\ASF\thirdparty\FreeRTOS\Source\timers.c
 
+src\ASF\thirdparty\zbar\code128.c
+
+src\ASF\thirdparty\zbar\code39.c
+
+src\ASF\thirdparty\zbar\config.c
+
+src\ASF\thirdparty\zbar\decoder.c
+
+src\ASF\thirdparty\zbar\ean.c
+
+src\ASF\thirdparty\zbar\error.c
+
+src\ASF\thirdparty\zbar\image.c
+
+src\ASF\thirdparty\zbar\img_scanner.c
+
+src\ASF\thirdparty\zbar\refcnt.c
+
+src\ASF\thirdparty\zbar\scanner.c
+
+src\ASF\thirdparty\zbar\svg.c
+
+src\ASF\thirdparty\zbar\symbol.c
+
 src\imagesensor_capture_example.c
 

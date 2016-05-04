@@ -19,6 +19,7 @@ src/imagesensor_capture_example.d src/imagesensor_capture_example.o: \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\_stdint.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\types.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\stdio.h \
+ ../src/ASF/thirdparty/zbar/include/teststring.h \
  ../src/ASF/thirdparty/FreeRTOS/Source/include/FreeRTOS.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\4.9.3\include\stdint.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdint.h \
@@ -149,7 +150,8 @@ src/imagesensor_capture_example.d src/imagesensor_capture_example.o: \
  ../src/ASF/common/services/serial/sam_uart/uart_serial.h \
  ../src/ASF/sam/drivers/uart/uart.h ../src/ASF/sam/drivers/usart/usart.h \
  ../src/config/conf_uart_serial.h \
- ../src/ASF/sam/drivers/pio/pio_handler.h
+ ../src/ASF/sam/drivers/pio/pio_handler.h \
+ ../src/ASF/thirdparty/zbar/include/zbar.h
 
 c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdio.h:
 
@@ -188,6 +190,8 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\types.h:
 
 c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\stdio.h:
+
+../src/ASF/thirdparty/zbar/include/teststring.h:
 
 ../src/ASF/thirdparty/FreeRTOS/Source/include/FreeRTOS.h:
 
@@ -464,3 +468,5 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 ../src/config/conf_uart_serial.h:
 
 ../src/ASF/sam/drivers/pio/pio_handler.h:
+
+../src/ASF/thirdparty/zbar/include/zbar.h:

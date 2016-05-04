@@ -264,13 +264,13 @@
         <board id="board.sam4s_wpir_rd" value="Add" config="" content-id="Atmel.ASF" />
       </framework-data>
     </AsfFrameworkConfig>
-    <avrtool>com.atmel.avrdbg.tool.atmelice</avrtool>
-    <avrtoolserialnumber>J41800022570</avrtoolserialnumber>
+    <avrtool>com.atmel.avrdbg.tool.samice</avrtool>
+    <avrtoolserialnumber>28010222</avrtoolserialnumber>
     <avrdeviceexpectedsignature>0x28AC0CE0</avrdeviceexpectedsignature>
     <com_atmel_avrdbg_tool_atmelice>
       <ToolOptions>
         <InterfaceProperties>
-          <JtagDbgClock>7500000</JtagDbgClock>
+          <JtagDbgClock>7400000</JtagDbgClock>
         </InterfaceProperties>
         <InterfaceName>JTAG</InterfaceName>
       </ToolOptions>
@@ -279,7 +279,7 @@
       <ToolName>Atmel-ICE</ToolName>
     </com_atmel_avrdbg_tool_atmelice>
     <avrtoolinterface>JTAG</avrtoolinterface>
-    <avrtoolinterfaceclock>7500000</avrtoolinterfaceclock>
+    <avrtoolinterfaceclock>4000000</avrtoolinterfaceclock>
     <PercepioTrace>
       <TargetOS>FreeRTOSv8</TargetOS>
       <Frequency>64000000</Frequency>
@@ -334,6 +334,27 @@
       <ApplicationOutput30>String</ApplicationOutput30>
       <ApplicationOutput31>String</ApplicationOutput31>
     </PercepioTrace>
+    <com_atmel_avrdbg_tool_samice>
+      <ToolOptions>
+        <InterfaceProperties>
+          <JtagDbgClock>4000000</JtagDbgClock>
+          <JtagEnableExtResetOnStartSession>true</JtagEnableExtResetOnStartSession>
+          <JtagInChain>false</JtagInChain>
+          <JtagDevicesBefore>0</JtagDevicesBefore>
+          <JtagDevicesAfter>0</JtagDevicesAfter>
+          <JtagInstrBitsBefore>0</JtagInstrBitsBefore>
+          <JtagInstrBitsAfter>0</JtagInstrBitsAfter>
+          <JtagSelectedDeviceIndexInChain>
+          </JtagSelectedDeviceIndexInChain>
+          <JtagDaisyChainDevices>
+          </JtagDaisyChainDevices>
+        </InterfaceProperties>
+        <InterfaceName>JTAG</InterfaceName>
+      </ToolOptions>
+      <ToolType>com.atmel.avrdbg.tool.samice</ToolType>
+      <ToolNumber>28010222</ToolNumber>
+      <ToolName>SAM-ICE</ToolName>
+    </com_atmel_avrdbg_tool_samice>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
@@ -502,6 +523,8 @@
       <Value>../src/ASF/thirdparty/freertos/freertos-7.3.0/source/portable/gcc/sam</Value>
       <Value>../src/ASF/thirdparty/FreeRTOS/Source/include</Value>
       <Value>../src/ASF/thirdparty/FreeRTOS/Source/portable/gcc/sam</Value>
+      <Value>../src/ASF/thirdparty/zbar/include</Value>
+      <Value>../src/ASF/thirdparty/zbar/include/decoder</Value>
     </ListValues>
   </armgcc.compiler.directories.IncludePaths>
   <armgcc.compiler.optimization.level>Optimize (-O1)</armgcc.compiler.optimization.level>
@@ -561,6 +584,7 @@
       <Value>../src/ASF/thirdparty/freertos/freertos-7.3.0/source/portable/gcc/sam</Value>
       <Value>../src/ASF/thirdparty/FreeRTOS/Source/include</Value>
       <Value>../src/ASF/thirdparty/FreeRTOS/Source/portable/gcc/sam</Value>
+      <Value>../src/ASF/thirdparty/zbar/include</Value>
     </ListValues>
   </armgcc.preprocessingassembler.general.IncludePaths>
   <armgcc.preprocessingassembler.debugging.DebugLevel>Default (-Wa,-g)</armgcc.preprocessingassembler.debugging.DebugLevel>
@@ -635,6 +659,9 @@
     <Folder Include="src\ASF\thirdparty\FreeRTOS\Source\portable\gcc" />
     <Folder Include="src\ASF\thirdparty\FreeRTOS\Source\portable\gcc\sam" />
     <Folder Include="src\ASF\thirdparty\FreeRTOS\Source\portable\memmang" />
+    <Folder Include="src\ASF\thirdparty\zbar" />
+    <Folder Include="src\ASF\thirdparty\zbar\include" />
+    <Folder Include="src\ASF\thirdparty\zbar\include\decoder" />
     <Folder Include="src\config\" />
   </ItemGroup>
   <ItemGroup>
@@ -1227,6 +1254,102 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\ASF\thirdparty\FreeRTOS\Source\timers.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\code128.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\code39.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\config.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\decoder.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\ean.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\error.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\image.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\img_scanner.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\config.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\debug.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\decoder.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\decoder\code128.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\decoder\code39.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\decoder\ean.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\error.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\event.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\image.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\img_scanner.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\teststring.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\mutex.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\refcnt.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\svg.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\symbol.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\thread.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\timer.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\video.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\window.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\include\zbar.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\refcnt.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\scanner.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\svg.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ASF\thirdparty\zbar\symbol.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\imagesensor_capture_example.c">
