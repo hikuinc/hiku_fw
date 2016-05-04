@@ -39,7 +39,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "1.3.05";
+gAgentVersion <- "1.3.07";
 
 gExtendTimer <- null;
 
@@ -98,6 +98,7 @@ const MIX_PANEL_EVENT_BATTERY = "DeviceBatteryLevel";
 const MIX_PANEL_EVENT_CONNECTIVITY = "DeviceConnectivity";
 const MIX_PANEL_EVENT_CONFIG = "DeviceConfig";
 const MIX_PANEL_EVENT_STATUS = "DeviceStatus";
+const MIX_PANEL_EVENT_BUTTON_TIMEOUT = "DeviceButtonTimeout";
 
 // Heroku server base URL	
 gBaseUrl <- "https://app.hiku.us/api/v1";
@@ -1042,6 +1043,13 @@ device.on("shutdownRequestReason", function(status){
 	agentLog(format("Hiku shutting down. Reason=%d", status));
 });
 
+device.on("buttonTimeout", function(data) {
+    
+    agentLog(format("Button timeout occurred: %d", data.instantonTimeout));	
+    //sendMixPanelEvent(MIX_PANEL_EVENT_BUTTON_TIMEOUT,{"timeoutSource": (data.instantonTimeout?"instant-on":"standard") });
+    sendDeviceEvents(mixPanelEvent(MIX_PANEL_EVENT_BUTTON_TIMEOUT, (data.instantonTimeout?"instant-on":"standard") ));
+
+});
 
 //======================================================================
 // External HTTP request handling

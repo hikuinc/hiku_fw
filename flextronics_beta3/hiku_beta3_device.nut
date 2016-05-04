@@ -121,7 +121,7 @@ if( nv.sleep_count != 0 )
 }
 
 // Consts and enums
-const cFirmwareVersion = "1.3.14" // Beta3 firmware starts with 1.3.00
+const cFirmwareVersion = "1.3.17" // Beta3 firmware starts with 1.3.00
 const cButtonTimeout = 6;  // in seconds
 const cDelayBeforeDeepSleepHome = 30.0;  // in seconds and just change this one
 const cDelayBeforeDeepSleepFactory = 300.0;  // in seconds and just change this one
@@ -171,7 +171,7 @@ enum DeviceState
 
 
 // Globals
-gDeviceState <- null; // Hiku device current state
+gDeviceState <- DeviceState.IDLE; // Hiku device current state; // Hiku device current state
 local init_completed = false;
 
 gAudioBufferOverran <- false; // True if an overrun occurred
@@ -983,20 +983,25 @@ function updateDeviceState(newState)
     local oldState = gDeviceState;
     gDeviceState = newState;
 
+
     // If we are transitioning to idle, start the sleep timer. 
     // If transitioning out of idle, clear it.
     if (newState == DeviceState.IDLE)
     {
-        if (oldState != DeviceState.IDLE)
+        if (gDeepSleepTimer)
         {
-            gDeepSleepTimer.enable();
+          gDeepSleepTimer.disable();
+          gDeepSleepTimer.enable();
         }
     }
     else
     {
         // Disable deep sleep timer
-        gDeepSleepTimer.disable();
-        gAccelHysteresis.disable();
+        if (gDeepSleepTimer)
+        {
+          gDeepSleepTimer.disable();
+          gAccelHysteresis.disable();
+        }
     }
 
     // If we are transitioning to SCAN_RECORD, start the button timer. 
@@ -1301,6 +1306,9 @@ class PushButton
     {
         updateDeviceState(DeviceState.BUTTON_TIMEOUT);
         hwScanner.stopScanRecord();
+        if (server.isconnected()){
+            agent.send("buttonTimeout", {instantonTimeout=0});
+        }            
         hwPiezo.playSound("timeout");
         log("Timeout reached. Aborting scan and record.");
     }
