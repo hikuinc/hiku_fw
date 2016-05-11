@@ -405,8 +405,8 @@
   </armgcccpp.compiler.symbols.DefSymbols>
   <armgcccpp.compiler.directories.IncludePaths>
     <ListValues>
-      <Value>../../../../../../OpenQR/ARM EABI/install/include</Value>
-      <Value>../../../../../../OpenCV/ARM EABI/install/include</Value>
+      <Value>C:\OpenQR\ARM EABI\install\include</Value>
+      <Value>C:\OpenCV\ARM EABI\install\include</Value>
       <Value>../src/ASF/sam/boards/sam4s_wpir_rd</Value>
       <Value>../sam/drivers/rtc/example/sam4s16c_sam4s_wpir_rd</Value>
       <Value>../src/ASF/common/utils</Value>
@@ -447,8 +447,8 @@
   <armgcccpp.linker.libraries.LibrarySearchPaths>
     <ListValues>
       <Value>../src/ASF/sam/utils/linker_scripts/sam4s/sam4s16/gcc</Value>
-      <Value>../../../../../../OpenQR/ARM EABI/install/lib</Value>
-      <Value>../../../../../../OpenCV/ARM EABI/install/lib</Value>
+      <Value>C:\OpenQR\ARM EABI\install\lib</Value>
+      <Value>C:\OpenCV\ARM EABI\install\lib</Value>
     </ListValues>
   </armgcccpp.linker.libraries.LibrarySearchPaths>
   <armgcccpp.linker.optimization.GarbageCollectUnusedSections>True</armgcccpp.linker.optimization.GarbageCollectUnusedSections>

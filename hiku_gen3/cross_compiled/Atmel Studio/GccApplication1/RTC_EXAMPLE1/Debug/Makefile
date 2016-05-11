@@ -198,8 +198,8 @@ ADDITIONAL_DEPENDENCIES:=
 OUTPUT_FILE_DEP:= ./makedep.mk
 
 LIB_DEP+=  \
-../../../../../../OpenQR/ARM\ EABI/install/lib/libopenqr.a \
-../../../../../../OpenCV/ARM\ EABI/install/lib/libopencv_core.a
+C:/OpenQR/ARM\ EABI/install/lib/libopenqr.a \
+C:/OpenCV/ARM\ EABI/install/lib/libopencv_core.a
 
 LINKER_SCRIPT_DEP+=  \
 ../src/ASF/sam/utils/linker_scripts/sam4s/sam4s16/gcc/flash.ld
@@ -335,7 +335,7 @@ src/ASF/sam/utils/syscalls/gcc/%.o: ../src/ASF/sam/utils/syscalls/gcc/%.c
 src/%.o: ../src/%.cpp
 	@echo Building file: $<
 	@echo Invoking: ARM/GNU C Compiler : 4.9.3
-	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\arm\arm-gnu-toolchain\bin\arm-none-eabi-g++.exe$(QUOTE) -mthumb -D__SAM4S16C__ -DARM_MATH_CM4=true -DDEBUG -DBOARD=SAM4S_WPIR_RD -D__SAM4S16C__  -I"../../../../../../OpenQR/ARM EABI/install/include" -I"../../../../../../OpenCV/ARM EABI/install/include" -I"../src/ASF/sam/boards/sam4s_wpir_rd" -I"../sam/drivers/rtc/example/sam4s16c_sam4s_wpir_rd" -I"../src/ASF/common/utils" -I"../src/ASF/common/services/serial/sam_uart" -I"../src/ASF/sam/drivers/rtc" -I"../src/ASF/sam/drivers/pmc" -I"../src/ASF/common/services/gpio" -I"../src/ASF/sam/boards" -I"../src/ASF/sam/drivers/pio" -I"../src/ASF/common/boards" -I"../src/ASF/sam/utils/header_files" -I"../src/ASF/common/services/ioport" -I"../src/ASF/thirdparty/CMSIS/Include" -I"../src/config" -I"../src/ASF/thirdparty/CMSIS/Lib/GCC" -I"../src/ASF/sam/utils/cmsis/sam4s/include" -I"../src" -I"../src/ASF/common/services/clock" -I"../src/ASF/common/utils/stdio/stdio_serial" -I"../src/ASF/sam/utils" -I"../src/ASF/sam/utils/preprocessor" -I"../src/ASF/common/services/serial" -I"../src/ASF/sam/drivers/usart" -I"../src/ASF/sam/drivers/uart"  -O0 -fdata-sections -ffunction-sections -fno-rtti -fno-exceptions -mlong-calls -g3 -Wall -mcpu=cortex-m4 -c -v -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"   -o "$@" "$<" 
+	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\arm\arm-gnu-toolchain\bin\arm-none-eabi-g++.exe$(QUOTE) -mthumb -D__SAM4S16C__ -DARM_MATH_CM4=true -DDEBUG -DBOARD=SAM4S_WPIR_RD -D__SAM4S16C__  -I"C:\OpenQR\ARM EABI\install\include" -I"C:\OpenCV\ARM EABI\install\include" -I"../src/ASF/sam/boards/sam4s_wpir_rd" -I"../sam/drivers/rtc/example/sam4s16c_sam4s_wpir_rd" -I"../src/ASF/common/utils" -I"../src/ASF/common/services/serial/sam_uart" -I"../src/ASF/sam/drivers/rtc" -I"../src/ASF/sam/drivers/pmc" -I"../src/ASF/common/services/gpio" -I"../src/ASF/sam/boards" -I"../src/ASF/sam/drivers/pio" -I"../src/ASF/common/boards" -I"../src/ASF/sam/utils/header_files" -I"../src/ASF/common/services/ioport" -I"../src/ASF/thirdparty/CMSIS/Include" -I"../src/config" -I"../src/ASF/thirdparty/CMSIS/Lib/GCC" -I"../src/ASF/sam/utils/cmsis/sam4s/include" -I"../src" -I"../src/ASF/common/services/clock" -I"../src/ASF/common/utils/stdio/stdio_serial" -I"../src/ASF/sam/utils" -I"../src/ASF/sam/utils/preprocessor" -I"../src/ASF/common/services/serial" -I"../src/ASF/sam/drivers/usart" -I"../src/ASF/sam/drivers/uart"  -O0 -fdata-sections -ffunction-sections -fno-rtti -fno-exceptions -mlong-calls -g3 -Wall -mcpu=cortex-m4 -c -v -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"   -o "$@" "$<" 
 	@echo Finished building: $<
 	
 
@@ -364,7 +364,7 @@ all: $(OUTPUT_FILE_PATH) $(ADDITIONAL_DEPENDENCIES)
 $(OUTPUT_FILE_PATH): $(OBJS) $(USER_OBJS) $(OUTPUT_FILE_DEP) $(LIB_DEP) $(LINKER_SCRIPT_DEP)
 	@echo Building target: $@
 	@echo Invoking: ARM/GNU Linker : 4.9.3
-	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\arm\arm-gnu-toolchain\bin\arm-none-eabi-g++.exe$(QUOTE) -o$(OUTPUT_FILE_PATH_AS_ARGS) $(OBJS_AS_ARGS) $(USER_OBJS) $(LIBS) -mthumb -Wl,-Map="RTC_EXAMPLE1.map" -Wl,--start-group -lopenqr -lopencv_core  -Wl,--end-group -L"../src/ASF/sam/utils/linker_scripts/sam4s/sam4s16/gcc" -L"../../../../../../OpenQR/ARM EABI/install/lib" -L"../../../../../../OpenCV/ARM EABI/install/lib"  -Wl,--gc-sections -mcpu=cortex-m4 -Tflash.ld  
+	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\arm\arm-gnu-toolchain\bin\arm-none-eabi-g++.exe$(QUOTE) -o$(OUTPUT_FILE_PATH_AS_ARGS) $(OBJS_AS_ARGS) $(USER_OBJS) $(LIBS) -mthumb -Wl,-Map="RTC_EXAMPLE1.map" -Wl,--start-group -lopenqr -lopencv_core  -Wl,--end-group -L"../src/ASF/sam/utils/linker_scripts/sam4s/sam4s16/gcc" -L"C:\OpenQR\ARM EABI\install\lib" -L"C:\OpenCV\ARM EABI\install\lib"  -Wl,--gc-sections -mcpu=cortex-m4 -Tflash.ld  
 	@echo Finished building target: $@
 	"C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\arm\arm-gnu-toolchain\bin\arm-none-eabi-objcopy.exe" -O binary "RTC_EXAMPLE1.elf" "RTC_EXAMPLE1.bin"
 	"C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\arm\arm-gnu-toolchain\bin\arm-none-eabi-objcopy.exe" -O ihex -R .eeprom -R .fuse -R .lock -R .signature  "RTC_EXAMPLE1.elf" "RTC_EXAMPLE1.hex"
