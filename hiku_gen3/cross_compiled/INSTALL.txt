@@ -1,0 +1,18 @@
+1) Uninstall all other MinGW libraries, installation managers, etc. (esp. the official mingw32 one) and remove any PATH-related values that they had set
+2) Install MinGW-w64 via the provided mingw-w64-install.exe with the configuration parameters and installation location from the screenshots
+3) Copy the OpenCV folder as-is to C:\
+4) Add the following only to your user PATH (NOT system PATH since it automatically gets merged in):
+
+C:\MinGW\mingw32\bin;C:\OpenCV\MinGW\install\bin
+
+5) Restart anything relying on PATH values (Eclipse, command prompt, etc.)
+6) Use the following build command to build the sample OpenCV code:
+
+g++.exe -v -o a.exe -I"C:\OpenCV\MinGW\install\include" main.cpp -L"C:\OpenCV\MinGW\install\lib" -lopencv_core310 -lopencv_highgui310 -lopencv_imgcodecs310 -lopencv_imgproc310
+
+7) Run the executable as follows:
+
+a.exe test.png
+
+8) Rejoice if a gnome pops up
+9) Setup Eclipse according to the screenshots provided (when creating a C/C++ project, ensure the "Show project types and toolchains only if they are supported on the platform" setting is unchecked and you select the "MinGW GCC" toolchain)

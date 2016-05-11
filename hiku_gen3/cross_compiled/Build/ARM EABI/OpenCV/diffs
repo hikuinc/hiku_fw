@@ -1,0 +1,36 @@
+--- cxcore/cxtypes.h	2012-12-18 22:27:40.000000000 -0800
++++ /home/anubhav-ubuntu/Downloads/opencv-atmel/cxtypes.h	2016-05-10 06:11:36.499917693 -0700
+@@ -904,6 +904,9 @@
+     return p;
+ }
+ 
++#define CvPoint2D64d CvPoint2D64f
++#define CvPoint3D64d CvPoint3D64f
++
+ 
+ /******************************** CvSize's & CvBox **************************************/
+ 
+--- cv/_cv.h	2008-07-01 15:42:10.000000000 -0700
++++ /home/anubhav-ubuntu/Downloads/opencv-atmel/_cv.h	2016-05-10 05:01:18.293400278 -0700
+@@ -50,7 +50,7 @@
+ #endif
+ 
+ #include "cv.h"
+-#include "../cxcore/cxmisc.h"
++#include "cxmisc.h"
+ #include <math.h>
+ #include <assert.h>
+ #include <string.h>
+
+--- cvaux/cvaux.hpp	2008-07-01 15:42:10.000000000 -0700
++++ /home/anubhav-ubuntu/Downloads/opencv-atmel/cvaux.hpp	2016-05-10 06:19:00.728935004 -0700
+@@ -114,6 +114,9 @@
+     { return m_back_project; }
+ 	
+ #ifndef _TMS320C6X
++#define cvQueryHistValue_nD( hist, idx ) \
++    ((float)cvGetRealND( (hist)->bins, (idx)))
++
+     float query( int* bin ) const
+     { return m_hist ? cvQueryHistValue_nD( m_hist, bin ) : 0.f; }
+ #endif

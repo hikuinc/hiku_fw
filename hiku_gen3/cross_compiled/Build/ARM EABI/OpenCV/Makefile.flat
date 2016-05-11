@@ -1,0 +1,87 @@
+CXX := $(HOME)/arm-none-eabi/bin/arm-none-eabi-g++
+AR := $(HOME)/arm-none-eabi/bin/arm-none-eabi-ar
+
+CXXFLAGS := -Wall -Og -g -fPIC
+LDFLAGS	:= -Wall -Og -g -fPIC -Wl,--no-undefined
+
+HEADERS = \
+	cvaux.h \
+	cxmisc.h \
+	_cxipp.h \
+	cvvidsurv.hpp \
+	cv.hpp \
+	_cvmatrix.h \
+	cvmat.hpp \
+	_cvgeom.h \
+	cxtypes.h \
+	_cvipp.h \
+	cvtypes.h \
+	cxcore.h \
+	cv.h \
+	_cxcore.h \
+	_cv.h \
+	cxcore.hpp \
+	_cvlist.h \
+	_cvimgproc.h \
+	cxerror.h \
+	cvaux.hpp \
+
+SOURCES = \
+	cxalloc.cpp \
+	cxconvert.cpp \
+	cxdrawing.cpp \
+	cxcmp.cpp \
+	cvhistogram.cpp \
+	cvcontours.cpp \
+	cvapprox.cpp \
+	cxdatastructs.cpp \
+	cxlogic.cpp \
+	cvtables.cpp \
+	cxcopy.cpp \
+	cvmorph.cpp \
+	cvthresh.cpp \
+	cvimgwarp.cpp \
+	cvshapedescr.cpp \
+	cxmatrix.cpp \
+	cvadapthresh.cpp \
+	cvfilter.cpp \
+	cvlut.cpp \
+	cvutils.cpp \
+	cxarithm.cpp \
+	cxmathfuncs.cpp \
+	cvrotcalipers.cpp \
+	cxpersistence.cpp \
+	cxarray.cpp \
+	cvgeometry.cpp \
+	cxtables.cpp \
+	cvconvhull.cpp \
+	cvsmooth.cpp \
+	cxerror.cpp \
+	cxsvd.cpp \
+
+OBJECTS = $(SOURCES:.cpp=.o)
+
+static: libopencv_core.a
+
+libopencv_core.a: $(OBJECTS)
+	$(AR) rcvs $@ $(OBJECTS)
+
+%.o: %.cpp $(HEADERS)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+%: %.o static
+	$(CXX) $(CXXFLAGS) -o $@ $+ $(LDFLAGS) $(LDLIBS)
+
+.PHONY: clean install uninstall
+
+clean:
+	rm -f *.o *.a
+
+uninstall:
+	rm -rf install
+
+install: uninstall
+	mkdir -p install/include install/lib
+	cp $(HEADERS) install/include/
+	mv *.a install/lib/
+	$(MAKE) clean

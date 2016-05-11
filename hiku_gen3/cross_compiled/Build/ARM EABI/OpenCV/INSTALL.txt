@@ -1,0 +1,13 @@
+1) Recursively remove all but the "include" and "source" directories
+
+2) Copy the following files (adds missing code necessary when building):
+
+cp cxtypes.h opencv-atmel/include/cxcore/
+cp _cv.h opencv-atmel/include/cv/
+cp cvaux.hpp opencv-atmel/include/cvaux/
+
+3) Copy the Makefile to the root directory
+
+4) Build against the ARM bare metal toolchain (arm-none-eabi) as follows:
+
+make && make install
