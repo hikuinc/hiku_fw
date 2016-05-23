@@ -1,0 +1,68 @@
+
+uartboot utility
+===============================
+
+uartboot utility utilizes UART0 to load code into RAM with the help of BOOTROM
+using UART-BOOT protocol.
+When the device SECURITY_MODE is enabled,
+this utility may be used to enable JTAG access(for a single run) or to erase the flash.
+
+Compilation
+===========
+
+Individual compilation:
+------------------------
+
+$ cd wmsdk_bundle-x.y.z/sdk/tools/host-tools/uartboot
+$ make
+
+Group compilation
+------------------
+$ cd wmsdk_bundle-x.y.z
+$ make tools.install
+
+This will generate uartboot binary image @
+sdk/tools/host-tools/uartboot
+
+Usage
+==========
+<1> Port Id: This is the serial enumeration id of the device. (e.g. /dev/ttyUSBx)
+
+<2> Code in Ihex Format: User may load application code directly into RAM and begin the execution
+	with the help of this utility.
+Application code present in axf format can be converted to Ihex file format as follows:
+#arm-none-eabi-objcopy -O ihex <input_file(axf)> <ihex_file>
+
+<3> PASSWORD: This is used when the device SECURITY_MODE is enabled. This PASSWORD is the same that user sets
+while generating boot2.bin
+
+To run this utility,
+1. Set the BOOT option to UART BOOT (value = low)
+2. Reset the board before loading the code into RAM
+If the data to be loaded into RAM is available in Ihex file format,
+it will be used as it is by the UART loader.
+
+Commands
+===========
+
+* Erase device flash when SECURITY_MODE is enabled
+./uartboot -p <serial enumeration id> -e
+--------------------------------------------------------------------
+
+* Load application code into RAM when SECURITY_MODE is enabled
+./uartboot -p <serial enumeration id> -f <ihex_file> -s <PASSWORD>
+--------------------------------------------------------------------
+
+* Load application code into RAM when SECURITY_MODE is disabled
+./uartboot -p <serial enumeration id> -f <ihex_file>
+
+
+NOTE
+======
+To use uartboot on mw300 please change the linker script MEMORY section
+as follows:
+Use
+SRAM1 (rwx)  : ORIGIN = 0x20005658, LENGTH = 105K
+instead of
+SRAM1 (rwx)  : ORIGIN = 0x20000000, LENGTH = 128K
+

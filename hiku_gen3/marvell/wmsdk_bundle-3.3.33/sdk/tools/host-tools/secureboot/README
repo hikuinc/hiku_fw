@@ -1,0 +1,303 @@
+###############################################################################
+# Overview of 88MW30x Secure Boot
+###############################################################################
+Secure booting 88MW30x involves the following process:
+
+** Bootrom --> boot2
+
+* On system reset, bootrom reads OTP memory for secure boot config.
+  A secure image means it is encrypted and/or signed. For encryption, bootrom
+  supports only AES CCM-256 and for signing it supports only RSA crypto system.
+* Bootrom disables JTAG and non-flash (UART/USB) boot as per secure boot
+  config in OTP.
+* If boot config is configured for encrypted boot2, bootrom reads the AES-CCM
+  key from OTP memory.
+* If boot config is configured for signed boot2, bootrom reads hash of RSA
+  public key from OTP memory.
+* Following four cases are possible according boot config:
+   * For signed only image, first RSA public key present in boot2 header is
+     verified against its hash present in OTP. Bootrom proceed only if
+     public key is valid.
+     Next, the 256-bit hash of boot2 image present in flash is calculated.
+     Also RSA signature of 256-bit hash of boot2 image is read from from boot2
+     header and the original hash is retrived using RSA public key.
+     If calculated hash value and the one programmed in boot2 header match,
+     control is passed to boot2.
+   * For encrypted only image, the boot2 image is decrypted in RAM using AES key
+     present in OTP. Message-integrity-code (mic) is verified at the end of
+     encryption. If successful, control is passed to boot2.
+   * For encrypted and signed images, first RSA signature is verified (i.e. of
+     the encrypted image) and then image is decrypted and mic verified.
+     Only if both checks are successful, control is passed to boot2.
+   * For unencrypted and unsigned boot2 image, the control is unconditionally
+     passed to boot2.
+* In all above above, if security verification is unsuccessful,
+  boot is aborted with error code in nvram. Please refer to 88MW30x Secure Boot
+  Application Note for details on error code.
+
+** boot2 --> app firmware
+
+* Secure boot config in case of boot2 is embedded in itself in a section
+  called keystore. Unlike bootrom, boot2 can support different algorithms
+  for encryption and signing of app firmware.
+* Boot2 reads the encryption algorithm type (NO_ENCRYPT if unencrypted) and
+  algorithm specific decryption key from keystore.
+* Boot2 then reads signing algorithm type (NO_SIGN if unsigned), hash
+  algorithm type for calculating the signature of app firmware and signing
+  algorithm specific public key from keystore.
+* Following four cases are possible according app firmware boot config:
+   * The hash of app firmware present in flash active partion is calculated
+     as per the hash algorithm specified. Also signature of hash of app firmware
+     is read from from app firmware header and the original hash is retrived
+     using signing algorithm and its public key retrived from keystore.
+     If calculated hash value and the one programmed in app firmware header
+     match, control is passed to app firmware
+   * For encrypted only image, the app firmware is decrypted in RAM using
+     encryption algorithm and its decryption key retrived from keystore and
+     nonce/intialization vector present in app firmware header.
+     Message-integrity-code (mic) if supported by encryption algorithm, is also
+     verified against the one present in app firmware header. If successful,
+     control is passed to app firmware.
+   * For encrypted and signed images, first signature of app firmware is
+     verified (i.e. of the encrypted image) and then image is decrypted and
+     mic (if supported) is verified. Only if both checks are successful,
+     control is passed to app firmware.
+   * For unencrypted and unsigned app firmware image, the control is
+     unconditionally passed to app firmware.
+* In all above above, if security verification is unsuccessful,
+  boot2 repeats the above steps with passive partition. In case boot from
+  passive partition also fails, process is aborted with error code in nvram.
+  Please refer to 88MW30x Secure Boot App Note for details on error code.
+* In addition, boot2 copies keystore at pre-defined memory location (0x15F000,
+  size 4KB i.e. last 4KB of ESRAM0) for app firmware
+  to use. This can hold secure PSM keys or any other application specific
+  secure information.
+
+###############################################################################
+# Secure Boot Quick Start
+###############################################################################
+* The following steps can be used for generating secure boot images
+  and preparing the device:
+
+-------------------------------------------------------------------------------
+Step 1: Building secure boot2 and firmware
+-------------------------------------------------------------------------------
+For out-of-box configurations,
+
+* WMSDK supports 6 out-of-box configurations, which can be used as follows:
+  ~# make SECURE_BOOT=[1-3] or [51-53]
+
+ Following table summarizes these configurations:
+ +-----------------------------------------------------------------------------+
+ | Config | Boot2  | mcufw |  PSM  | JTAG  | non-flash  |      comments        |
+ |  Num   |        |       |       |Disable|boot Disable|                      |
+ +-----------------------------------------------------------------------------+
+ |   1    |   ES   |   S   |   E   |   N   |     N      | Recommnended for Dev |
+ |-----------------------------------------------------------------------------|
+ |   2    |   E    |   S   |   E   |   N   |     N      | For Development      |
+ |-----------------------------------------------------------------------------|
+ |   3    |   ES   |   ES  |   E   |   N   |     N      | For Development      |
+ |-----------------------------------------------------------------------------|
+ |  51    |   ES   |   S   |   E   |   Y   |     Y      | Recommended for mfg  |
+ |-----------------------------------------------------------------------------|
+ |  52    |   E    |   S   |   E   |   Y   |     Y      | For Manufacturing    |
+ |-----------------------------------------------------------------------------|
+ |  53    |   ES   |   ES  |   E   |   Y   |     Y      | For Manufacturing    |
+ +-----------------------------------------------------------------------------+
+   E = Encrypted (AES-CCM-256 for boot2, AES-CTR-128 for mcufw and secure psm)
+   S = Signed (RSA-2048 for boot2 and mcufw)
+
+* This process creates following secure binaries in bin/<board_name> folder:
+  A. Secure boot2 - boot2[.][k][e][s].bin
+  B. Secure FW - app_name[.][e][s].bin
+  C. An application to program otp - otp_prog.axf
+
+* Exact extension of secure binaries depends upon security configuration.
+  For example, for SECURE_BOOT=1, boot2.ke.bin and app_name.s.bin are created.
+  Build log will give information about the exact files generated.
+
+* All data for out-of-box configurations is stored in folder
+  <WMSDK_ROOT_FOLDER>/sboot_conf/
+
+For advance/custom configurations,
+
+*  Use a custom security config file. Refer to WMSDK Secure Boot App Note for
+   details.
+  ~# make SECURE_BOOT=/path/to/example.csv
+
+-------------------------------------------------------------------------------
+Step 2: Flashing images
+-------------------------------------------------------------------------------
+* This (flashing) should be first step, because if JTAG is disabled
+  (in OTP configuration) then we will not be able to access JTAG
+
+* Flashing procedure for secure images is same as normal images.
+
+  ~# cd bin/sdk/tools/mw300/OpenOCD
+  ~# sudo ./flashprog.py -l layout.txt --boot2 </path/to/boot2.{kes}.bin> --mcufw </path/to/app_fw.{es}.bin>
+
+* Reset board, application will not boot, since secure boot config
+  is not present in OTP memory yet!
+
+-------------------------------------------------------------------------------
+Step 3: Programming OTP Memory (one-time step)
+-------------------------------------------------------------------------------
+** NOTE: ONCE JTAG IS DISABLED IN OTP CONFIGURATION, AND THIS CONFIGURATION
+   IS BURNED IN OTP, THEN JTAG WILL REMAIN LOCKED AND INACCESSIBLE FOREVER.
+   TOOLS FOR WRITING TO FLASH USING JTAG WILL NO LONGER WORK.
+
+* Load otp_prog application in target RAM using,
+  ~# cd bin/sdk/tools/mw300/OpenOCD
+  ~# sudo ./ramload.py </path/to/otp_prog.axf>
+
+* On minicom/console, let application bootup
+  [otp_app] OTP Programming Application v0.x Started
+
+* On minicom/console, run command to program OTP memory
+  $ otp_write
+
+* This should program required configuration to OTP memory!
+
+* Reset board, application should boot successfully!
+
+** Note: OTP configuration contains AES-CCM key and RSA public key hash.
+   Make sure AES key and RSA key-pair is not lost after OTP programming.
+   Otherwise, boot2 and by consequence, app firmware can never be replaced.
+   For out-of-box configs, see below "Out-of-Box Security Configurations"
+
+-------------------------------------------------------------------------------
+Step 4: Updating images
+-------------------------------------------------------------------------------
+For out-of-box configurations:
+
+  ~# make SECURE_BOOT=<config_num_used_in_step_1>
+
+ Following table summarizes upgradability criteria for boot2 and app firmware:
+ +------------------------------------------------+
+ | Config |    Boot2         |      mcufw         |
+ |  Num   |   Update         |      Update        |
+ +------------------------------------------------+
+ |   1    |  Flashing only   |  Flashing or OTA   |
+ |------------------------------------------------|
+ |   2    |  Flashing only   |  Flashing or OTA   |
+ |------------------------------------------------|
+ |   3    |  Flashing only   |  Flashing or OTA   |
+ |------------------------------------------------|
+ |  51    |       NO         |     OTA only       |
+ |------------------------------------------------|
+ |  52    |       NO         |     OTA only       |
+ |------------------------------------------------|
+ |  53    |       NO         |     OTA only       |
+ +------------------------------------------------+
+
+* Flashing procedure is same as normal images.
+
+To update boot2:
+  ~# cd bin/sdk/tools/mw300/OpenOCD
+  ~# sudo ./flashprog.py --boot2 </path/to/boot2.{kes}.bin>
+
+To update app firmware
+  ~# cd bin/sdk/tools/mw300/OpenOCD
+  ~# sudo ./flashprog.py --mcufw </path/to/app_fw.{es}.bin>
+
+For advance/custom configurations:
+
+*  Same build process applies for generating updated secure images. However
+   following restrictions apply:
+
+** If JTAG is disabled in OTP configuration, boot2 cannot be modified as
+   flashing tools do not have access to JTAG anymore.
+
+** If JTAG is still available, boot2 can only be updated using the same
+   security config programmed in OTP memory. Same AES key must be used to
+   encrypt the boot2. Also same RSA private key must be used to sign the image.
+
+** If boot2 cannot be updated, then app firmware algorithm types, encryption key
+   and signing private keys must remain unchanged. Same restriction applies to
+   over-the-air (OTA) firmware upgrades also.
+
+** If boot2 can be updated, algorithm types, encryption keys and signing keys
+   for app firmware can be modified. However both boot2 and app firmware
+   must be then flashed to change the secure boot configuration.
+
+###############################################################################
+# Secure Boot Image Generation
+###############################################################################
+* secureboot is the tool that processes the normal binary images for boot2 and
+  app firmware and generates secure images. It is invoked automatically by
+  build system on specifying SECURE_BOOT option.
+
+  secureboot processes the unencrypted and unsigned (normal) images in the
+  following manner:
+
+  * Boot2
+    a. Prepare the keystore as per security configuration
+    b. Append the keystore at the end of boot2. Update boot2 bootrom headers
+       accordingly.
+    c. Encrypt the boot2 using AES CCM-256 encryption key and nonce/iv if
+       encryption is configured.
+    d. Calculate the sha256 hash of boot2 (encrypted image if encryption is
+       enabled, otherwise unencrypted image). Sign the hash using RSA private
+       key.
+    e. Update boot2 headers for signature, mic, nonce, public key etc.
+
+  * Application firmware
+    a. Encrypt the app firwmare using encryption key and nonce/iv with specified
+       encryption algorithm if encryption is enabled.
+    b. Calculate the hash of app firmware (encrypted image if encryption is
+       enabled, otherwise unencrypted image) using hash algorithm specified.
+       Sign the hash using signing private key.
+    c. Store nonce, mic (if supported) and image signature in app firmware
+       secure header. Prepend the header to image text.
+
+###############################################################################
+# Out-of-Box Security Configurations
+###############################################################################
+* For development convenience, configs 1 to 3 use sample RSA and AES keys
+  shipped with WMSDK bundle and hence will be same across all WMSDK bundles.
+  Developers need worry about preserving them.
+
+* For manufacturing configs (51 to 53), RSA and AES keys are uniquely created
+  and hence must be preserved if OTP is programmed with them (step 3). They
+  will be present in <WMSDK_ROOT_FOLDER>/sboot_conf/ folder.
+
+###############################################################################
+# Secureboot Tool Rebuild
+###############################################################################
+* WMSDK comes with precompiled binaries for secureboot tool for all supported
+  platforms. If the tool is modified to add support for more algorithm for
+  encryption or signing, instructions to rebuild the tool are given below:
+
+* First, check openSSL version using following command:
+  ~# openssl version
+
+* If openSSL version is 1.0.1 or newer, secureboot can be compiled using
+  following commands:
+  From WMSDK root folder:
+  ~# make tools_clean
+  ~# make tools_install
+
+* If openSSL is not present or is older than 1.0.1, download latest stable
+  version from https://www.openssl.org/source/
+
+* Execute the following commands to compile the openSSL libraries:
+  ~# tar xfvz openssl-x.x.x.tar.gz
+  ~# cd path-to-openssl-x.x.x
+
+For Linux, cygwin and mingw:
+  ~# ./config --prefix=full-path-to-openssl-install-dir no-shared -fdata-sections -ffunction-sections (Don't use ~ or relative paths for openssl-install-dir)
+  ~# make
+  ~# make install
+
+For Mac,
+  ~#./Configure darwin64-x86_64-cc --prefix=full-path-to-openssl-install-dir no-shared -fdata-sections -ffunction-sections (Don't use ~ or relative paths for openssl-install-dir)
+  ~# make
+  ~# make install
+
+* Now secureboot can be compiled using following commands:
+  From WMSDK root folder:
+  ~# make tools.clean
+  ~# make tools.install OPENSSL_INSTALL_DIR=full-path-to-openssl-install-dir
+
+** For details on how to add more algorithms to the tools, please refer to
+   WMSDK Secure Boot Design Guide.

@@ -1,0 +1,28 @@
+# Copyright (C) 2008-2015, Marvell International Ltd.
+# All Rights Reserved.
+
+# This Makefile.ed25519 uses the the ed25519 sources from the sdk
+# located at path /path/to/sdk/src/crypto/
+
+ed_25519-cflags-y := $(CFLAGS)
+
+SDK_DIR ?= $(CURDIR)/../../../../
+ed25519_dir := $(SDK_DIR)/sdk/src/middleware/crypto/ed25519
+
+
+ed_25519-cflags-y += -DED25519_CUSTOMRNG -DED25519_CUSTOMHASH
+SRCS := $(ed25519_dir)/ed25519.c
+OBJS := $(notdir $(SRCS:.c=.o))
+
+%.o: $(ed25519_dir)/%.c
+	@echo " [$(CC)] ${@:.o=.c}"
+	$(AT)$(CC) $(ed_25519-cflags-y) -c -o $@ $^
+
+all: libed25519.a
+
+libed25519.a: $(OBJS)
+	@echo " [ar] $@"
+	$(AT)$(AR) -r $@ $(OBJS)
+
+clean:
+	$(AT)rm -f *.o *.a *.d

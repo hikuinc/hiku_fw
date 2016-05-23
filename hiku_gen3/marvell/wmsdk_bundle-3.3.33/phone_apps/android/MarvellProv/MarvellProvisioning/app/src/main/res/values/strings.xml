@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Provisioning</string>
+    <string name="action_settings">Settings</string>
+    <string name="hello_world">Hello world!</string>
+    <color name="dark_gray"> #363535</color>
+     <color name="color_orrange"> #ff6633</color>
+
+</resources>

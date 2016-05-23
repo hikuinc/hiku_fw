@@ -1,0 +1,44 @@
+================================================================================
+         Non-iOS Application Level Security Based Provisioning
+            Node.js based reference implementation
+================================================================================
+
+This Node.js utility demonstrates Application Level Security Based Provisioning
+Service. This utility implements a sample client that performs the network
+provisioning of the device as per the specification described in the 'Developer
+Reference - Provisioning' document. At the end of this process, your accessory
+will be configured to connect with your home network.
+
+=======================================================================================
+Prior Installations required
+=======================================================================================
+
+1. Download and install Node.js engine from: http://nodejs.org/download/
+2. Additionally, install the following package:
+
+   $npm install async
+
+=======================================================================================
+Steps to Run
+=======================================================================================
+2. Reboot the device in provisioning mode.
+3. Connect your development host (non-iOS device) to the Access Point
+   network hosted by the device.
+4. Execute the run-secure-prov.js command and specify the Home Network
+   configuration details as described below
+
+   $ node run-secure-prov.js <prov-pin> <home-network-ssid> <home-network-security> [home-network-pass]
+Note:
+prov-pin:
+    is the provisioning pin that is unique to the device
+home-network-security values:
+    0 - No Security
+    1 - WEP
+    4 - WPA2
+    5 - WPA/WPA2 Mixed
+
+ Example, in case of WPA2 security:
+   $ node run-secure-prov.js 1234567890abcdef Marvell-AP 4 marvellwm
+
+ OR, in case of Open security:
+   $ node run-secure-prov.js 1234567890abcdef Marvell-AP 0

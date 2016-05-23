@@ -1,0 +1,28 @@
+//
+// Prefix header for all source files of the 'Marvell' target in the 'Marvell' project
+//
+
+#import <Availability.h>
+
+#ifndef __IPHONE_3_0
+#warning "This project uses features only available in iOS SDK 3.0 and later."
+#endif
+
+#ifdef __OBJC__
+    #import <UIKit/UIKit.h>
+    #import <Foundation/Foundation.h>
+    #import "UIViewControllerAdditions.h"
+    
+#endif
+
+// DLog & ALog
+
+#ifdef DEBUG
+#   define DLog(fmt, ...) NSLog((@"%s[%d] " fmt), __PRETTY_FUNCTION__, __LINE__, ##__VA_ARGS__);
+#   define ALog(fmt, ...) NSLog((@"%s[%d] " fmt), __PRETTY_FUNCTION__, __LINE__, ##__VA_ARGS__);
+#else
+#   define DLog(...)
+#   define ALog(...)
+#endif
+
+

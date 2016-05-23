@@ -1,0 +1,25 @@
+
+psm-create-part utility
+=======================
+
+Utility psm-create-part generates a binary file which can be flashed onto psm
+partition of the device directly via flashprog utility.
+This utility requires a config file consisting of key-value pair, representing
+psm variable name and its value respectively, to be flashed on the psm.
+Key-value pair should be separated by assignment operator or equal sign (=).
+
+Usage
+=====
+
+1. Create config file having variable name and its corresponding value as below:
+pin=101-00-101
+2. Run utility using below command
+$ cd sdk-x.x.x/tools/src/psm-create-part/
+$ ./psm-create <name_of_the_config_file>
+
+3. This will generate flash.bin in psm-create-part directory.
+
+NOTE: Note that after the file is created and the PSM data is loaded into
+it, the file is truncated to necesssary size to reduce flashing time. So,
+the file size will not be exactly aligned to flash parition size.
+

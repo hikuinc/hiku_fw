@@ -1,0 +1,26 @@
+!SESSION 2016-05-23 11:17:25.297 -----------------------------------------------
+eclipse.buildId=4.5.2.M20160212-1500
+java.version=1.8.0_31
+java.vendor=Oracle Corporation
+BootLoader constants: OS=macosx, ARCH=x86_64, WS=cocoa, NL=en_US
+Framework arguments:  -product org.eclipse.epp.package.cpp.product -product org.eclipse.epp.package.cpp.product -product org.eclipse.epp.package.cpp.product -keyring /Users/rajan-work/.eclipse_keyring -showlocation
+Command-line arguments:  -os macosx -ws cocoa -arch x86_64 -product org.eclipse.epp.package.cpp.product -product org.eclipse.epp.package.cpp.product -data /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell -product org.eclipse.epp.package.cpp.product -keyring /Users/rajan-work/.eclipse_keyring -showlocation
+
+!ENTRY org.eclipse.core.net 1 0 2016-05-23 11:17:28.987
+!MESSAGE System property http.nonProxyHosts has been set to local|*.local|169.254/16|*.169.254/16 by an external source. This value will be overwritten using the values from the preferences
+
+!ENTRY org.eclipse.cdt.core 1 0 2016-05-23 11:18:23.745
+!MESSAGE Indexed 'wmsdk_bundle-3.3.33' (1,119 sources, 1,402 headers) in 12.4 sec: 125,939 declarations; 502,743 references; 309 unresolved inclusions; 2,816 syntax errors; 18,573 unresolved names (2.9%)
+
+!ENTRY org.eclipse.cdt.core 1 0 2016-05-23 11:18:24.430
+!MESSAGE Indexed 'hiku' (5 sources, 172 headers) in 0.679 sec: 13,476 declarations; 9,428 references; 2 unresolved inclusions; 40 syntax errors; 24 unresolved names (0.1%)
+!SESSION 2016-05-23 11:25:22.862 -----------------------------------------------
+eclipse.buildId=4.5.2.M20160212-1500
+java.version=1.8.0_31
+java.vendor=Oracle Corporation
+BootLoader constants: OS=macosx, ARCH=x86_64, WS=cocoa, NL=en_US
+Framework arguments:  -product org.eclipse.epp.package.cpp.product -keyring /Users/rajan-work/.eclipse_keyring -showlocation
+Command-line arguments:  -os macosx -ws cocoa -arch x86_64 -product org.eclipse.epp.package.cpp.product -keyring /Users/rajan-work/.eclipse_keyring -showlocation
+
+!ENTRY org.eclipse.core.net 1 0 2016-05-23 11:25:26.657
+!MESSAGE System property http.nonProxyHosts has been set to local|*.local|169.254/16|*.169.254/16 by an external source. This value will be overwritten using the values from the preferences

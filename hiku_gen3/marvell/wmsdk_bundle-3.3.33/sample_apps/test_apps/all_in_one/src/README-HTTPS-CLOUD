@@ -1,0 +1,42 @@
+This README explains the procedure to be followed to setup wm demo
+application with HTTPS cloud.
+
+******* Steps *******
+
+Steps to compile wm_demo with HTTPS Cloud support:
+-------------------------------------------------
+
+1. Open wlan/wm_demo/config.mk file and enable WEBSOCKET_CLOUD/LONG_POLL_CLOUD and set APPCONFIG_HTTPS_CLOUD to y.
+   Disable all other cloud schemes and then build the application
+
+2. Since TLS used by HTTPS based cloud takes lot of memory,
+   we need to disable some features in SDK.
+   cd wmsdk_bundle-x.y.z
+   make menuconfig
+   Disable following:
+   1. WPS provisioning support in Application framework
+   2. WPS in WLAN.
+
+3. And then TLS can be enabled within the HTTP Client:
+   Modules --> HTTP Client ---> Enable HTTPS support in HTTP Client
+
+4. Compile the SDK and application.
+   make BOARD=<board_name> APP=wlan/wm_demo
+   In build Cyassl will be compiled and its library will
+   be a part of SDK.
+
+
+Steps to start Cloud server:
+-----------------------------
+
+1. Go to
+   wmsdk_bundle-x.y.z/sample_apps/cloud_server
+2. Run the commands to install packages
+    a. npm install express@3.x
+    b. npm install websocket
+3. To start cloud server
+	sudo node wmcloud.js
+4. Please turn off the firewall to allow communication to take place
+   between cloud and device
+5. For other details please refer README in same directory mentioned
+   above.

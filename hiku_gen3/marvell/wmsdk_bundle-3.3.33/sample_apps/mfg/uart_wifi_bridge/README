@@ -1,0 +1,10 @@
+
+Please use layout-uart-wifi-bridge.txt available inside src/ folder
+to flash binaries on the board.
+
+This App requires using manufacturing WiFi firmware.
+Board specific manufacturing firmware should be used.
+Location: wifi-firmware/XXXX_mfg.bin inside wmsdk_bundle-x.y.z.
+XXXX : refers to the board specific wifi-chip
+
+Please refer uart_wifi_bridge Application Note for more details.

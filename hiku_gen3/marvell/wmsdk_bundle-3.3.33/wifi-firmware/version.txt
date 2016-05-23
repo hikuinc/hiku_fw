@@ -1,0 +1,69 @@
+88W8782 WIRELESS FIRMWARE
+========================
+
+Here are the details about the 88W8782 firmware:
+
+1.Firmware Name:       SD-UAPSTA-8782-FC13-MMC-14.69.12.p50-M2614459_B0-GPL
+
+88W8782 MANUFACTURING FIRMWARE
+==============================
+
+Here are the details of the 88W8782 manufacturing firmware:
+
+1. Firmware Name:      MFG-SD-8782-FC8-BRG-WIN-X86-1.1.7.48-14.1.11.p168
+
+88W8787 WIRELESS FIRMWARE
+========================
+
+Here are the details about the 88W8787 firmware: 
+
+1.Firmware Name:       SD-UAPSTA-BT-8787-PXA920-ICS-14.66.9.p97-M3X14337-GPL
+
+88W8787 MANUFACTURING FIRMWARE
+==============================
+
+Here are the details of the 88W8787 manufacturing firmware:
+
+1. Firmware Name:      MFG-MF-8787-FC8-SYSKT-1.2.7.50-14.0.34.p3
+
+88W8801 WIRELESS FIRMWARE
+========================
+
+Here are the details about the 88W8801 firmware:
+
+1.Firmware Name:       SD-UAPSTA-8801-FC18-MMC-14.76.36.p70-C3X14094_B0-GPL
+
+88W8801 MANUFACTURING FIRMWARE
+==============================
+
+Here are the details of the 88W8801 manufacturing firmware:
+
+1. Firmware Name:      MFG-W8801-MF-WIFI-BRG-FC13-WIN-X86-2.0.0.91-14.1.36.p52
+
+88W8777 WIRELESS FIRMWARE
+========================
+
+Here are the details about the 88W8777 firmware:
+
+1.Firmware Name:       SD-UAPSTA-BT-8777-FC18-MMC-14.66.33.p71-M3X14473_AX-GPL
+
+88W8777 MANUFACTURING FIRMWARE
+==============================
+
+Here are the details of the 88W8777 manufacturing firmware:
+
+1. Firmware Name:      MFG-8777-BRG-WIN-X86-1.1.8.50-14.2.33.p106
+
+mw30x WIRELESS FIRMWARE
+========================
+
+Here are the details about the 88W8845 firmware:
+
+1.Firmware Name:       SD-UAPSTA-8845-FC18-MMC-14.76.36.p84-C3X14084_R0-GPL
+
+mw30x MANUFACTURING FIRMWARE
+==============================
+
+Here are the details of the 88W8845 manufacturing firmware:
+
+1. Firmware Name:      MFG-MW300X-MF-LABTOOL-FC18-2.1.0.7-14.1.36.p44

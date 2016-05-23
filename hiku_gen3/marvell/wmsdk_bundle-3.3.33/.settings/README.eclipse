@@ -1,0 +1,94 @@
+Installation/Setup:
+====================
+
+   Following Workspace Properties (Environment->Preferences->C/C++->Build->Environment) set up the build/debug environment:
+          i. PATH: /path/to/arm-none-eabi-toolchain:${PATH} (For Linux)
+                   Not Required for Mac. However eclipse must be launched from terminal.
+                   Not Required for Windows
+
+   NOTE: Additionally, Linux Users must once execute script sdk/tools/bin/perm_fix.sh to use OpenOCD and serial console in Eclipse.
+
+   Following Project Properties (Project->Properties->C/C++ Build->Environment) control build behavior:
+          i. DEFCONFIG: Default Configuration (Default: mw300_defconfig)
+         ii. BOARD: Board (Default: mw300_rd)
+        iii. XIP: 1 for XIP, 0 for non-XIP applications (Default: 0)
+         iv. APP: Absolute or SDK relative path of Application (Default: Set to Empty Value i.e. build all applications)
+          v. DEBUG_INTERFACE: See 'Setting Debug Interface' below. (Default: ftdi).
+
+   Sometimes, the launcher configurations are not readily visible in 'Debug' and 'External Tools'
+   drop-down menus in Eclipse toolbar. To make them visible, perform following steps:
+       1. Click on drop-down menu of 'Debug' icon in Eclipse Toolbar (down-arrow near 'Debug' icon).
+       2. Click on 'Organize Favorites...' menu item. This will pop up the 'Organize Debug Favorites' dialog box.
+       3. Click on 'Add' button. This will pop up the 'Add Debug Favorites' dialog box'
+       4. Click on 'Select All' button. Press 'OK' of this dialog box.
+       5. 'Organize Debug Favorites' dialog box will now show 'Debug' and 'Live Debug'. Press 'OK' of this dialog box.
+       6. The drop-down menu of 'Debug' icon will now show 'Debug' and 'Live Debug' menu items.
+       7. Repeat similar process for 'External Tools' icon in Eclipse Toolbar (down-arrow near 'External Tools' icon).
+
+Launchers Available:
+====================
+  Ready to use launch configurations ('Debug' and 'External Tools')
+       Following launchers are available:
+       a. In 'Debug' configurations:
+         i. 'Debug' Launcher: To debug non-XIP application (*.axf) from main().
+        ii. 'Live Debug' Launcher: To connect to and debug an already running application (*.axf).
+       iii. 'XIP Debug' Launcher: To debug XIP application (*.axf) from main(). Application must be already programmed in flash.
+       b. In 'External Tools' configurations:
+          i. 'Load in Memory' Launcher: To load and execute non-XIP application (*.axf).
+         ii. 'Prepare Flash (MC200)' Launcher: To program partion layout in flash using file sdk/tools/OpenOCD/mc200/layout.txt
+              and reset the board.
+        iii. 'Prepare Flash (MW300)' Launcher: To program partion layout in flash using file sdk/tools/OpenOCD/mw300/layout.txt
+              and reset the board.
+         iv. 'Program Boot2': To program boot2 bootloader (boot2.bin) in flash and reset the board.
+          v. 'Program MCU Firmware' Launcher: To program XIP/non-XIP application (*.bin) in flash and reset the board.
+         vi. 'Program FTFS' Launcher: To program application ftfs filesystem (*.ftfs) in flash and reset the board.
+        vii. 'Program WiFi Firmware' Launcher: To program wifi firmware (*.bin/*.bin.xz) in flash and reset the board.
+       viii. 'Set Debug Interface' Launcher: Sets the debug interface for OpenOCD.
+
+Coding Guidelines:
+===================
+   Coding Guidelines are derived from built-in K&R style with following changes:
+       a. Tab size = 8 (original value 4)
+       b. Function definition opening parenthesis on new line (original value: same line)
+
+Parallel Build:
+================
+     Parallel make build is enabled with no of jobs optimally decided by Eclipse.
+
+Setting Debug Interface:
+=========================
+     Launcher 'Set Debug Interface' can be used to set the debug interface for OpenOCD. Internally, it calls the script
+     sdk/tools/bin/eclipse.py which performs this operation in two stages:
+         Stage 1: Change DEBUG_INTERFACE project variable in .settings/org.eclipse.cdt.core.prefs file.
+                  This variable is used by 'Debug' and 'Live Debug' launchers.
+                  It is strongly advised that variable is not changed in 'Project->Properties->C/C++ Build->Environment'
+                  pane manually, but only though this launcher.
+         Stage 2: Change 'External Tools' launcher files to set DEBUG_INTERFACE attribute to new value. (Note: 'External Tools' launchers
+                  do  not use 'DEBUG_INTERFACE' project variable.)
+
+     It is advised that eclipse ide is restarted after changing the debug interface.
+
+Using Eclipse Launchers:
+=========================
+    Launch Procedure for Debugging ':
+        1. Select the application (*.axf) in 'Project Explorer' pane of Eclipse IDE and click on down-arrow near 'Debug' icon
+           and then click on 'Debug' menu item to debug a non-XIP application from main().
+        2. Follow same steps for 'Live Debug' menu item to connect to and debug an already running application.
+        3. For 'XIP Debug', program the MCU Firmware in flash using 'External Tools->'Program MCU Firmware' menu item and then follow same
+           steps for 'XIP Debug' menu item as 'Debug' item to debug an XIP application from main()
+
+    Launch Procedure for 'External Tools':
+        1. Select the application (*.axf) in 'Project Explorer' pane of Eclipse IDE and click on down-arrow near 'External Tools'
+           icon and then click on 'Load in Memory' menu item to load and execute an application.
+        2. Click on down-arrow near 'External Tools' icon and then click on 'Prepare Flash (MC200)' menu item to flash partition layout for
+           MC200 based platforms.
+        3. Click on down-arrow near 'External Tools' icon and then click on 'Prepare Flash (MW300)' menu item to flash partition layout for
+           MW300 based platforms.
+        4. Select boot2 bootloader (boot2.bin) in 'Project Explorer' pane of Eclipse IDE and click on down-arrow near 'External Tools'
+           icon and then click on 'Program Boot2' menu item to program boot2 in flash.
+        5. Select the application (*.bin) in 'Project Explorer' pane of Eclipse IDE and click on down-arrow near 'External Tools'
+           icon and then click on 'Program MCU Firmware' menu item to program an application in flash.
+        6. Select the application ftfs filesystem (*.ftfs) in 'Project Explorer' pane of Eclipse IDE and click on down-arrow near
+           'External Tools' icon and then click on 'Program FTFS' menu item to program an application ftfs in flash.
+        7. Select the wifi-firmware (*.bin/*.bin.xz) in 'Project Explorer' pane of Eclipse IDE and click on down-arrow near 'External Tools'
+           icon and then click on 'Program WiFi Firmware' menu item to program wifi firmware in flash.

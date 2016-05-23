@@ -1,0 +1,19 @@
+Upgrading from 3.2 or below
+===========================
+The 3.3 release makes the following changes:
+ a. It uses a new build system. This requires you to change your
+    application's Makefile. Please rename your Makefile to
+    build.mk. Refer to build/README or other sample applications for
+    reference to write your build.mk file
+ b. All generated artifacts are now stored in the bin/ directory at
+    the top-level of the SDK
+ c. The make 'APPS=' variable is now changed to 'APP='
+ d. The wmsdk/ directory at the top is now renamed to sdk/
+ e. The tools flashprog.sh and ramload.sh are now replaced by platform
+    independent python scripts flashprog.py and ramload.py
+ f. A few APIs in the board file have changed. Make a copy of a board
+    file from the current WMSDK release and port your changes
+ g. The latest release requires you to use the native Windows
+    Python 2.7 (https://www.python.org/downloads/) over Cygwin’s
+    version. Please change your PATH settings such that the native
+    Windows Python is found first instead of Cygwin’s Python.

@@ -1,0 +1,64 @@
+menu "TLS"
+
+config ENABLE_TLS
+       bool "Enable TLS Library (CyaSSL)"
+       def_bool y
+       help
+         This option enables the TLS.
+       depends on OS_FREERTOS && LWIP_STACK
+
+config ENABLE_CYASSL_DEBUG
+       bool "Enable CyaSSL debug"
+       default n
+
+if ENABLE_CYASSL_DEBUG
+menu "CyaSSL debug options"
+
+config CYASSL_ENABLE_ERROR_LOG
+       bool "Enable Error logs"
+       default y
+       help
+		This option enables error logs
+		from the CyaSSL library. Note that this
+		increases the static footprint of the
+		generated binary.
+
+config CYASSL_ENABLE_INFO_LOG
+       bool "Enable info logs"
+       default n
+       help
+		This option enables info logs
+		from the CyaSSL library. Note that this
+		increases the static footprint of the
+		generated binary.
+
+config CYASSL_ENABLE_FUNC_ENTRY_LOG
+       bool "Enable function entry logs"
+       default n
+       help
+		This option enables function
+		entry logs from the CyaSSL library. Note
+		that this increases the static footprint
+		of the generated binary.
+
+config CYASSL_ENABLE_FUNC_LEAVE_LOG
+       bool "Enable function leave logs"
+       default n
+       help
+		This option enables function
+		leave logs from the CyaSSL library. Note
+		that this increases the static footprint
+		of the generated binary.
+
+config CYASSL_ENABLE_OTHER_LOG
+       bool "Enable other logs"
+       default n
+       help
+		This option enables other logs
+		from the CyaSSL library. Note that this
+		increases the static footprint of the
+		generated binary.
+
+endmenu
+endif
+endmenu

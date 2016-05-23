@@ -1,0 +1,120 @@
+Info : clock speed 3000 kHz
+Info : JTAG tap: wmcore.cpu tap/device found: 0x4ba00477 (mfg: 0x23b, part: 0xba00, ver: 0x4)
+Info : wmcore.cpu: hardware has 6 breakpoints, 4 watchpoints
+Info : accepting 'gdb' connection from pipe
+Configuring OS Awareness
+undefined debug reason 7 - target needs reset
+Info : Auto-detected RTOS: FreeRTOS
+Error: FreeRTOS maximum used priority is unreasonably big, not proceeding: 1567827291
+Info : JTAG tap: wmcore.cpu tap/device found: 0x4ba00477 (mfg: 0x23b, part: 0xba00, ver: 0x4)
+invalid command name "delay"
+target state: halted
+target halted due to debug-request, current mode: Thread 
+xPSR: 0x21000000 pc: 0x0000009e msp: 0x20000fa0
+Info : JTAG tap: wmcore.cpu tap/device found: 0x4ba00477 (mfg: 0x23b, part: 0xba00, ver: 0x4)
+target state: halted
+target halted due to debug-request, current mode: Thread 
+xPSR: 0x01000000 pc: 0x00007f14 msp: 0x20001000
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000061, MEM_AP_TAR 0xfbff35fc
+Error: Failed to read memory at 0xfbff35fc
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000061, MEM_AP_TAR 0xfbff35fc
+Error: Failed to read memory at 0xfbff35fc
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000061, MEM_AP_TAR 0xfbff35fc
+Error: Failed to read memory at 0xfbff35fc
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000061, MEM_AP_TAR 0xfbff35fc
+Error: Failed to read memory at 0xfbff35fc
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000061, MEM_AP_TAR 0xfbff35fc
+Error: Failed to read memory at 0xfbff35fc
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000061, MEM_AP_TAR 0xfbff35fc
+Error: Failed to read memory at 0xfbff35fc
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000061, MEM_AP_TAR 0xfbff35fc
+Error: Failed to read memory at 0xfbff35fc
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000061, MEM_AP_TAR 0xfbff35fc
+Error: Failed to read memory at 0xfbff35fc
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Error: JTAG-DP STICKY ERROR
+Error: MEM_AP_CSW 0x23000050, MEM_AP_TAR 0xa5a5a5a6
+Error: Failed to read memory at 0xa5a5a5a6
+Info : dropped 'gdb' connection

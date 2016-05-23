@@ -1,0 +1,31 @@
+# Copyright (C) 2008-2015, Marvell International Ltd.
+# All Rights Reserved.
+
+# This Makefile.hkdf-sha uses the the hkdf-sha sources from the sdk
+# located at path /path/to/sdk/src/crypto/
+
+
+hkdf_sha-cflags-y := $(CFLAGS)
+
+SDK_DIR ?= $(CURDIR)/../../../../
+hkdf_sha512_dir := $(SDK_DIR)/sdk/src/middleware/crypto/hkdf-sha512
+
+SRCS := $(hkdf_sha512_dir)/hkdf.c \
+     $(hkdf_sha512_dir)/hkdf-hmac.c \
+     $(hkdf_sha512_dir)/sha384-512.c \
+     $(hkdf_sha512_dir)/usha.c
+
+OBJS := $(notdir $(SRCS:.c=.o))
+
+%.o: $(hkdf_sha512_dir)/%.c
+	@echo " [$(CC)] ${@:.o=.c}"
+	$(AT)$(CC) $(hkdf_sha-cflags-y) -c -o $@ $^
+
+all: libhkdf-sha512.a
+
+libhkdf-sha512.a: $(OBJS)
+	@echo " [ar] $@"
+	$(AT)$(AR) -r $@ $(OBJS)
+
+clean:
+	$(AT)rm -f *.o *.a *.d

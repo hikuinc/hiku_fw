@@ -1,0 +1,621 @@
+
+mainmenu "WMSDK build Configuration"
+
+menu "System"
+choice
+	prompt "Platform Type"
+	default CPU_MC200
+
+config CPU_MC200
+       bool "88MC200-based Platforms"
+       select OS_FREERTOS
+       select LWIP_STACK
+       help
+	 Select this option if you have a Marvell 88MC200 based Wireless
+	 Micro-controller platform.
+
+config CPU_MW300
+       bool "88MW300-based Platforms"
+       select OS_FREERTOS
+       select LWIP_STACK
+       help
+	 Select this option if you have a Marvell 88MW300 based Wireless
+	 Micro-controller platform.
+
+endchoice
+
+choice
+	prompt "Wi-Fi Chipset"
+	default WLAN_878x
+
+config WiFi_878x
+	bool "878x-based Chipset"
+	help
+	  Select this option if you have a Marvell 878x-based 
+	  Wireless chip. This option will enable support
+	  for Marvell 878x-based wireless chips with
+	  Wireless Micro-controller.
+
+config WiFi_8801
+       bool "8801-based Chipset"
+       help
+	 Select this option if you have a Marvell 8801 based Wireless
+	 chip. This option will enable support for Marvell 8801 based
+	 wireless chips with Wireless Micro-controller.
+
+endchoice
+
+config ENABLE_ROM_LIBS
+	bool "Enable ROM libraries in 88MW300"
+	depends on CPU_MW300
+	def_bool n
+	help
+	 Select this option if you want to use libraries from ROM
+	 in 88MW300. Firmware will link against code placed in ROM.
+
+
+config ENABLE_MCU_PM3
+	bool "PM3 Support for MCU"
+	def_bool n
+	help
+	 Select this option if you want to enable PM3 power save mode for MCU.
+
+config ENABLE_CPP_SUPPORT
+       bool "Enable C++ support"
+       def_bool n
+       help
+	Select this option to enable compilation
+	of C++ applications with WMSDK. Without
+	this configuration C++ apps may not work
+	correctly.
+
+# Choice of Operating System
+config OS_FREERTOS
+       bool
+       help
+	Selects the FreeRTOS operating system.
+
+
+# Choice of Network Stacks
+
+config LWIP_STACK
+       bool
+       help
+        Selects the LWIP Network Stack
+
+endmenu
+
+source sdk/src/app_framework/Kconfig
+
+menu "Modules"
+
+source sdk/src/wlan/Kconfig
+source sdk/src/middleware/mdns/Kconfig
+source sdk/src/middleware/tls/Kconfig
+source sdk/src/middleware/provisioning/Kconfig
+source sdk/src/middleware/httpd/Kconfig
+source sdk/src/middleware/httpc/Kconfig
+source sdk/src/middleware/json_parser/Kconfig
+source sdk/src/middleware/rfget/Kconfig
+source sdk/src/platform/net/Kconfig
+
+menu "XZ Decompression"
+
+config XZ_DECOMPRESSION
+	bool "Enable XZ based decompression for WiFi firmware image"
+	def_bool y
+endmenu
+
+menu "BT Support"
+
+config BT_SUPPORT
+	bool "Support for handling Bluetooth as well as Wi-Fi commands in the SDIO driver"
+	def_bool n
+endmenu
+
+menu "IPv6 Support"
+
+config IPV6
+	bool "Support for IPv6 (experimental)"
+	def_bool n
+endmenu
+
+menu "Auto IP Support"
+
+config AUTOIP
+	bool "Support for Auto IP (experimental)"
+	def_bool n
+	help
+	This option enables Dynamic configuration of IPv4 link local
+	address as described in RFC 3927.
+
+	Auto IP configuration starts only after doing specific number
+	of unsuccessful DHCP address assignment retries.
+
+	Later on if DHCP address assignment succeeds, then IP configured
+	through Auto IP will not be available for the applications
+endmenu
+
+menu "Bonjour Conformance fixes"
+
+config BONJ_CONFORMANCE
+	bool "Bonjour Conformance fixes (temporary)"
+	def_bool n
+	help
+	This option enables the various fixes introduced to satisfy
+	Bojour Conformance tests.
+
+	After confirming that any of the existing working is not affected,
+	this option can be removed and all the fixes will always be part of SDK
+endmenu
+
+config WORK_QUEUE_CLI
+       bool "Work Queue CLI"
+       default n
+       help
+	When enabled will allow the developer to view and
+	manipulate work queue state. All debug state of
+	all work queues can be viewed. Existing work queues
+	and/or jobs can be deleted.
+
+menu "System Work Queue"
+
+config SYS_WQ_STACK
+       int "System Work Queue Stack"
+       default 1024
+       help
+       This option is used to select stack size for system work queue thread.
+       Stack size for system work queue thread should be carefully chosen as
+       there might be multiple system functionalities actively using system work
+       queue. It is recommended not to lower the stack size below default value.
+endmenu
+
+menu "CMSIS DSP Library"
+
+config CMSIS_DSPLIB
+       bool "Support for CMSIS DSP Library"
+       def_bool n
+       help
+         This option enables the CMSIS DSP library support.
+endmenu
+endmenu
+
+menu "Device Drivers"
+
+menu "Internal"
+
+source sdk/src/drivers/Kconfig
+
+endmenu
+
+menu "External"
+config XFLASH_DRIVER
+       bool "External Winbond W25Q32BV Serial Flash Driver support"
+       def_bool y
+       depends on CPU_MC200
+       help
+	 This option enables support for externally connected Winbond W25Q32BV Serial Flash.
+	 The flash is connected to QSPI1. Say Y if you wish to use this driver.
+
+config SPI_FLASH_DRIVER
+       bool "External AT25L08 Serial Flash Driver support"
+       def_bool n
+       help
+	This option enables support for externally connected AT25L08 flash.
+	The flash is connected to SSP Port 1. Say Y if you wish to use this driver.
+
+endmenu
+endmenu
+
+menu "Miscellaneous"
+
+config FLASH_PARTITION_COUNT
+       int "Max flash partitions allowed"
+       range 1 16
+       default 10
+       help
+	This option allows to increase the total number of flash partitions.
+	The maximum flash partition count allowed is 16.
+	By default it takes value as 10. Note, increasing this value has impact on code
+	size of application.
+
+config UART_LARGE_RCV_BUF
+       bool "Configures UART RCV Buffers of size 1024"
+       def_bool n
+       help
+	 This option enables UART Rcv buffers of size 1024.
+	 Say Y here if UART buffers of size 1024 are needed.
+
+config SW_WATCHDOG
+       bool "Software watchdog"
+       def_bool n
+       help
+         This option enables software watchdog. Note that this is just a
+	 simulation of watchdog behavior and may not work when system freezes
+
+config HW_RTC
+       bool "Hardware RTC"
+       def_bool y
+       help
+         This option enables time-keeping using the RTC. Note that this may not
+	 be accurate for internal un-calibrated RC32K clock.
+
+config PROFILER
+       bool "Profiler"
+       def_bool n
+       help
+         This option enables profiling of an application. It generates a table in SRAM
+	 with function addresses in one column and their respective count in another.
+	 Note that enabling this option increases the size of an image.
+
+if PROFILER
+
+config PROFILER_FUNCTION_CNT
+       int "Limit no. of unique functions in the list"
+       default "2000"
+       help
+         This option helps user to dedicate variable amount of SRAM for
+	 an application profiling. Total amount of memory allocated (in bytes)
+	 is 5 times the selected value (4 bytes for an address and 1 byte for count).
+	 No. of occurrences of only first 'n' unique functions will be recorded.
+endif
+
+config ENABLE_LTO
+       bool "Link Time Optimization (Experimental)"
+       def_bool n
+	help
+	  This options enables Link Time Optimization (LTO) and gives GCC the
+	  capability to optimize executable image as a single module. Enabling
+	  this options results in footprint savings.
+
+endmenu
+
+menu "Development and Debugging"
+
+config ENABLE_ERROR_LOGS
+       bool
+       prompt "Enable error logs"
+       default y
+       help
+		If you enable this, error messages
+		will be printed in case of error
+		conditions. This will increase the
+		size of the image. It is strongly
+		recommended to keep it enabled
+		during development, to quickly
+		localize problems.
+
+config ENABLE_WARNING_LOGS
+       bool
+       prompt "Enable warning logs"
+       default y
+       help
+		If you enable this, error messages
+		will be printed in case of error
+		conditions. This will increase the
+		size of the image. It is strongly
+		recommended to keep it enabled
+		during development, to quickly
+		localize problems.
+
+config DEBUG_BUILD
+       bool
+       prompt  "Debug build"
+       default y
+       help
+		If you enable this the debug options will be
+      		 enabled. Asserts will be also be enabled.
+
+config ENABLE_FREERTOS_RUNTIME_STATS_SUPPORT
+       bool
+       prompt "Enable FreeRTOS runtime stats support"
+       default n
+       help
+		If you enable this FreeRTOS run time stats supporting
+		functions will be enabled. Note that you will still need to
+		enable FreeRTOS run time statistics from FreeRTOSConfig.h
+		header file for this to work. Another point to note; his
+		functionality will use a GPT for timing calculations. Please
+		select free GPT from the menu provided. GPT0 is used by default.
+
+if ENABLE_FREERTOS_RUNTIME_STATS_SUPPORT
+
+choice
+	prompt "Timer selection for runtime stats"
+	default RUNTIME_STATS_USE_GPT0
+
+config RUNTIME_STATS_USE_GPT0
+       prompt "GPT0"
+       bool
+       help
+		The choice of the timer to be used depends on the timers
+		usage elsewhere for the system. The run time stats will
+		require continuous use of the timer in the background
+		and should be allocated a dedicated timer.
+
+config RUNTIME_STATS_USE_GPT1
+       prompt "GPT1"
+       bool
+       help
+		The choice of the timer to be used depends on the timers
+		usage elsewhere for the system. The run time stats will
+		require continuous use of the timer in the background
+		and should be allocated a dedicated timer.
+
+config RUNTIME_STATS_USE_GPT2
+       prompt "GPT2"
+       bool
+       help
+		The choice of the timer to be used depends on the timers
+		usage elsewhere for the system. The run time stats will
+		require continuous use of the timer in the background
+		and should be allocated a dedicated timer.
+
+config RUNTIME_STATS_USE_GPT3
+       prompt "GPT3"
+       bool
+       help
+		The choice of the timer to be used depends on the timers
+		usage elsewhere for the system. The run time stats will
+		require continuous use of the timer in the background
+		and should be allocated a dedicated timer.
+
+endchoice
+
+endif # ENABLE_FREERTOS_RUNTIME_STATS_SUPPORT
+
+if DEBUG_BUILD
+config ENABLE_STACK_OVERFLOW_CHECK
+	bool "Enable stack overflow check"
+	def_bool y
+	help
+		If you enable this, FreeRTOS internal stack
+		overflow check will trigger for various threads
+		running in system. On downside this will increase
+		scheduler latency and is recommended for debugging
+		purpose only.
+
+config ENABLE_ASSERTS
+       bool "Enable ASSERTS"
+       def_bool y
+       help
+		If you enable this various ASSERTS in the
+		code will be enabled. This will help you
+		find out various issues in the code. Very
+		useful for debugging.
+
+config DEBUG_OUTPUT
+       bool "Enable Debugging Output"
+       depends on DEBUG_BUILD
+       def_bool y
+       
+config WLCMGR_DEBUG
+       bool "Wireless Connection Manager"
+       depends on DEBUG_OUTPUT
+       def_bool n
+
+config HEALTHMON_DEBUG
+       bool "Health monitor"
+       depends on DEBUG_OUTPUT
+       def_bool n
+
+config HTTPD_DEBUG
+       bool "HTTP Web Server"
+       depends on DEBUG_OUTPUT
+       def_bool n
+
+config TLS_DEBUG
+       bool "Transport Layer Security"
+       depends on DEBUG_OUTPUT
+       depends on ENABLE_TLS
+       def_bool n
+
+config WIFI_DEBUG
+       bool "Wireless Internals"
+       depends on DEBUG_OUTPUT
+       def_bool n
+
+
+config PWR_DEBUG
+       bool "Power Manager"
+       depends on DEBUG_OUTPUT
+       def_bool n
+
+config WAKELOCK_DEBUG
+       bool "Wake Locks"
+       depends on DEBUG_OUTPUT
+       def_bool n
+
+config WPS_DEBUG
+       bool "WiFi Protected Setup"
+       depends on DEBUG_OUTPUT
+       depends on WPS2
+       def_bool n
+
+config P2P_DEBUG
+       bool "WiFi Direct (P2P)"
+       depends on DEBUG_OUTPUT
+       depends on P2P
+       def_bool n
+
+config DHCP_SERVER_DEBUG
+       bool "DHCP Server"
+       depends on DEBUG_OUTPUT
+       def_bool n
+
+config PROVISIONING_DEBUG
+	bool "Provisioning"
+	depends on DEBUG_OUTPUT
+	def_bool n
+
+config SUPPLICANT_DEBUG
+	bool "Supplicant"
+	depends on DEBUG_OUTPUT
+	def_bool n
+
+config HTTPC_DEBUG
+       bool "HTTP Client"
+       depends on DEBUG_OUTPUT
+       def_bool n
+
+config BLOCK_ALLOCATOR_DEBUG
+       bool "Block Allocator"
+       depends on DEBUG_OUTPUT
+       def_bool n
+
+config CRC_DEBUG
+       bool "CRC"
+       depends on DEBUG_OUTPUT
+       def_bool n
+
+config RFGET_DEBUG
+       bool "rfget"
+       depends on DEBUG_OUTPUT
+       def_bool n
+
+config CRYPTO_DEBUG
+       bool "Cryptography"
+       depends on DEBUG_OUTPUT
+       def_bool n
+
+config JSON_DEBUG
+       bool "JSON"
+       depends on DEBUG_OUTPUT
+       def_bool n
+
+config FLASH_DEBUG
+       bool "Flash R/W"
+       depends on DEBUG_OUTPUT
+       def_bool n
+
+config MDNS_DEBUG
+        bool "mDNS"
+		depends on DEBUG_OUTPUT
+        def_bool n
+
+config MDNS_CHECK_ARGS
+		bool "mDNS: Check arguments for validity"
+		depends on DEBUG_OUTPUT
+		def_bool n
+
+config APP_DEBUG
+        bool "Application Framework"
+		depends on DEBUG_OUTPUT
+        def_bool n
+
+config APP_FRAME_INTERNAL_DEBUG
+	 bool "Application Framework (Internal)"
+		depends on DEBUG_OUTPUT
+        def_bool n
+
+config LL_DEBUG
+       bool "Low Level"
+       depends on DEBUG_OUTPUT
+       def_bool y
+       help
+       This option enables debug prints from low level
+       drivers and OS code.
+
+config OS_DEBUG
+       bool "os Level"
+       depends on LL_DEBUG
+       def_bool n
+
+config HEAP_DEBUG
+       bool
+       prompt "Heap debugger"
+       default n
+       help
+		If you enable this dynamic memory use of API's alloc,
+                 realloc, free will generate logs. These logs can be put 
+		 through an external script to give memory leaks, max 
+		 memory usage details. 
+
+config PSM_DEBUG
+	bool "psm"
+	depends on DEBUG_OUTPUT
+	def_bool n
+
+config FTFS_DEBUG
+	bool "ftfs"
+	depends on DEBUG_OUTPUT
+	def_bool n
+
+config SEMAPHORE_DEBUG
+	bool "Semaphore Debug"
+	depends on DEBUG_OUTPUT
+	def_bool n
+
+config ENABLE_TESTS
+       bool "Enable Test Setups"
+       def_bool n
+
+config PSM_TESTS
+       bool "PSM"
+       depends on ENABLE_TESTS
+       def_bool n
+
+config HTTPD_TESTS
+       bool "HTTP Web Server"
+       depends on ENABLE_TESTS
+       depends on HTTPD_CLI
+       def_bool n
+
+config JSON_TESTS
+       bool "JSON"
+       depends on ENABLE_TESTS
+       def_bool n
+
+config CLI_TESTS
+       bool "Command Line Interface"
+       depends on ENABLE_TESTS
+       def_bool n
+
+config SYSINFO_TESTS
+       bool "Sysinfo"
+       depends on ENABLE_TESTS
+       def_bool n
+
+config MDNS_TESTS
+        bool "mDNS tests"
+	depends on ENABLE_TESTS
+        def_bool n
+
+config EZXML_TESTS
+        bool "ezxml tests"
+		depends on ENABLE_TESTS
+        def_bool n
+
+config BA_TESTS
+	bool "Block Allocator"
+	depends on ENABLE_TESTS
+	def_bool n
+
+config WORK_QUEUE_TESTS
+	bool "Work queue"
+	depends on ENABLE_TESTS
+	def_bool n
+
+config MDEV_TESTS
+	bool "MDEV Test Run"
+	depends on ENABLE_TESTS
+	def_bool n
+
+config HEAP_TESTS
+       bool
+       prompt "Heap tests"
+	depends on ENABLE_TESTS
+       depends on OS_FREERTOS
+       def_bool n
+
+config AUTO_TEST_BUILD
+       bool "Test Build Flag"
+       def_bool n
+       help
+       This option enables some test APIs in firmware code.
+
+endif # DEBUG_BUILD
+
+
+endmenu
+

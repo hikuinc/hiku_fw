@@ -1,0 +1,78 @@
+# Configuration file format is of the following type:
+#
+# KEY				TYPE			VALUE
+#
+# where field Key, Type and Value can be comma (,), semicolon (;)
+# or tab separated.
+# Max allowed length of a line is 2048 characters.
+#
+# Possible values for KEY are:
+# KEY_OTP_JTAG_ENABLE, KEY_OTP_UART_USB_BOOT_ENABLE,
+# KEY_BOOT2_LOAD_ADDR, KEY_BOOT2_ENTRY_ADDR,
+# KEY_BOOT2_SIGNING_ALGO, KEY_BOOT2_ENCRYPT_ALGO, KEY_BOOT2_PRIVATE_KEY,
+# KEY_BOOT2_PUBLIC_KEY, KEY_BOOT2_ENCRYPT_KEY, KEY_BOOT2_DECRYPT_KEY,
+# KEY_MCUFW_SIGNING_ALGO, KEY_MCUFW_HASH_ALGO, KEY_MCUFW_ENCRYPT_ALGO,
+# KEY_MCUFW_PRIVATE_KEY, KEY_MCUFW_PUBLIC_KEY, KEY_MCUFW_ENCRYPT_KEY, KEY_MCUFW_DECRYPT_KEY,
+#
+# Apart from these, decimal values between 128 to 254 are also allowed as KEY
+# and their interpretation is completely left to applications.
+#
+# TYPE field determines how VALUE field is interpreted. Possible values are:
+# HEX - Value is hex string starting with LSB first format
+# DEC - Value is decimal value that can fit into a signed integer
+# STR - Value is ascii string without quotes. Following strings have special
+# 	interpretation that identify the algorithm name:
+# 	AES_CCM_256_ENCRYPT, AES_CTR_128_ENCRYPT, NO_ENCRYPT
+# 	SHA256_HASH, SHA512_HASH, NO_HASH
+#	RSA_SIGN, NO_SIGN
+# FILE - Value is the absolute path of the file. Useful when data size is large
+# 	and will exceed 2048-character limit of the line. Used for key files etc
+#
+# Note that config file case-insensitive. Also empty lines are allowed.
+# Note this file must be updated in case additional KEYS, TYPES are added.
+
+# Uncomment following line if JTAG needs to be disabled after boot
+#KEY_OTP_JTAG_ENABLE	DEC	0
+
+# Uncomment following line if boot from UART/USB is to be disabled
+#KEY_OTP_UART_USB_BOOT_ENABLE	DEC	0
+
+# User this to put user specific data in OTP memory. Max len allowed is 252 bytes
+#KEY_OTP_USER_DATA	HEX	01020304
+
+# Following keys are required in case bootrom header is to be generated for a
+# raw boot2 binary (used with -r option). Use addr in LSB first format.
+#KEY_BOOT2_LOAD_ADDR	HEX	00C01500
+#KEY_BOOT2_ENTRY_ADDR	HEX	01C01500
+
+### Recommended configuration for boot2 is encrypted and signed image ###
+
+# Boot2 supports only AES_CCM_256_ENCRYPT for encryption and SHA256_HASH and RSA_SIGN
+# for image signature
+
+# Uncomment following line if signing is required
+#KEY_BOOT2_SIGNING_ALGO	STR	RSA_SIGN
+KEY_BOOT2_PRIVATE_KEY	FILE	FULL_PATH_TO_KEY_FOLDER/BOOT2_PRIVATE_KEY.der
+KEY_BOOT2_PUBLIC_KEY	FILE	FULL_PATH_TO_KEY_FOLDER/BOOT2_PUBLIC_KEY.der
+
+# Comment following line if encryption is not required
+KEY_BOOT2_ENCRYPT_ALGO	STR	AES_CCM_256_ENCRYPT
+KEY_BOOT2_ENCRYPT_KEY	HEX	0123456776543210010101011212121212345678232323238765432100112233
+
+### Recommended configuration for firmware is signed image to enable XIP execution ###
+
+# Comment following line if signing is not required
+KEY_MCUFW_SIGNING_ALGO	STR	RSA_SIGN
+KEY_MCUFW_HASH_ALGO	STR	SHA256_HASH
+KEY_MCUFW_PRIVATE_KEY	FILE	FULL_PATH_TO_KEY_FOLDER/FW_PRIVATE_KEY.der
+KEY_MCUFW_PUBLIC_KEY	FILE	FULL_PATH_TO_KEY_FOLDER/FW_PUBLIC_KEY.der
+
+# Uncomment following line if encryption is required
+#KEY_MCUFW_ENCRYPT_ALGO	STR	AES_CTR_128_ENCRYPT
+KEY_MCUFW_ENCRYPT_KEY	HEX	2B7E151628AED2A6ABF7158809CF4F3C
+
+# Use these lines to put application specific keys in keystore
+# Type field must be a unique integer in the range 96-254
+# Secure PSM should also use keys within the same range
+#96			HEX	01020304
+

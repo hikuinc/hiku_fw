@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:gravity="center"
+  android:background="@drawable/checkingbg" >
+<TextView
+    android:id="@+id/loading_text" 
+    android:layout_gravity="center"
+    
+   
+    android:textSize="20dip"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="3dip"
+    android:gravity="center"
+    android:textColor="@android:color/black"
+   
+    />
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:orientation="horizontal" >
+
+
+<Button android:id="@+id/alertResetbtn"
+    android:layout_width="60dp"
+    android:layout_height="50dp"
+    android:layout_marginRight="20dp"
+    android:gravity="center"
+    android:text="Reset"
+    android:textColor="#000000"
+    android:background="#ffffff"/>
+<Button android:id="@+id/alertContinuebtn"
+    android:layout_width="80dp"
+    android:layout_height="50dp"
+    android:layout_marginLeft="20dp"
+    android:gravity="center"
+    android:text="Continue"
+    android:textColor="#000000"
+    android:background="#ffffff"/>
+</LinearLayout>
+</LinearLayout>
+

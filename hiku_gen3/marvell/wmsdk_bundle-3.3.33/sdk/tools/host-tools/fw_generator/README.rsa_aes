@@ -1,0 +1,82 @@
+###############################################################################
+# Encrypted Firmware Generator Utility
+(SHA512 Checksum + RSA Signature + AES-CTR 128-bit Encryption)
+###############################################################################
+The purpose of this utility is to generate an encrypted and signed firmware
+binary to be used for secure upgrades specification version 0001/0002.
+This should be used for secure firmware upgrades using the
+rsa_aes_client_mode_upgrade_fw() and rsa_aes_server_mode_upgrade_fw()
+APIs.
+
+###############################################################################
+# Compilation
+###############################################################################
+Please note this utility works only on 32-bit Host machines. Currently there are some issues
+with CyaSSL on 64-bit machines.
+1. Download CyaSSL ZIP ONLY from https://github.com/cyassl/cyassl/tree/v3.1.0
+2. Unzip the downloaded folder.
+3. Install autoconf, libtools and required tools
+
+This is required since fw_generator utility uses CyaSSL libraries for RSA, AES and SHA512
+
+The firmware generator utility supports ED25519-CHACHA20 as well as RSA-AES
+combinations for generating encrypted images. By default, it is configured
+to be used for ED25519-CHACHA20.
+
+For compilation of RSA-AES, please make sure that the packages such as "automake"
+and "libtool" are installed on the development host (for all Linux/Windows/Mac).
+Use make as follows:
+
+~# cd sdk/tools/host-tools/fw_generator/
+~# make clean
+~# make CRYPTO_OPTION=rsa_aes PRISTINE_CYASSL_PATH=/path/to/cyassl-3.1.0
+
+###############################################################################
+# Usage
+###############################################################################
+In order to generate an encrypted image, first we need a set of keys viz.
+* Firmware Signing Key : The key that will be used by the fw_generator utility
+  to sign the firmware image.
+* Firmware Verification Key : The key that will be used by the application
+  to validate the source of the image (this is a complementary of the Firmware
+  Signing Key)
+* Firmware encryption/decryption key : This is a symmetric key that will be
+  used by fw_generator utility for encryption and by the application for
+  decryption
+
+The firmware generator utility can be used to generate these keys, which can
+be stored in a configuration file as below:
+
+~# ./rsa_aesctr_fw_generator config  > fw_generator.config
+
+A sample config file is as below:
+fwupg_signing_key=:308204a30201000282010100baf58dbb3d2e733ec92af850f1c748af212bb14abb4ed470061b78b943512da01237f210efc11cb4f9477962f6fa4a061827f3e54696ff7eaf3982d0eef3fd984c2f4f6cff4b7d986236d1c222d7df8ef04d82254a4c50879004eb010b89c84e51b4a50b68aeada6b36478a37fe89a0818643bdeae535b691d52cd8287ca25ed3a4cbc1a0c53f7989e7304122674f7a06e006b26b21003021e775285bc6e23211441f5a854143ec8c3083a4949275590afcda9770527a1980b3962712f526e3ae13603945f0a3971e4ef0fd38af639bbf65c51983496894655c5fe6500ee3aeda854180575c2d07f82083986c018f275c1cc8bcfd0f9a6d106aaaaa404aed7770203010001028201007418f23778a9b4a523950c786f7bba360e9a2c5164f971d052ea9250316e62afc94076906fe1f2aaab35e83a3d7675ab4d2ada38e159f934b9293483fc2f05a6a280aa88dc0c0be529f032d7a47d7b752ee262d4374c26a1d81c45b6f36c4f37db631b2e7786298da04ededf6119973539b85cb94e75b309164d8a12e9b1ed544ea388505e63e424b5803e3dcab2ad7b3663ac6f1f978ed2b9ca4cc854a4f1f5a3bae98a9ff7cdcf9dc6aa23f3a0288c6f7ee00a2bfc5bd998a0ce2b54219f2a340204bf67a30fa39f1ee27182990379f046acb3645a9a90b5586acab92e6800d047f85a6ba590badd304af62804ad0dc8e6e33ebe71216edfa6762aefcbab3902818100f74ef4810b0e242e078f67bf236974b177411c533fa57b213f9ffe523001fbc4e2897b6898878752f0e839cd97a71e32bc29e900bfb213e653738c44ed0cd0e49f474a70051268008292380952d6439577d18b380b139f7b5eb261bf728ac1275bf0b93cf3b350db24eabe10760774553f047c3f73cc48dca47095ce6953677d02818100c187a2456855370f042275a4f9dee148a0bd50a1f0ffe98f6182e077803c7b3b861d84b3409ec3e190b0cb6b7c082687b9d5d6bc68b50b1e5b2e991940f385ecdaccd83eccd3df8439b79f4e57a2ebb22fc1e435e58ccefccdf165c98e681913cced670f1612d14b7e5d7c6d8ef2fbdcda099cadb5eaa20f86b583373572f50302818100c7c4dc96dca248b171e3f24f20c0cfc586ea6e8204b89c94c7fb6a89634446e6cc8377cf8ede737e99214d87f887c34a025aec5f7179dcbf420be573cbf47d4d20288b459fa335a5abd3873668d6b1732c7d74b309a7893d33ca6e5122aa58ca7d671f8acfe4ba5cbb1e6ff786101175c6d8cdb0c7ce6dd0e578185acb13d7550281802048f53c28f49653cdf7c5b278f0c29a701e44f64f13122e9630d42b7b5c1b9ec977e12c5a2a62391dff306044f7c31dbf55ba16024db9861de5ff2a64587bce108e3dc0f440a03819bcd539a78b0950d780bc0675bdf0c5e1c1549eb4400f76eb27eb9a6baf45f51726975c5b8d9390bb5b01254584d7f6491dbcbf180e8e6b02818057cb639017623e12219b707804193b8dbdeef8d5bee656cfbd634b24a65eea007df21cbe3246e01718558453b676c6ea5dce3235b578a7c8370e7fbf780e4fd68f283ab684e5a9c581604df38bd069b7cbf35cb5f5487da93dcbd31050f4dd86d9d3d30c0dbb27a4ae2736de21aa3e34fa801d1dda7d54cd79f3660f92695aed
+fwupg_verification_key=:30820122300d06092a864886f70d01010105000382010f003082010a0282010100baf58dbb3d2e733ec92af850f1c748af212bb14abb4ed470061b78b943512da01237f210efc11cb4f9477962f6fa4a061827f3e54696ff7eaf3982d0eef3fd984c2f4f6cff4b7d986236d1c222d7df8ef04d82254a4c50879004eb010b89c84e51b4a50b68aeada6b36478a37fe89a0818643bdeae535b691d52cd8287ca25ed3a4cbc1a0c53f7989e7304122674f7a06e006b26b21003021e775285bc6e23211441f5a854143ec8c3083a4949275590afcda9770527a1980b3962712f526e3ae13603945f0a3971e4ef0fd38af639bbf65c51983496894655c5fe6500ee3aeda854180575c2d07f82083986c018f275c1cc8bcfd0f9a6d106aaaaa404aed7770203010001
+fwupg_encrypt_decrypt_key=:6abf54af066f8f12ce059577ab6714f3
+fwupg_version:2
+
+This config file can then be used to generate the encrypted image as below:
+~# ./rsa_aesctr_fw_generator <path_to>/input.bin <path_to>/output.upg.bin fw_generator.config
+
+###############################################################################
+# Application side code
+###############################################################################
+#include <fw_upgrade_rsa_aes.h>
+
+int upgrade_fw()
+{
+	const uint8_t fwupg_verification_key[]="30820122300d06092a864886f70d01010105000382010f003082010a0282010100baf58dbb3d2e733ec92af850f1c748af212bb14abb4ed470061b78b943512da01237f210efc11cb4f9477962f6fa4a061827f3e54696ff7eaf3982d0eef3fd984c2f4f6cff4b7d986236d1c222d7df8ef04d82254a4c50879004eb010b89c84e51b4a50b68aeada6b36478a37fe89a0818643bdeae535b691d52cd8287ca25ed3a4cbc1a0c53f7989e7304122674f7a06e006b26b21003021e775285bc6e23211441f5a854143ec8c3083a4949275590afcda9770527a1980b3962712f526e3ae13603945f0a3971e4ef0fd38af639bbf65c51983496894655c5fe6500ee3aeda854180575c2d07f82083986c018f275c1cc8bcfd0f9a6d106aaaaa404aed7770203010001";
+	const uint8_t fwupg_encrypt_decrypt_key[]="6abf54af066f8f12ce059577ab6714f3";
+
+	uint8_t decrypt_key[AES_KEY_LEN];
+	uint8_t verification_key[RSA_PUBLIC_KEY_LEN];
+
+	hex2bin(fwupg_verification_key, verification_key, sizeof(verification_key));
+	hex2bin(fwupg_encrypt_decrypt_key, decrypt_key, sizeof(decrypt_key));
+	int ret = rsa_aes_client_mode_upgrade_fw(FC_COMP_FW,
+			"http://<ip_addr>/output.upg.bin",
+			verification_key, decrypt_key, NULL);
+	if (ret == WM_SUCCESS)
+		pm_reboot_soc();
+	return ret;
+}

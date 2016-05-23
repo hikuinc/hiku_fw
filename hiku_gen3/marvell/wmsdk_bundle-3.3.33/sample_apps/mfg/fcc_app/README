@@ -1,0 +1,6 @@
+
+Please use layout-fcc.txt available inside src/ folder to flash binaries on the board.
+
+FCC App requires using manufacturing WiFi firmware.
+
+Please refer to Application Note for Enabling FCC certification testing using WMSDK.

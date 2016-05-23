@@ -1,0 +1,11 @@
+#define	SINGLE_THREADED
+#define	NO_FILESYSTEM
+#define	NO_DEV_RANDOM
+#define	HAVE_AESCCM
+#define	HAVE_AESGCM
+#define	HAVE_ECC
+#define	NO_RC4
+#define	NO_ERROR_STRINGS
+#define	NO_DH
+#define	NO_MD4
+#define RSA_DECODE_EXTRA

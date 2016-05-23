@@ -1,0 +1,59 @@
+menu "HTTP Server (HTTPD)"
+config ENABLE_HTTP_SERVER
+       prompt "Enable HTTP support (port 80)"
+       bool
+       default y
+
+config ENABLE_HTTPS_SERVER
+       prompt "Enable HTTPS support (port 443)"
+       bool
+       depends on ENABLE_TLS
+       default n
+
+config HTTP_CLIENT_SOCKETS
+       int "Max simultaneous active HTTP client sockets"
+       range 1 10
+       default 1
+       help
+                HTTP Server generally accepts a single client connection,
+		 finishes all activities on it, closes the socket and
+		 then handles further requests.
+		 However, there may be a need to handle new connections
+		 without closing earlier ones.
+		 This configuration defines the maximum number of such
+		 simultaneous active client connections that the HTTP
+		 Server can handle.
+
+config ENABLE_HTTPD_STATS
+       bool
+       default y
+       help
+		This is a hidden configuration to enable HTTPD stats
+		collection. Can be brought out to menu later when
+		required. It is kept default enabled as it was always
+		enabled before this configuration was added.
+
+config ENABLE_HTTPD_KEEPALIVE
+	bool
+	prompt "Enable Keep Alive mechanism for connections"
+	default y
+	help
+		Keep Alive is used by the HTTPD server to check if the
+		client is active. If the client has gone offline without
+		closing the socket, the keep alive mechanism will detect
+		this and close the socket after appropriate time.
+		Enabling this is recommended. However, when this is enabled,
+		the client cannot go into sleep for longer durations.
+
+config ENABLE_HTTPD_PURGE_LRU
+	bool
+	prompt "Enable LRU based client socket purge"
+	default n
+	help
+		If this is enabled, in order to serve new client requests,
+		the webserver will terminate the least recently used (LRU)
+		connection if there is no room for accepting a new request.
+		The maximum possible connections are governed by
+		CONFIG_HTTP_CLIENT_SOCKETS
+
+endmenu

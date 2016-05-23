@@ -1,0 +1,76 @@
+###############################################################################
+# Encrypted Firmware Generator Utility
+# For SHA512 Checksum + ED25519 Signature + Chacha-20 Encryption
+###############################################################################
+The purpose of this utility is to generate an encrypted and signed firmware
+binary to be used for secure upgrades specification version 0001/0002.
+This should be used for secure firmware upgrades using the
+ed_chacha_client_mode_upgrade_fw() and ed_chacha_server_mode_upgrade_fw()
+APIs.
+
+###############################################################################
+# Compilation
+###############################################################################
+The firmware generator utility supports ED25519-CHACHA20 as well as RSA-AES
+combinations for generating encrypted images. By default, it is configured
+to be used for ED25519-CHACHA20. For compilation, just use make
+
+~# cd sdk/tools/host-tools/fw_generator/
+~# make clean
+~# make
+
+###############################################################################
+# Usage
+###############################################################################
+In order to generate an encrypted image, first we need a set of keys viz.
+* Firmware Signing Key : The key that will be used by the fw_generator utility
+  to sign the firmware image.
+* Firmware Verification Key : The key that will be used by the application
+  to validate the source of the image (this is a complementary of the Firmware
+  Signing Key)
+* Firmware encryption/decryption key : This is a symmetric key that will be
+  used by fw_generator utility for encryption and by the application for
+  decryption
+
+The firmware generator utility can be used to generate these keys, which can
+be stored in a configuration file as below:
+
+~# ./ed_chacha_fw_generator config  > fw_generator.config
+
+A sample config file is as below:
+fwupg_signing_key=:017f912f15968ce85747f14b40902ad67a5fd17c9a0df222704f4ee65f9552bc
+fwupg_verification_key=:e281aa4515a5fada99cb7070f9a491d594a45020f0fd0176b44fcbfee9169d60
+fwupg_encrypt_decrypt_key=:4ba3fd93a58766b6f927aec116c3925ea4e2d3a093a88e85622434299b4e39e4
+fwupg_version:2
+
+This config file can then be used to generate the encrypted image as below:
+~# ./ed_chacha_fw_generator <path_to>/input.bin <path_to>/output.upg.bin fw_generator.config
+
+###############################################################################
+# Application side code
+###############################################################################
+
+The applications must have the Firmware Verification Key and
+Firmware encryption/decryption key pre-programmed. It is recommended to have
+these in a read-only manufacturing partition. However, for the sake of simplicity,
+the following sample code uses hard coded keys.
+
+#include <fw_upgrade_ed_chacha.h>
+int upgrade_fw() {
+	const uint8_t fwupg_verification_key[]=
+		"e281aa4515a5fada99cb7070f9a491d594a45020f0fd0176b44fcbfee9169d60";
+	const uint8_t fwupg_encrypt_decrypt_key[]=
+		"4ba3fd93a58766b6f927aec116c3925ea4e2d3a093a88e85622434299b4e39e4";
+
+	uint8_t decrypt_key[ED_CHACHA_DECRYPT_KEY_LEN];
+	uint8_t verification_key[ED_CHACHA_VERIFICATION_KEY_LEN];
+
+	hex2bin(fwupg_verification_key, verification_key, sizeof(verification_key));
+	hex2bin(fwupg_encrypt_decrypt_key, decrypt_key, sizeof(decrypt_key));
+	int ret = ed_chacha_client_mode_upgrade_fw(FC_COMP_FW,
+			"http://<ip_addr>/output.upg.bin",
+			verification_key, decrypt_key, NULL);
+	if (ret == WM_SUCCESS)
+		pm_reboot_soc();
+	return ret;
+}

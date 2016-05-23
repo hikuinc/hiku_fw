@@ -1,0 +1,73 @@
+0. Getting Started
+------------------
+If you haven't already, please read the following:
+    - Introducing WMSDK
+    - Development Host Setup
+    - WMSDK Developer Tutorial
+
+
+1. Building everything
+----------------------
+
+$ make
+
+This builds all the sample applications, and boot2 for the MW300_RD development
+board.
+
+$ make clean
+
+This cleans all the generated artifacts.
+
+1.1 Building only one app
+-------------------------
+$ make APP=sample_apps/wlan/wm_demo
+$ make APP=sample_apps/wlan/wm_demo wm_demo.app.clean
+
+1.2 Building with XIP support
+-----------------------------
+$ make XIP=1
+
+
+1.3 Building with Secure Boot support
+-------------------------------------
+$ make SECURE_BOOT=1
+
+Please refer to sdk/tools/host-tools/secureboot/README for more details.
+
+1.4 Building for 88MC200
+------------------------
+$ make mc200_8801_defconfig
+$ make BOARD=mc200_8801
+
+
+1.5 Build for a specific board
+------------------------------
+$ make BOARD=<board_name>
+ OR
+$ make BOARD_FILE=/path/to/board_file
+
+All the supported boards are available in sdk/src/boards
+
+
+2. Selecting another WMSDK configuration
+-----------------------------------------
+
+$ make <defconfig>
+
+All the supported defconfigs can be found at sdk/config By
+default the WMSDK come pre-configured with mw300_defconfig. If you
+wish to continue using this configuration, you may skip this step.
+
+If you wish to build your own SDK configuration, you can do so by
+running
+
+$ make menuconfig (UI driven; only supported on Linux/Mac)
+ OR
+$ make config
+
+If you have a configuration file saved somewhere:
+$ cp <config file> sdk/.config
+$ make oldconfig
+
+
+

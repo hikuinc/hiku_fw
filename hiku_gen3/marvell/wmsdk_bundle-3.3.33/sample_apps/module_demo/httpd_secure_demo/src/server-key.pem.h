@@ -1,0 +1,11 @@
+const unsigned char server_key[] = { "\
+-----BEGIN RSA PRIVATE KEY-----\n\
+MIIBOwIBAAJBAMZ7wGiBL96CP/msw4ZKZrfs1PH2ZCH/9aI0QtA4n8bdO24mZWpU\n\
+lt3Se+s2oq5+Kp5+VqW2h58VxxhmfhZ34qcCAwEAAQJBAJSbGxgjgV+rTZL2Ev58\n\
+viN/IoB25cm/Bn4Heu7DNn2A2kpdGX2cCaf7rEQoIKCiHxvopvxOcd/7nLS/gNli\n\
+dCECIQD/cX/9fvB1Uajw0fmvwNON9+3P9uJSqpig90zL32pwjQIhAMbqee9TBMN4\n\
+TxXbgWqA92PrCXe8WDZ3PwoJqdR6MRUDAiEAny+TDF1z6hiWiGTCDgXDkKBlwgjf\n\
+p5aKgR077XzwLu0CICVpWEGg1ZaF/CnaPP7w/pZ2UDOK4vRrfRnAM4bY7H5NAiBS\n\
+1eXJ/MCZ2uPfpl7XK2BU9P69KdKUk5WHxdRchVvcDg==\n\
+-----END RSA PRIVATE KEY-----\n\
+" };

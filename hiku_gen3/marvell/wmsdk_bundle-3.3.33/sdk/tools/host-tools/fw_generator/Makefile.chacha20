@@ -1,0 +1,30 @@
+# Copyright (C) 2008-2015, Marvell International Ltd.
+# All Rights Reserved.
+
+# This Makefile.chacha20 uses the the chacha-20 sources from the sdk
+# located at path /path/to/sdk/src/crypto/
+#
+#
+
+SDK_DIR ?= $(CURDIR)/../../../../
+
+chacha20_dir := $(SDK_DIR)/sdk/src/middleware/crypto/chacha-20
+chacha20-cflags-y := $(CFLAGS)
+
+SRCS := $(chacha20_dir)/chacha.c \
+     $(chacha20_dir)/chacha20.c
+
+OBJS := $(notdir $(SRCS:.c=.o))
+
+%.o: $(chacha20_dir)/%.c
+	@echo " [$(CC)] ${@:.o=.c}"
+	$(AT)$(CC) $(chacha20-cflags-y) -c -o $@ $^
+
+all: libchacha-20.a
+
+libchacha-20.a: $(OBJS)
+	@echo " [ar] $@"
+	$(AT)$(AR) -r $@ $(OBJS)
+
+clean:
+	$(AT)rm -f *.o *.a *.d

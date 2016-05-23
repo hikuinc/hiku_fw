@@ -1,0 +1,62 @@
+R E A D M E
+===========
+
+This application (otp_prog) programs secure boot scheme related
+configurations in OTP memory of MW30x SoC. Following are
+detailed steps to execute and customize this application for
+various requirements:
+
+Directory structure
+-------------------
+$ tree -l sample_apps/mfg/otp_prog/
+|-- Makefile
+|-- mw300_otp_prog.ld
+`-- src
+    |-- main.c
+    |-- wlan_fw.h
+    `-- secure_config.h
+
+** Note: If secure boot is enabled from WMSDK using SECURE_BOOT option
+then secure_config.h will be auto-generated based on default security
+scheme. In that case, secure_config.h should not be modified.
+
+Configuration
+-------------
+* Secure boot configuration is located in secure_config.h file
+* Default scheme is encrypted only boot mode, this can be
+  modified using fields ENCRYPTED_BOOT and SIGNED_BOOT
+* To change AES-CCM key, modify field AES_CCM256_KEY in header file,
+  format should be 64 hex characters (Note: first 2 characters
+  represents first byte of key)
+* To change RSA_PUB_KEY hash, modify field RSA_PUB_KEY_SHA256 in header
+  file, format should be 64 hex characters (Note: first 2 characters
+  represents first byte of sha256 sum). Following commands can be used
+  to generate this field:
+      a] Generate RSA Private key 2048
+         $ openssl genrsa 2048 > prvKey.pem
+
+      b] Generate RSA Public key from the Private Key
+         $ openssl rsa -in prvKey.pem -pubout -out pubKey.der -outform DER
+
+      c] Generate SHA256 Checksum
+         $ sha256sum pubKey.der
+* In default scheme JTAG is kept enabled, this can be disabled by
+  modifying JTAG_STATUS field in this file
+
+** Note: Once JTAG is disabled in OTP configuration, and this configuration
+   is burned in OTP, then JTAG will remain locked and inaccessible forever.
+   Tools for writing to flash using JTAG will no longer work.
+
+Programming OTP Memory
+-----------------------
+* Load otp_prog application in target RAM using,
+  $ cd bin/sdk/tools/mw300/OpenOCD
+  $ sudo ./ramload.sh </path/to/otp_prog.axf>
+
+* On minicom/console, let application bootup
+  [otp_app] OTP Programming Application v0.x Started
+
+* On minicom/console, run command to program OTP memory
+  $ otp_write
+
+* This should program required configuration to OTP memory!

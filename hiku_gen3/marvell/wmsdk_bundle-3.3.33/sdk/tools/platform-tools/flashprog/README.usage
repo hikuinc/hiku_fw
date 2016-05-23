@@ -1,0 +1,91 @@
+This README explains about the usage of different flashprog options.
+
+1. Normal Usage
+===============
+
+	1. Flash layout:
+		$ sudo ./flashprog.sh -l layout.txt
+
+	2. Flash component(s):
+		$ sudo ./flashprog.sh --mcufw /path/to/mcufw --ftfs /path/to/ftfs
+			--wififw /path/to/wififw --boot2 /path/to/boot2
+
+	Note: The above two commands can also be combined into a single command.
+
+	3. Batch mode for configuration:
+		$ sudo ./flashprog.sh -l layout.txt -b config.txt
+
+		where config.txt is of the form
+		$ cat config.txt
+		mcufw 	/path/to/mcufw
+		ftfs 	/path/to/ftfs
+		wififw 	/path/to/wififw
+		boot2 	/path/to/boot2
+
+
+2. Manufacturing Usage
+======================
+
+	In case of manufacturing, where large number of modules are to be flashed
+	with the same binaries, the following procedure is useful and consumes
+	less time.
+
+	Steps:
+	i. Flash a single module using any of the configuration options mentioned
+	above. Make sure that the module works as expected.
+
+	ii. Read the flash content using the command
+
+		$ sudo ./flashprog.sh -r 0 0x0 0x100000 primary.bin
+
+	This command reads the primary flash from address 0x0 and length
+	0x100000 (1MB) into file primary.bin
+	Similarly, if secondary flash is being used, populate its contents
+	into secondary.bin.
+
+	Note: This step is a one time activity and may take considerable
+	amount of time depending on the length of data to be read.
+
+	The approximate time required to read 1MB primary flash using the above
+	command on mw300 is: 4m30.214s
+
+	iii. Now that primary.bin and secondary.bin are ready, use the
+	following batch command to erase/flash a new module
+
+		$ sudo ./flashprog.sh -p mfg.txt
+
+		where mfg.txt is of the form
+		$ cat mfg.txt
+		# Operation 	Device    Address   	Filename
+		erase-all 	0
+		erase-all 	1
+		write 		0  	  0x0 	        primary.bin
+		write 		1  	  0x0 	        secondary.bin
+
+	The approximate time required to erase and write 1MB primary flash
+	using the above command on mw300 is: 0m42.219s
+
+	iv. Once this is done for a module, test that the module works as
+	expected. If yes, then flash all the remaining modules just by using
+	step iii above.
+
+	Also, each of the manufacturing options can be used explicitly as:
+	1. Read (-r | --read) : Read from flash into file
+		$ sudo ./flashprog.sh -r <flash_id> <start_address> <length> <filename>
+
+	2. Write (-w | --write) : Write to flash from file
+		$ sudo ./flashprog.sh -w <flash_id> <start_address> <filename>
+	Note: The write command only writes to the flash and does not erase the
+	flash before writing.
+
+	3. Erase (-e | --erase) : Erase flash
+		$ sudo ./flashprog.sh -e <flash_id> <start_address> <length>
+
+	4. Erase entire Flash (-ea | --erase-all) : Erase entire flash
+		$ sudo ./flashprog.sh -ea <flash_id>
+
+	Note: These options can also be used together in a single command. In that case,
+	the order of execution is the same in which these options are provided.
+
+
+For more information, please use --help option to flashprog.sh.

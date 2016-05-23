@@ -1,0 +1,106 @@
+menu "TCP/IP"
+
+menu "TCP/IP stack"
+config MAX_SOCKETS_TCP
+	int "Max simultaneous active TCP sockets"
+	range 1 32
+	default 8
+	help
+	 This number represents maximum number of simultaneous
+	 active TCP sockets.
+	 These sockets would be consumed by both TCP server and
+	 TCP client applications running on the device.
+
+	 Typical users of these sockets are:
+	 a) Client sockets created by httpd module, which are
+	 represented by CONFIG_HTTP_CLIENT_SOCKETS
+	 b) Sockets used in httpc module.
+	 Client sockets of httpd represents the subset of
+	 TCP sockets, hence value of MAX_SOCKETS_TCP should
+	 always be greater than CONFIG_HTTP_CLIENT_SOCKETS.
+
+	 Footprint impact:
+	 Each of these sockets takes up approximately 3244 bytes of RAM.
+	 84 + 2 (default value for CONFIG_TCP_SND_BUF_COUNT) * 1580
+
+	 Please note the difference between this configuration
+	 and MAX_LISTENING_SOCKETS_TCP.
+
+config MAX_LISTENING_SOCKETS_TCP
+	int "Max simultaneous active TCP listening sockets"
+	range 1 16
+	default 4
+	help
+	 This number represents maximum number of simultaneous
+	 active TCP sockets in LISTEN mode.
+	 These sockets would be consumed by only TCP server
+	 applications running on the device.
+
+	 Typical user of listening socket is httpd module, which
+	 consumes 2 listening sockets, one for IPv4 & one for IPv6.
+	 Set the value of this option accordingly.
+
+	 Footprint impact:
+	 Each of these sockets takes up approximately 84 bytes of RAM.
+
+	 Please note the difference between this configuration
+	 and MAX_SOCKETS_TCP.
+
+config MAX_SOCKETS_UDP
+	int "Max simultaneous active UDP sockets"
+	range 1 32
+	default 6
+	help
+	 This number represents maximum number of simultaneous
+	 active UDP sockets.
+	 These sockets would be consumed by UDP server and
+	 UDP client applications running on the device.
+
+	 Typical user of UDP socket is mDNS module, which
+	 consumes 3 UDP sockets, one for IPv4, one for IPv6
+	 and one for internal communication.
+	 Set the value of this option accordingly.
+
+	 Footprint impact:
+	 Each of these sockets takes up approximately 1580 bytes of RAM.
+
+config TCP_SND_BUF_COUNT
+	int "Max number of TCP Send buffers per socket"
+	range 1 8
+	default 2
+	help
+	 This number represents maximum number of TCP send buffers
+	 allocated per socket.
+	 Size of each buffer is 1580 bytes. Hence applications will
+	 get (1580 * CONFIG_TCP_SND_BUF_COUNT) bytes of buffer space
+	 for TCP communication.
+
+	 Footprint impact:
+	 Increase by 1 in this value would increase the RAM usage by
+	 (1580 * CONFIG_MAX_SOCKETS_TCP) bytes
+
+	 Please note that this is a advanced configuration option.
+	 Default value of 2 is suitable for common use cases.
+	 Please change the default value of the parameter only if you
+	 know the implications.
+
+config TCPIP_STACK_TX_HEAP_SIZE
+	int "TCP/IP Stack Transmit Heap size (in KiloBytes)"
+	range 0 64
+	default 0
+	help
+	 This number represents maximum size of TCP/IP stack Heap
+	 (in KiloBytes), which is used for packets getting transmitted out of
+	 the device. Note that this heap space is located in RAM.
+
+	 By default, the value of this Heap size is determined by the values of
+	 various CONFIG options including: CONFIG_MAX_SOCKETS_TCP,
+	 CONFIG_MAX_LISTENING_SOCKETS_TCP, CONFIG_MAX_SOCKETS_UDP and
+	 CONFIG_TCP_SND_BUF_COUNT.
+	 Please refer to the help text of these CONFIG options to understand the
+	 impact of each option on the RAM usage.
+	 The value of this CONFIG option will be used only if it is non-zero,
+	 else the heap size is calculated using the above method.
+endmenu
+
+endmenu

@@ -1,0 +1,6 @@
+11:23:26 **** Incremental Build of configuration Default for project hiku ****
+make all 
+/Applications/Xcode.app/Contents/Developer/usr/bin/make APP=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/ BIN_DIR=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku//bin -I/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/inc -C../wmsdk_bundle-3.3.33 all
+
+11:23:26 Build Finished (took 280ms)
+

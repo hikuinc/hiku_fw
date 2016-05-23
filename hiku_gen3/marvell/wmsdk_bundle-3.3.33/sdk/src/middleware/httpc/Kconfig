@@ -1,0 +1,30 @@
+menu "HTTP Client"
+
+config MAX_REQ_RESP_HDR_SIZE
+       prompt "Max supported request/response HTTP header size"
+       int
+       range 512 512000
+       default 2048
+       help
+	 To support various features like header value parsing and retrieval
+	 HTTP client needs to keep the entire HTTP header in a single
+	 contiguous buffer. This configuration selects the size of this
+	 buffer. The default value has been found to be sufficient. If your
+	 particular app needs more or less it can be adjusted accordingly.
+
+config ENABLE_HTTPC_SECURE
+       prompt "Enable HTTPS support in HTTP client (over port 443)"
+       bool
+       depends on ENABLE_TLS
+       default n
+
+config ENABLE_HTTPC_MODIFY_TIME
+       prompt "Enable the use of \"modify_time\" field in HTTP header in HTTP client"
+       bool
+       default n
+       help
+	 Select this option if you need to access the "modify_time" field of HTTP header of the
+	 HTTP response packet. Enabling this option would result in increase of approximately
+	 1500 bytes of footprint.
+
+endmenu

@@ -1,0 +1,8 @@
+menu "PROVISIONING"
+
+config ENABLE_SCAN
+       bool "Scan Support"
+       def_bool y
+       help
+         This option enables the use of scan support.
+endmenu
