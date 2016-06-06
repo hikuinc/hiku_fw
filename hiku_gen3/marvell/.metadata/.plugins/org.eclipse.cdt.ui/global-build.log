@@ -3,3 +3,2315 @@ make -j7 all
 11:23:26 **** Incremental Build of configuration Default for project hiku ****
 make all 
 /Applications/Xcode.app/Contents/Developer/usr/bin/make APP=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/ BIN_DIR=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku//bin -I/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/inc -C../wmsdk_bundle-3.3.33 all
+15:02:13 **** Incremental Build of configuration Default for project wmsdk_bundle-3.3.33 ****
+make -j7 all 
+*
+* WMSDK Configuration
+*
+*
+* System
+*
+Platform Type
+  1. 88MC200-based Platforms (CPU_MC200) (NEW)
+> 2. 88MW300-based Platforms (CPU_MW300)
+choice[1-2]: 2
+Wi-Fi Chipset
+  1. 878x-based Chipset (WiFi_878x) (NEW)
+> 2. 8801-based Chipset (WiFi_8801)
+choice[1-2]: 2
+Enable ROM libraries in 88MW300 (ENABLE_ROM_LIBS) [N/y/?] (NEW) n
+PM3 Support for MCU (ENABLE_MCU_PM3) [N/y/?] (NEW) n
+Enable C++ support (ENABLE_CPP_SUPPORT) [N/y/?] (NEW) n
+*
+* Application Framework
+*
+WPS Provisioning support (APP_FRM_PROV_WPS) [N/y/?] n
+Enable CLI history (APP_FRM_CLI_HISTORY) [Y/n] (NEW) y
+*
+* Modules
+*
+*
+* WLAN
+*
+*
+* Wifi driver
+*
+Host Supplicant Support (HOST_SUPP) [N/y/?] (NEW) n
+Host PMK calculation Support (HOST_PMK) [Y/n/?] y
+Extended Scan Support (EXT_SCAN) [N/y/?] (NEW) n
+802.11 WMM Support (WMM) [Y/?] (NEW) y
+802.11n support (11N) [Y/n/?] y
+WLAN FW Heartbeat Event Support (WLAN_FW_HEARTBEAT) [Y/n/?] (NEW) y
+5GHz Support(Band A) (5GHz_SUPPORT) [N/y/?] n
+WiFi Fast Path (WLAN_FAST_PATH) [N/y/?] n
+Maximum scan entries (MAX_AP_ENTRIES) [20] (NEW) 20
+Max Network Profiles (WLAN_KNOWN_NETWORKS) [5] (NEW) 5
+*
+* uAP configuration
+*
+*
+* Wifi extra debug options
+*
+Enable extra debug (WIFI_EXTRA_DEBUG) [N/y/?] (NEW) n
+WiFi Direct support (P2P) (P2P) [N/y/?] (NEW) n
+WPS 2.0 support (WPS2) [N/y/?] n
+*
+* WPA2 Enterprise Support
+*
+WPA2 Enterprise (EAP-TLS) (WPA2_ENTP) [N/y/?] (NEW) n
+*
+* MDNS
+*
+Maximum number of mDNS service instances that can be announced (MDNS_MAX_SERVICE_ANNOUNCE) [3] (NEW) 3
+mDNS Full-Fledged Query(monitoring) APIs (MDNS_QUERY) [N/y/?] n
+Extended mDNS (XMDNS) [N/y/?] (NEW) n
+*
+* TLS
+*
+Enable TLS Library (CyaSSL) (ENABLE_TLS) [Y/n/?] (NEW) y
+Enable CyaSSL debug (ENABLE_CYASSL_DEBUG) [N/y] (NEW) n
+*
+* PROVISIONING
+*
+Scan Support (ENABLE_SCAN) [Y/n/?] (NEW) y
+*
+* HTTP Server (HTTPD)
+*
+Enable HTTP support (port 80) (ENABLE_HTTP_SERVER) [Y/n] (NEW) y
+Enable HTTPS support (port 443) (ENABLE_HTTPS_SERVER) [N/y] (NEW) n
+Max simultaneous active HTTP client sockets (HTTP_CLIENT_SOCKETS) [1] (NEW) 1
+Enable Keep Alive mechanism for connections (ENABLE_HTTPD_KEEPALIVE) [Y/n/?] (NEW) y
+Enable LRU based client socket purge (ENABLE_HTTPD_PURGE_LRU) [N/y/?] (NEW) n
+*
+* HTTP Client
+*
+Max supported request/response HTTP header size (MAX_REQ_RESP_HDR_SIZE) [2048] (NEW) 2048
+Enable HTTPS support in HTTP client (over port 443) (ENABLE_HTTPC_SECURE) [N/y] (NEW) n
+Enable the use of "modify_time" field in HTTP header in HTTP client (ENABLE_HTTPC_MODIFY_TIME) [N/y/?] (NEW) n
+*
+* JSON
+*
+Enable Float support (JSON_FLOAT) [N/y/?] (NEW) n
+*
+* Firmware Upgrades
+*
+ED25519 and Chacha-20 based Secure Upgrades (FWUPG_ED_CHACHA) [Y/n/?] (NEW) y
+RSA and AES based Secure Upgrades (FWUPG_RSA_AES) [N/y/?] (NEW) n
+WiFi Firmware Upgrade Support (WIFI_FW_UPGRADE) [Y/n] (NEW) y
+*
+* TCP/IP
+*
+*
+* TCP/IP stack
+*
+Max simultaneous active TCP sockets (MAX_SOCKETS_TCP) [8] (NEW) 8
+Max simultaneous active TCP listening sockets (MAX_LISTENING_SOCKETS_TCP) [4] (NEW) 4
+Max simultaneous active UDP sockets (MAX_SOCKETS_UDP) [6] (NEW) 6
+Max number of TCP Send buffers per socket (TCP_SND_BUF_COUNT) [2] (NEW) 2
+TCP/IP Stack Transmit Heap size (in KiloBytes) (TCPIP_STACK_TX_HEAP_SIZE) [0] (NEW) 0
+*
+* XZ Decompression
+*
+Enable XZ based decompression for WiFi firmware image (XZ_DECOMPRESSION) [Y/n] (NEW) y
+*
+* BT Support
+*
+Support for handling Bluetooth as well as Wi-Fi commands in the SDIO driver (BT_SUPPORT) [N/y] (NEW) n
+*
+* IPv6 Support
+*
+Support for IPv6 (experimental) (IPV6) [N/y] (NEW) n
+*
+* Auto IP Support
+*
+Support for Auto IP (experimental) (AUTOIP) [N/y/?] (NEW) n
+*
+* Bonjour Conformance fixes
+*
+Bonjour Conformance fixes (temporary) (BONJ_CONFORMANCE) [N/y/?] (NEW) n
+Work Queue CLI (WORK_QUEUE_CLI) [N/y/?] (NEW) n
+*
+* System Work Queue
+*
+System Work Queue Stack (SYS_WQ_STACK) [1024] (NEW) 1024
+*
+* CMSIS DSP Library
+*
+Support for CMSIS DSP Library (CMSIS_DSPLIB) [N/y/?] (NEW) n
+*
+* Device Drivers
+*
+*
+* Internal
+*
+*
+* I2C configuration
+*
+*
+* I2C debug options
+*
+Dump all I/O bytes (DRV_I2C_DEBUG_DUMP) [N/y/?] (NEW) n
+USB Driver support (USB_DRIVER) [N/y/?] (NEW) n
+*
+* External
+*
+External AT25L08 Serial Flash Driver support (SPI_FLASH_DRIVER) [N/y/?] (NEW) n
+*
+* Miscellaneous
+*
+Max flash partitions allowed (FLASH_PARTITION_COUNT) [10] (NEW) 10
+Configures UART RCV Buffers of size 1024 (UART_LARGE_RCV_BUF) [N/y/?] (NEW) n
+Software watchdog (SW_WATCHDOG) [N/y/?] n
+Hardware RTC (HW_RTC) [Y/n/?] (NEW) y
+Profiler (PROFILER) [N/y/?] (NEW) n
+Link Time Optimization (Experimental) (ENABLE_LTO) [N/y/?] (NEW) n
+*
+* Development and Debugging
+*
+Enable error logs (ENABLE_ERROR_LOGS) [Y/n/?] (NEW) y
+Enable warning logs (ENABLE_WARNING_LOGS) [Y/n/?] (NEW) y
+Debug build (DEBUG_BUILD) [Y/n/?] (NEW) y
+Enable FreeRTOS runtime stats support (ENABLE_FREERTOS_RUNTIME_STATS_SUPPORT) [N/y/?] (NEW) n
+Enable stack overflow check (ENABLE_STACK_OVERFLOW_CHECK) [Y/n/?] (NEW) y
+Enable ASSERTS (ENABLE_ASSERTS) [Y/n/?] (NEW) y
+Enable Debugging Output (DEBUG_OUTPUT) [Y/n] (NEW) y
+  Wireless Connection Manager (WLCMGR_DEBUG) [N/y] n
+  Health monitor (HEALTHMON_DEBUG) [N/y] (NEW) n
+  HTTP Web Server (HTTPD_DEBUG) [N/y] n
+  Transport Layer Security (TLS_DEBUG) [N/y] (NEW) n
+  Wireless Internals (WIFI_DEBUG) [N/y] (NEW) n
+  Power Manager (PWR_DEBUG) [N/y] (NEW) n
+  Wake Locks (WAKELOCK_DEBUG) [N/y] (NEW) n
+  DHCP Server (DHCP_SERVER_DEBUG) [N/y] n
+  Provisioning (PROVISIONING_DEBUG) [N/y] n
+  Supplicant (SUPPLICANT_DEBUG) [N/y] (NEW) n
+  HTTP Client (HTTPC_DEBUG) [N/y] (NEW) n
+  Block Allocator (BLOCK_ALLOCATOR_DEBUG) [N/y] (NEW) n
+  CRC (CRC_DEBUG) [N/y] (NEW) n
+  rfget (RFGET_DEBUG) [N/y] (NEW) n
+  Cryptography (CRYPTO_DEBUG) [N/y] (NEW) n
+  JSON (JSON_DEBUG) [N/y] (NEW) n
+  Flash R/W (FLASH_DEBUG) [N/y] (NEW) n
+  mDNS (MDNS_DEBUG) [N/y] n
+  mDNS: Check arguments for validity (MDNS_CHECK_ARGS) [N/y] n
+  Application Framework (APP_DEBUG) [N/y] (NEW) n
+  Application Framework (Internal) (APP_FRAME_INTERNAL_DEBUG) [N/y] (NEW) n
+  Low Level (LL_DEBUG) [Y/n/?] (NEW) y
+    os Level (OS_DEBUG) [N/y] (NEW) n
+Heap debugger (HEAP_DEBUG) [N/y/?] n
+psm (PSM_DEBUG) [N/y] (NEW) n
+ftfs (FTFS_DEBUG) [N/y] (NEW) n
+Semaphore Debug (SEMAPHORE_DEBUG) [N/y] (NEW) n
+Enable Test Setups (ENABLE_TESTS) [N/y] n
+Test Build Flag (AUTO_TEST_BUILD) [N/y/?] n
+Configured using sdk/config/mw300_defconfig
+ [cc] sample_apps//assembly_demo/src/main.c
+ [cc] sample_apps//assembly_demo/src/add_them.s
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//cloud_demo/arrayent_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//cloud_demo/aws_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/perf_demo.ftfs
+ [cc] sample_apps//cloud_demo/evrythng_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//cloud_demo/xively_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/adc/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/gpio/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/aws_demo.ftfs
+ [cc] sample_apps//io_demo/dac_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/i2c/advanced/master_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/i2c/advanced/slave_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/i2c/simple/master_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/i2c/simple/slave_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/ssp/simple/master_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/ssp/simple/slave_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/ssp/ssp_full_duplex_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/uart/uart_dma_rx_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/uart/uart_dma_tx_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/uart/uart_echo_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//power_profiles/deepsleep_pm4/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//power_profiles/pdn_pm4/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/io_demo/uart/uart_test/src/main.c
+ [cc] sample_apps//test_apps/io_demo/uart/uart_test/src/uart.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/io_demo/i2c/i2c_test/src/main.c
+ [cc] sample_apps//test_apps/io_demo/i2c/i2c_test/src/i2c.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/io_demo/ssp/ssp_test/src/main.c
+ [cc] sample_apps//test_apps/io_demo/ssp/ssp_test/src/ssp.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//os_api_demo/mutex_demo/src/main.c
+ [cc] sample_apps//os_api_demo/mutex_demo/src/mutex_demo.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//os_api_demo/semaphore_demo/src/main.c
+ [cc] sample_apps//os_api_demo/semaphore_demo/src/semaphore_demo.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//os_api_demo/timer_demo/src/main.c
+ [cc] sample_apps//os_api_demo/timer_demo/src/timer_demo.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//module_demo/cli_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//module_demo/psm_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//module_demo/webhandler_demo/src/main.c
+ [cc] sample_apps//module_demo/webhandler_demo/src/json_webhandler.c
+ [cc] sample_apps//module_demo/webhandler_demo/src/text_webhandler.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//module_demo/websocket_demo/src/main.c
+ [cc] sample_apps//module_demo/websocket_demo/src/websocket.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//module_demo/fw_upgrade/secure_fw_upgrade_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//module_demo/fw_upgrade/low_level_fw_upgrade_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//module_demo/fw_upgrade/fw_upgrade_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//mfg/uart_wifi_bridge/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//mfg/fcc_app/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//net_demo/ntpc_demo/src/main.c
+ [cc] sample_apps//net_demo/ntpc_demo/src/ntpc.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//net_demo/server_demo/src/main.c
+ [cc] sample_apps//net_demo/server_demo/src/server.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//net_demo/client_demo/src/main.c
+ [cc] sample_apps//net_demo/client_demo/src/client.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//power_measure_demo/pm_mcu_wifi_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/all_in_one/src/main.c
+ [cc] sample_apps//test_apps/all_in_one/src/reset_prov_helper.c
+ [cc] sample_apps//test_apps/all_in_one/src/wmcloud.c
+ [cc] sample_apps//test_apps/all_in_one/src/wmcloud_helper.c
+ [cc] sample_apps//test_apps/all_in_one/src/aio_wps_cli.c
+ [cc] sample_apps//test_apps/all_in_one/src/wmcloud_ws.c
+ [cc] sample_apps//test_apps/all_in_one/src/aio_cloud.c
+ [cc] sample_apps//test_apps/all_in_one/src/mdns_helper.c
+ [cc] sample_apps//test_apps/all_in_one/src/wps_helper.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/qa1/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/qa2/src/main.c
+ [cc] sample_apps//test_apps/qa2/src/aes_test_main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/qa3/src/main.c
+ [cc] sample_apps//test_apps/qa3/src/reset_prov_helper.c
+ [cc] sample_apps//test_apps/qa3/src/wps_helper.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/all_in_one.ftfs
+ [cc] sample_apps//test_apps/qa3/src/mdns_helper.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/qa4/src/main.c
+ [cc] sample_apps//test_apps/qa4/src/reset_prov_helper.c
+ [cc] sample_apps//test_apps/qa4/src/wps_helper.c
+ [cc] sample_apps//test_apps/qa4/src/mdns_helper.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa3.ftfs
+ [cc] sample_apps//test_apps/os/rw_lock_demo/src/main.c
+ [cc] sample_apps//test_apps/os/rw_lock_demo/src/rp_rw_demo.c
+ [cc] sample_apps//test_apps/os/rw_lock_demo/src/rw_lock_demo.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/os/recursive_mutex_demo/src/main.c
+ [cc] sample_apps//test_apps/os/recursive_mutex_demo/src/mutex_demo.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa4.ftfs
+ [cc] sample_apps//test_apps/os/heap_alloc_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/pm_i2c_demo/pm_i2c_master/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/pm_i2c_demo/pm_i2c_slave/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wifi_driver_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_uap/src/main.c
+ [cc] sample_apps//wlan/wlan_uap/src/mdns_helper.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wm_demo/src/main.c
+ [cc] sample_apps//wlan/wm_demo/src/reset_prov_helper.c
+ [cc] sample_apps//wlan/wm_demo/src/led_indications.c
+ [cc] sample_apps//wlan/wm_demo/src/utility.c
+ [cc] sample_apps//wlan/wm_demo/src/mdns_helper.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_11d/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_mac/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_eu_cert/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_cal/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wm_demo.ftfs
+ [cc] sample_apps//wlan/wlan_low_power/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_power_save/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_pdn/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/uap_prov/src/main.c
+ [cc] sample_apps//wlan/uap_prov/src/reset_prov_helper.c
+ [cc] sample_apps//wlan/uap_prov/src/wps_helper.c
+ [cc] sample_apps//wlan/uap_prov/src/mdns_helper.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_sniffer/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_trpc_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_frame_inject_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uap_prov.ftfs
+ [cc] sample_apps//test_apps/qa1/test_subdir/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//tutorials/00getting_started/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//tutorials/01app_framework/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//tutorials/02provisioning/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//tutorials/03provisioning_webapp/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//tutorials/04discovery/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//tutorials/05local_control/src/main.c
+ [cc] sample_apps//tutorials/05local_control/src/plug_handlers.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//tutorials/06firmware_upgrades/src/main.c
+ [cc] sample_apps//tutorials/06firmware_upgrades/src/plug_handlers.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/03provisioning_webapp.ftfs
+ [cc] sample_apps//tutorials/06firmware_upgrades/src/fw_upgrade.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/04discovery.ftfs
+ [cc] sample_apps//tutorials/07led_pushbutton/src/main.c
+ [cc] sample_apps//tutorials/07led_pushbutton/src/plug_handlers.c
+ [cc] sample_apps//tutorials/07led_pushbutton/src/fw_upgrade.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/05local_control.ftfs
+ [cc] boot2/src/mw300/main.c
+ [cc] boot2/src/mw300/boot2.c
+ [cc] boot2/src/mw300/../utils/crc32.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/06firmware_upgrades.ftfs
+ [cc] boot2/src/mw300/aes.c
+ [cc] boot2/src/mw300/secure_boot2.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTSerializePublish.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTUnsubscribeClient.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTConnectClient.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTPacket.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/07led_pushbutton.ftfs
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTSubscribeClient.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTFormat.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTSubscribeServer.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTConnectServer.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTUnsubscribeServer.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTDeserializePublish.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTClient-C/src/MQTTClient.c
+ [cc] sdk/external/aws_iot/aws_iot_src/protocol/mqtt/aws_iot_embedded_client_wrapper/aws_iot_mqtt_embedded_client_wrapper.c
+ [cc] sdk/external/aws_iot/aws_iot_src/utils/aws_iot_json_utils.c
+ [cc] sdk/external/aws_iot/aws_iot_src/protocol/mqtt/aws_iot_embedded_client_wrapper/platform_wmsdk/network_interface.c
+ [cc] sdk/external/aws_iot/aws_iot_src/shadow/aws_iot_shadow_json.c
+ [cc] sdk/external/aws_iot/aws_iot_src/shadow/aws_iot_shadow_actions.c
+ [cc] sdk/external/aws_iot/aws_iot_src/shadow/aws_iot_shadow.c
+ [cc] sdk/external/aws_iot/aws_iot_src/shadow/aws_iot_shadow_records.c
+ [cc] sdk/external/aws_iot/aws_iot_src/protocol/mqtt/aws_iot_embedded_client_wrapper/platform_wmsdk/timer.c
+ [cc] sdk/external/evrythng/src/evrythng.c
+ [cc] sdk/external/evrythng/mqtt/src/marvell_api.c
+ [cc] sdk/external/evrythng/mqtt/src/Clients.c
+ [cc] sdk/external/evrythng/mqtt/src/Heap.c
+ [cc] sdk/external/evrythng/mqtt/src/LinkedList.c
+ [cc] sdk/external/evrythng/mqtt/src/Messages.c
+ [cc] sdk/external/evrythng/mqtt/src/MQTTClient.c
+ [cc] sdk/external/evrythng/mqtt/src/MQTTPacket.c
+ [cc] sdk/external/evrythng/mqtt/src/MQTTPacketOut.c
+ [cc] sdk/external/evrythng/mqtt/src/MQTTProtocolClient.c
+ [cc] sdk/external/evrythng/mqtt/src/MQTTProtocolOut.c
+ [cc] sdk/external/evrythng/mqtt/src/SSLSocket.c
+ [cc] sdk/external/evrythng/mqtt/src/TLSSocket.c
+ [cc] sdk/external/evrythng/mqtt/src/Socket.c
+ [cc] sdk/external/evrythng/mqtt/src/SocketBuffer.c
+ [cc] sdk/external/evrythng/mqtt/src/Thread.c
+ [cc] sdk/external/evrythng/mqtt/src/Tree.c
+ [cc] sdk/external/evrythng/mqtt/src/utf-8.c
+ [cc] sdk/external/expat-2.1.0/lib/xmlparse.c
+ [cc] sdk/external/expat-2.1.0/lib/xmlrole.c
+ [cc] sdk/external/expat-2.1.0/lib/xmltok.c
+ [cc] sdk/external/expat-2.1.0/lib/xmltok_impl.c
+ [cc] sdk/external/expat-2.1.0/lib/xmltok_ns.c
+ [cc] sdk/external/freertos/Source/list.c
+ [cc] sdk/external/freertos/Source/queue.c
+ [cc] sdk/external/freertos/Source/tasks.c
+ [cc] sdk/external/freertos/Source/event_groups.c
+ [cc] sdk/external/freertos/Source/croutine.c
+ [cc] sdk/external/freertos/Source/timers.c
+ [cc] sdk/external/freertos/Source/portable/MemMang/heap_4.c
+ [cc] sdk/external/freertos/Source/FreeRTOS-openocd.c
+ [cc] sdk/external/freertos/Source/portable/GCC/ARM_CM4F/port.c
+ [cc] sdk/external/libxively/src/libxively/xi_time.c
+ [cc] sdk/external/libxively/src/libxively/xi_helpers.c
+ [cc] sdk/external/libxively/src/libxively/xively.c
+ [cc] sdk/external/libxively/src/libxively/xi_http_layer_constants.c
+ [cc] sdk/external/libxively/src/libxively/xi_generator.c
+ [cc] sdk/external/libxively/src/libxively/xi_globals.c
+ [cc] sdk/external/libxively/src/libxively/xi_csv_layer.c
+ [cc] sdk/external/libxively/src/libxively/xi_http_layer.c
+ [cc] sdk/external/libxively/src/libxively/xi_stated_sscanf.c
+ [cc] sdk/external/libxively/src/libxively/xi_err.c
+ [cc] sdk/external/libxively/src/libxively/io/posix/posix_io_layer.c
+ [cc] sdk/external/lwip/src/api/api_lib.c
+ [cc] sdk/external/lwip/src/api/api_msg.c
+ [cc] sdk/external/lwip/src/api/err.c
+ [cc] sdk/external/lwip/src/api/netbuf.c
+ [cc] sdk/external/lwip/src/api/netdb.c
+ [cc] sdk/external/lwip/src/api/netifapi.c
+ [cc] sdk/external/lwip/src/api/sockets.c
+ [cc] sdk/external/lwip/src/api/tcpip.c
+ [cc] sdk/external/lwip/src/core/dhcp.c
+ [cc] sdk/external/lwip/src/core/dns.c
+ [cc] sdk/external/lwip/src/core/init.c
+ [cc] sdk/external/lwip/src/core/ipv4/autoip.c
+ [cc] sdk/external/lwip/src/core/ipv4/icmp.c
+ [cc] sdk/external/lwip/src/core/ipv4/igmp.c
+ [cc] sdk/external/lwip/src/core/ipv4/ip4_addr.c
+ [cc] sdk/external/lwip/src/core/ipv4/ip4.c
+ [cc] sdk/external/lwip/src/core/ipv4/ip_frag.c
+ [cc] sdk/external/lwip/src/core/mem.c
+ [cc] sdk/external/lwip/src/core/memp.c
+ [cc] sdk/external/lwip/src/core/netif.c
+ [cc] sdk/external/lwip/src/core/pbuf.c
+ [cc] sdk/external/lwip/src/core/raw.c
+ [cc] sdk/external/lwip/src/core/stats.c
+ [cc] sdk/external/lwip/src/core/stats_display.c
+ [cc] sdk/external/lwip/src/core/sys.c
+ [cc] sdk/external/lwip/src/core/tcp.c
+ [cc] sdk/external/lwip/src/core/tcp_in.c
+ [cc] sdk/external/lwip/src/core/tcp_out.c
+ [cc] sdk/external/lwip/src/core/timers.c
+ [cc] sdk/external/lwip/src/core/udp.c
+ [cc] sdk/external/lwip/src/netif/etharp.c
+ [cc] sdk/external/lwip/contrib/port/FreeRTOS/wmsdk/sys_arch.c
+ [cc] sdk/external/lwip/src/core/def.c
+ [cc] sdk/external/lwip/src/core/inet_chksum.c
+ [cc] sdk/external/lwip/src/netif/ethernetif.c
+ [cc] sdk/external/lwip/src/core/ipv6/ip6.c
+ [cc] sdk/external/lwip/src/core/ipv6/nd6.c
+ [cc] sdk/external/lwip/src/core/ipv6/ethip6.c
+ [cc] sdk/external/lwip/src/core/ipv6/ip6_frag.c
+ [cc] sdk/external/lwip/src/core/ipv6/mld6.c
+ [cc] sdk/external/lwip/src/core/ipv6/dhcp6.c
+ [cc] sdk/external/lwip/src/core/ipv6/ip6_addr.c
+ [cc] sdk/external/lwip/src/core/ipv6/inet6.c
+ [cc] sdk/external/lwip/src/core/ipv6/icmp6.c
+ [cc] sdk/src/app_framework/app_main.c
+ [cc] sdk/src/app_framework/app_network_config.c
+ [cc] sdk/src/app_framework/app_fs.c
+ [cc] sdk/src/app_framework/app_tls.c
+ [cc] sdk/src/app_framework/app_provisioning.c
+ [cc] sdk/src/app_framework/app_network_mgr.c
+ [cc] sdk/src/app_framework/app_ctrl.c
+ [cc] sdk/src/app_framework/app_sys_http_handlers.c
+ [cc] sdk/src/app_framework/app_psm.c
+ [cc] sdk/src/app_framework/app_reboot.c
+ [cc] sdk/src/app_framework/app_cli.c
+ [cc] sdk/src/app_framework/app_mdns_services.c
+ [cc] sdk/src/app_framework/app_httpd.c
+ [cc] sdk/src/app_framework/app_ezconnect_provisioning.c
+ [cc] sdk/src/core/cli/cli.c
+ [cc] sdk/src/core/cli/cli_utils.c
+ [cc] sdk/src/core/cli/cli_mem_simple.c
+ [cc] sdk/src/core/diagnostics/diagnostics.c
+ [cc] sdk/src/core/healthmon/healthmon.c
+ [cc] sdk/src/core/healthmon/healthmon_cli.c
+ [cc] sdk/src/core/mdev/mdev.c
+ [cc] sdk/src/core/overlays/overlays.c
+ [cc] sdk/src/core/partition/partition.c
+ [cc] sdk/src/core/pwrmgr/pwrmgr.c
+ [cc] sdk/src/core/pwrmgr/pwrmgr_cli.c
+ [cc] sdk/src/core/util/boot_flags.c
+ [cc] sdk/src/core/util/flash.c
+ [cc] sdk/src/core/util/hexbin.c
+ [cc] sdk/src/core/util/dumphex.c
+ [cc] sdk/src/core/util/panic.c
+ [cc] sdk/src/core/util/crc/soft_crc32.c
+ [cc] sdk/src/core/util/crc/soft_crc16.c
+ [cc] sdk/src/core/util/crc/crc32.c
+ [cc] sdk/src/core/util/wm_utils.c
+ [cc] sdk/src/core/util/wm_wlan.c
+ [cc] sdk/src/core/util/block_alloc.c
+ [cc] sdk/src/core/util/critical_error.c
+ [cc] sdk/src/core/util/wmtlv.c
+ [cc] sdk/src/core/util/work-queue.c
+ [cc] sdk/src/core/util/system-work-queue.c
+ [cc] sdk/src/core/util/base64.c
+ [cc] sdk/src/core/util/keystore.c
+ [cc] sdk/src/core/wmstdio/wmstdio.c
+ [cc] sdk/src/core/wmstdio/console.c
+ [cc] sdk/src/core/wmstdio/wmassert.c
+ [cc] sdk/src/core/wmtime/wmtime.c
+ [cc] sdk/src/core/wmtime/wmtime_cli.c
+ [cc] sdk/src/core/wmtime/hwrtc.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_clock.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_driver.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_pinmux.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_gpio.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_pmu.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_sdio.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_flashc.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_flash.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_crc.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_aes.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_uart.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_ssp.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_i2c.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_adc.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_acomp.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_dac.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_dma.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_qspi.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_gpt.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_wdt.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_rtc.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_bg.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_spi_flash.c
+ [cc] sdk/src/drivers/mw300/../common/cyccnt.c
+ [cc] sdk/src/drivers/mw300/../common/mdev_wdt.c
+ [cc] sdk/src/drivers/mw300/../common/mdev_gpio.c
+ [cc] sdk/src/drivers/mw300/../common/mdev_gpt.c
+ [cc] sdk/src/drivers/mw300/../common/mdev_crc.c
+ [cc] sdk/src/drivers/mw300/../common/mdev_acomp.c
+ [cc] sdk/src/drivers/mw300/../common/mdev_dac.c
+ [cc] sdk/src/drivers/mw300/../common/mdev_aes.c
+ [cc] sdk/src/drivers/mw300/mdev_startup.c
+ [cc] sdk/src/drivers/mw300/mdev_pinmux.c
+ [cc] sdk/src/drivers/mw300/mdev_rtc.c
+ [cc] sdk/src/drivers/mw300/mdev_pm.c
+ [cc] sdk/src/drivers/mw300/mdev_sdio.c
+ [cc] sdk/src/drivers/mw300/mdev_uart.c
+ [cc] sdk/src/drivers/mw300/mdev_ssp.c
+ [cc] sdk/src/drivers/mw300/mdev_iflash.c
+ [cc] sdk/src/drivers/mw300/mdev_i2c.c
+ [cc] sdk/src/drivers/mw300/mdev_adc.c
+ [cc] sdk/src/drivers/mw300/mdev_dma.c
+ [cc] sdk/src/drivers/peripherals/led_indicator/led_indicator.c
+ [cc] sdk/src/drivers/peripherals/push_button/push_button.c
+ [cc] sdk/src/ez_api/wlan/wlan_highlevel.c
+ [cc] sdk/src/ez_api/cloud_utils/aws_utils.c
+ [cc] sdk/src/libc/src/atof.c
+ [cc] sdk/src/libc/src/atoi.c
+ [cc] sdk/src/libc/src/atol.c
+ [cc] sdk/src/libc/src/atoll.c
+ [cc] sdk/src/libc/src/jrand48.c
+ [cc] sdk/src/libc/src/lrand48.c
+ [cc] sdk/src/libc/src/mrand48.c
+ [cc] sdk/src/libc/src/nrand48.c
+ [cc] sdk/src/libc/src/seed48.c
+ [cc] sdk/src/libc/src/srand48.c
+ [cc] sdk/src/libc/src/bzero.c
+ [cc] sdk/src/libc/src/memccpy.c
+ [cc] sdk/src/libc/src/memswap.c
+ [cc] sdk/src/libc/src/memchr.c
+ [cc] sdk/src/libc/src/memrchr.c
+ [cc] sdk/src/libc/src/memmem.c
+ [cc] sdk/src/libc/src/memcmp.c
+ [cc] sdk/src/libc/src/bsearch.c
+ [cc] sdk/src/libc/src/qsort.c
+ [cc] sdk/src/libc/src/fnmatch.c
+ [cc] sdk/src/libc/src/snprintf.c
+ [cc] sdk/src/libc/src/sprintf.c
+ [cc] sdk/src/libc/src/sscanf.c
+ [cc] sdk/src/libc/src/vsnprintf.c
+ [cc] sdk/src/libc/src/vsprintf.c
+ [cc] sdk/src/libc/src/vsscanf.c
+ [cc] sdk/src/libc/src/strcmp.c
+ [cc] sdk/src/libc/src/strncmp.c
+ [cc] sdk/src/libc/src/strcasecmp.c
+ [cc] sdk/src/libc/src/strncasecmp.c
+ [cc] sdk/src/libc/src/strcpy.c
+ [cc] sdk/src/libc/src/strlcpy.c
+ [cc] sdk/src/libc/src/strncpy.c
+ [cc] sdk/src/libc/src/strcat.c
+ [cc] sdk/src/libc/src/strlcat.c
+ [cc] sdk/src/libc/src/strncat.c
+ [cc] sdk/src/libc/src/strlen.c
+ [cc] sdk/src/libc/src/strnlen.c
+ [cc] sdk/src/libc/src/strchr.c
+ [cc] sdk/src/libc/src/strrchr.c
+ [cc] sdk/src/libc/src/strsep.c
+ [cc] sdk/src/libc/src/strstr.c
+ [cc] sdk/src/libc/src/strcspn.c
+ [cc] sdk/src/libc/src/strspn.c
+ [cc] sdk/src/libc/src/strxspn.c
+ [cc] sdk/src/libc/src/strpbrk.c
+ [cc] sdk/src/libc/src/strtok.c
+ [cc] sdk/src/libc/src/strtok_r.c
+ [cc] sdk/src/libc/src/strtol.c
+ [cc] sdk/src/libc/src/strtoll.c
+ [cc] sdk/src/libc/src/strtoul.c
+ [cc] sdk/src/libc/src/strtoull.c
+ [cc] sdk/src/libc/src/strtoimax.c
+ [cc] sdk/src/libc/src/strtoumax.c
+ [cc] sdk/src/libc/src/strntoimax.c
+ [cc] sdk/src/libc/src/strntoumax.c
+ [cc] sdk/src/middleware/cache_profile/cache_profile.c
+ [cc] sdk/src/middleware/crypto/wmcrypto_mem.c
+ [cc] sdk/src/middleware/crypto/wmcrypto_tests.c
+ [cc] sdk/src/middleware/crypto/crypto_ctaocrypt.c
+ [cc] sdk/src/middleware/crypto/aescrypto/aes.c
+ [cc] sdk/src/middleware/crypto/aescrypto/aes_wrap.c
+ [cc] sdk/src/middleware/crypto/bn/bn_add.c
+ [cc] sdk/src/middleware/crypto/bn/bn_asm.c
+ [cc] sdk/src/middleware/crypto/bn/bn_ctx.c
+ [cc] sdk/src/middleware/crypto/bn/bn_div.c
+ [cc] sdk/src/middleware/crypto/bn/bn_exp.c
+ [cc] sdk/src/middleware/crypto/bn/bn_lib.c
+ [cc] sdk/src/middleware/crypto/bn/bn_mul.c
+ [cc] sdk/src/middleware/crypto/bn/bn_shift.c
+ [cc] sdk/src/middleware/crypto/bn/bn_sqr.c
+ [cc] sdk/src/middleware/crypto/chacha-20/chacha20.c
+ [cc] sdk/src/middleware/crypto/chacha-20/chacha.c
+ [cc] sdk/src/middleware/crypto/curve25519/curve25519-donna.c
+ [cc] sdk/src/middleware/crypto/ed25519/ed25519.c
+ [cc] sdk/src/middleware/crypto/hkdf-sha512/hkdf.c
+ [cc] sdk/src/middleware/crypto/hkdf-sha512/hkdf-hmac.c
+ [cc] sdk/src/middleware/crypto/hkdf-sha512/sha384-512.c
+ [cc] sdk/src/middleware/crypto/hkdf-sha512/usha.c
+ [cc] sdk/src/middleware/crypto/poly1305/poly1305-donna.c
+ [cc] sdk/src/middleware/crypto/srp6a/srp6a.c
+ [cc] sdk/src/middleware/dhcpd/dhcp-server.c
+ [cc] sdk/src/middleware/dhcpd/dhcp-server-main.c
+ [cc] sdk/src/middleware/dhcpd/dhcp-server-cli.c
+ [cc] sdk/src/middleware/ezxml/ezxml.c
+ [cc] sdk/src/middleware/ftfs/ftfs.c
+ [cc] sdk/src/middleware/ftfs/ftfs_tests.c
+ [cc] sdk/src/middleware/httpc/httpc.c
+ [cc] sdk/src/middleware/httpd/httpd.c
+ [cc] sdk/src/middleware/httpd/http_parse.c
+ [cc] sdk/src/middleware/httpd/httpd_handle.c
+ [cc] sdk/src/middleware/httpd/httpd_sys.c
+ [cc] sdk/src/middleware/httpd/http-strings.c
+ [cc] sdk/src/middleware/httpd/httpd_ssi.c
+ [cc] sdk/src/middleware/httpd/httpd_wsgi.c
+ [cc] sdk/src/middleware/httpd/httpd_test.c
+ [cc] sdk/src/middleware/httpd/httpd_handle_file.c
+ [cc] sdk/src/middleware/json_generator/json_generator.c
+ [cc] sdk/src/middleware/json_parser/jsmn.c
+ [cc] sdk/src/middleware/json_parser/json_wrappers.c
+ [cc] sdk/src/middleware/mdns/mdns_main.c
+ [cc] sdk/src/middleware/mdns/mdns.c
+ [cc] sdk/src/middleware/mdns/mdns_respond.c
+ [cc] sdk/src/middleware/mdns/mdns_respond_thread.c
+ [cc] sdk/src/middleware/mdns/mdns_query.c
+ [cc] sdk/src/middleware/mdns/mdns_cli.c
+ [cc] sdk/src/middleware/mdns/debug.c
+ [cc] sdk/src/middleware/mdns/dname.c
+ [cc] sdk/src/middleware/mfg/mfg_psm.c
+ [cc] sdk/src/middleware/nw_utils/ping.c
+ [cc] sdk/src/middleware/provisioning/provisioning.c
+ [cc] sdk/src/middleware/provisioning/provisioning_web_handlers.c
+ [cc] sdk/src/middleware/provisioning/provisioning_ezconnect.c
+ [cc] sdk/src/middleware/provisioning/wscan.c
+ [cc] sdk/src/middleware/provisioning/secure_provisioning_web_handlers.c
+ [cc] sdk/src/middleware/psm/psm-v2.c
+ [cc] sdk/src/middleware/psm/psm-wrapper.c
+ [cc] sdk/src/middleware/psm/psm-legacy.c
+ [cc] sdk/src/middleware/psm/psm-v2-secure.c
+ [cc] sdk/src/middleware/psm/tests/psm-test-main.c
+ [cc] sdk/src/middleware/psm/psm-utils.c
+ [cc] sdk/src/middleware/rfget/write_firmware.c
+ [cc] sdk/src/middleware/rfget/verify_firmware.c
+ [cc] sdk/src/middleware/rfget/write_fs.c
+ [cc] sdk/src/middleware/rfget/rfget.c
+ [cc] sdk/src/middleware/rfget/secure_upgrade.c
+ [cc] sdk/src/middleware/rfget/write_wifi_firmware.c
+ [cc] sdk/src/middleware/rfget/fw_upgrade_ed_chacha.c
+ [cc] sdk/src/middleware/sysinfo/sysinfo.c
+ [cc] sdk/src/middleware/telnetd/telnetd.c
+ [cc] sdk/src/middleware/tls/tls_common.c
+ [cc] sdk/src/middleware/tls/wm-tls.c
+ [cc] sdk/src/middleware/ttcp/ttcp.c
+ [cc] sdk/src/middleware/websockets/wslay_frame.c
+ [cc] sdk/src/middleware/websockets/websockets.c
+ [cc] sdk/src/middleware/xz/xz_crc32.c
+ [cc] sdk/src/middleware/xz/xz_dec_lzma2.c
+ [cc] sdk/src/middleware/xz/xz_dec_stream.c
+ [cc] sdk/src/middleware/xz/decompress.c
+ [cc] sdk/src/platform/net/lwip/net.c
+ [cc] sdk/src/platform/net/lwip/netif.c
+ [cc] sdk/src/platform/net/lwip/bcast_filter.c
+ [cc] sdk/src/platform/os/freertos/os.c
+ [cc] sdk/src/platform/os/freertos/os_cli.c
+ [cc] sdk/src/wlan/btdriver/bt.c
+ [cc] sdk/src/wlan/wifidriver/wifi-mem.c
+ [cc] sdk/src/wlan/wifidriver/wifi_pwrmgr.c
+ [cc] sdk/src/wlan/wifidriver/wifi.c
+ [cc] sdk/src/wlan/wifidriver/wifi-uap.c
+ [cc] sdk/src/wlan/wifidriver/wifi-debug.c
+ [cc] sdk/src/wlan/wifidriver/wifi-sdio.c
+ [cc] sdk/src/wlan/wifidriver/mlan_uap_ioctl.c
+ [cc] sdk/src/wlan/wifidriver/mlan_11n.c
+ [cc] sdk/src/wlan/wifidriver/mlan_11n_rxreorder.c
+ [cc] sdk/src/wlan/wifidriver/mlan_init.c
+ [cc] sdk/src/wlan/wifidriver/mlan_cmdevt.c
+ [cc] sdk/src/wlan/wifidriver/mlan_cfp.c
+ [cc] sdk/src/wlan/wifidriver/mlan_join.c
+ [cc] sdk/src/wlan/wifidriver/mlan_glue.c
+ [cc] sdk/src/wlan/wifidriver/mlan_txrx.c
+ [cc] sdk/src/wlan/wifidriver/mlan_sta_rx.c
+ [cc] sdk/src/wlan/wifidriver/mlan_misc.c
+ [cc] sdk/src/wlan/wifidriver/mlan_shim.c
+ [cc] sdk/src/wlan/wifidriver/mlan_wmm.c
+ [cc] sdk/src/wlan/wifidriver/mlan_11n_aggr.c
+ [cc] sdk/src/wlan/wifidriver/mlan_sta_cmd.c
+ [cc] sdk/src/wlan/wifidriver/mlan_sta_cmdresp.c
+ [cc] sdk/src/wlan/wifidriver/mlan_sta_event.c
+ [cc] sdk/src/wlan/wifidriver/mlan_wmsdk.c
+ [cc] sdk/src/wlan/wifidriver/mlan_11h.c
+ [cc] sdk/src/wlan/wifidriver/mlan_scan.c
+ [cc] sdk/src/wlan/wifidriver/mlan_11d.c
+ [cc] sdk/src/wlan/wifidriver/mlan_sta_ioctl.c
+ [cc] sdk/src/wlan/wifidriver/mlan_sdio.c
+ [cc] sdk/src/wlan/wifidriver/mlan_uap_cmdevent.c
+ [cc] sdk/src/wlan/wlcmgr/wlan.c
+ [cc] sdk/src/wlan/wlcmgr/wlan_smc.c
+ [cc] sdk/src/wlan/wlcmgr/fw_heartbeat.c
+ [cc] sdk/src/wlan/wlcmgr/wlan_tests.c
+ [cc] sdk/src/wlan/wlcmgr/wlan_basic_cli.c
+ [cc] sdk/src/wlan/wlcmgr/iw.c
+ [cc] sdk/src/wlan/wlcmgr/uaputl.c
+ [cc] sample_apps//hello_world/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//baremetal/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//cert_demo/src/http_handlers.c
+ [cc] sample_apps//cert_demo/src/main.c
+ [cc] sample_apps//cert_demo/src/event_handler.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//perf_demo/src/main.c
+ [cc] sample_apps//perf_demo/src/event_handler.c
+ [cc] sample_apps//perf_demo/src/perf_demo_drv.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ar] bin/mw300_defconfig/libs/libaws_iot.a
+ [ar] bin/mw300_defconfig/libs/libevrythng.a
+ [ar] bin/mw300_defconfig/libs/libexpat-2.1.0.a
+ [ar] bin/mw300_defconfig/libs/libfreertos.a
+ [ar] bin/mw300_defconfig/libs/liblwip.a
+ [ar] bin/mw300_defconfig/libs/libxively.a
+ [ar] bin/mw300_defconfig/libs/libapp_framework.a
+ [ar] bin/mw300_defconfig/libs/libcli.a
+ [ar] bin/mw300_defconfig/libs/libdiagnostics.a
+ [ar] bin/mw300_defconfig/libs/libhealthmon.a
+ [ar] bin/mw300_defconfig/libs/libmdev.a
+ [ar] bin/mw300_defconfig/libs/libpart.a
+ [ar] bin/mw300_defconfig/libs/liboverlays.a
+ [ar] bin/mw300_defconfig/libs/libutil.a
+ [ar] bin/mw300_defconfig/libs/libpwrmgr.a
+ [ar] bin/mw300_defconfig/libs/libwmstdio.a
+ [ar] bin/mw300_defconfig/libs/libwmtime.a
+ [ar] bin/mw300_defconfig/libs/libdrv.a
+ [ar] bin/mw300_defconfig/libs/libled_indicator.a
+ [ar] bin/mw300_defconfig/libs/libez_api.a
+ [ar] bin/mw300_defconfig/libs/libpush_button.a
+ [ar] bin/mw300_defconfig/libs/libc.a
+ [ar] bin/mw300_defconfig/libs/libcacheprof.a
+ [ar] bin/mw300_defconfig/libs/libwmcrypto.a
+ [ar] bin/mw300_defconfig/libs/libaescrypto.a
+ [ar] bin/mw300_defconfig/libs/libchacha-20.a
+ [ar] bin/mw300_defconfig/libs/libbn.a
+ [ar] bin/mw300_defconfig/libs/libed25519.a
+ [ar] bin/mw300_defconfig/libs/libcurve25519.a
+ [ar] bin/mw300_defconfig/libs/libhkdf-sha512.a
+ [ar] bin/mw300_defconfig/libs/libpoly1305.a
+ [ar] bin/mw300_defconfig/libs/libdhcpd.a
+ [ar] bin/mw300_defconfig/libs/libsrp6a.a
+ [ar] bin/mw300_defconfig/libs/libftfs.a
+ [ar] bin/mw300_defconfig/libs/libezxml.a
+ [ar] bin/mw300_defconfig/libs/libhttpclient.a
+ [ar] bin/mw300_defconfig/libs/libhttpd.a
+ [ar] bin/mw300_defconfig/libs/libjson_generator.a
+ [ar] bin/mw300_defconfig/libs/libjson_parser.a
+ [ar] bin/mw300_defconfig/libs/libmdns.a
+ [ar] bin/mw300_defconfig/libs/libnwutils.a
+ [ar] bin/mw300_defconfig/libs/libmfg.a
+ [ar] bin/mw300_defconfig/libs/libprovisioning.a
+ [ar] bin/mw300_defconfig/libs/libpsm.a
+ [ar] bin/mw300_defconfig/libs/librfget.a
+ [ar] bin/mw300_defconfig/libs/libsysinfo.a
+ [ar] bin/mw300_defconfig/libs/libtelnetd.a
+ [ar] bin/mw300_defconfig/libs/libttcp.a
+ [ar] bin/mw300_defconfig/libs/libtls.a
+ [ar] bin/mw300_defconfig/libs/libxz.a
+ [ar] bin/mw300_defconfig/libs/libwebsocket.a
+ [ar] bin/mw300_defconfig/libs/libnet.a
+ [ar] bin/mw300_defconfig/libs/libos.a
+ [ar] bin/mw300_defconfig/libs/libbtdriver.a
+ [ar] bin/mw300_defconfig/libs/libwifidriver.a
+ [ar] bin/mw300_defconfig/libs/libwlcmgr.a
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/hello_world.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/boot2.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/baremetal.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/cert_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/perf_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/assembly_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/arrayent_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/boot2.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/aws_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/baremetal.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/assembly_demo.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/hello_world.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/evrythng_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/xively_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/adc_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/adc_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/gpio_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/gpio_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/dac_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/arrayent_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_adv_master_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/perf_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_adv_slave_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/cert_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_simple_master_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/dac_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_simple_slave_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/xively_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_master_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_adv_master_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_slave_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_adv_slave_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_full_duplex_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_simple_master_demo.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/evrythng_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_dma_rx_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_dma_tx_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_simple_slave_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_echo_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/aws_demo.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_master_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/deepsleep_pm4.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pdn_pm4.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_slave_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_test.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_dma_rx_demo.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_dma_tx_demo.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_full_duplex_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_test.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_test.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/mutex_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_echo_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/semaphore_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/mutex_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/timer_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_test.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/cli_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_test.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/semaphore_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/psm_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/webhandler_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_test.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/websocket_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/timer_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/secure_fw_upgrade_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/cli_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/low_level_fw_upgrade_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/psm_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/fw_upgrade_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/deepsleep_pm4.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_wifi_bridge.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pdn_pm4.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/fcc_app.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/websocket_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ntpc_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_wifi_bridge.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/server_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/webhandler_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/client_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/fcc_app.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_mcu_wifi_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/fw_upgrade_demo.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/low_level_fw_upgrade_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/all_in_one.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/secure_fw_upgrade_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa1.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa2.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa2.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa3.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/server_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa4.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ntpc_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/rw_lock_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/client_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/os_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_mcu_wifi_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/heap_alloc_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa1.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_i2c_master_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/rw_lock_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_i2c_slave_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/all_in_one.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/os_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wifi_driver_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_uap.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_i2c_master_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wm_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_i2c_slave_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_11d.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/heap_alloc_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_mac.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa3.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_eu_cert.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wifi_driver_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_cal.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa4.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_low_power.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_11d.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_power_save.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_uap.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_pdn.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_mac.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uap_prov.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wm_demo.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_eu_cert.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_sniffer.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_trpc_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_cal.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_frame_inject_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_low_power.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/test_subdir.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/test_subdir.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/smart_plug.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_pdn.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_power_save.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/01app_framework.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/02provisioning.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/smart_plug.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/03provisioning_webapp.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_sniffer.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_trpc_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/04discovery.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/05local_control.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uap_prov.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/06firmware_upgrades.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_frame_inject_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/07led_pushbutton.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/01app_framework.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/boot2.bin
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/02provisioning.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/hello_world.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/baremetal.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/cert_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/perf_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/assembly_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/arrayent_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/aws_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/evrythng_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/xively_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/adc_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/gpio_demo.bin
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/04discovery.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/dac_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_adv_master_demo.bin
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/03provisioning_webapp.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_adv_slave_demo.bin
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/05local_control.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_simple_master_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_simple_slave_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_master_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_slave_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_full_duplex_demo.bin
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/06firmware_upgrades.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_dma_rx_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_dma_tx_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_echo_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/deepsleep_pm4.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pdn_pm4.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/mutex_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_test.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_test.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/semaphore_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/timer_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_test.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/cli_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/psm_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/webhandler_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/websocket_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/secure_fw_upgrade_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/low_level_fw_upgrade_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_wifi_bridge.bin
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/07led_pushbutton.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/fw_upgrade_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/fcc_app.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ntpc_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/server_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/client_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_mcu_wifi_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/all_in_one.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa1.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa2.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/os_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa4.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/rw_lock_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/heap_alloc_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_i2c_master_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa3.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_i2c_slave_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wifi_driver_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_uap.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_cal.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_11d.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_low_power.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_eu_cert.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_mac.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wm_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_power_save.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_pdn.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_sniffer.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_trpc_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uap_prov.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_frame_inject_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/test_subdir.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/02provisioning.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/03provisioning_webapp.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/04discovery.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/01app_framework.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/smart_plug.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/05local_control.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/07led_pushbutton.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/06firmware_upgrades.bin
+15:02:36 **** Incremental Build of configuration Default for project hiku ****
+make all 
+/Applications/Xcode.app/Contents/Developer/usr/bin/make APP=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/ BIN_DIR=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku//bin -I/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/inc -C../wmsdk_bundle-3.3.33 all
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/main.c
+In file included from /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/main.c:12:0:
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.h:25:38: fatal error: aws_starter_root_ca_cert.h: No such file or directory
+ #include "aws_starter_root_ca_cert.h"
+                                      ^
+compilation terminated.
+make[2]: *** [bin/mw300_defconfig/objs//Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/main.o] Error 1
+make[1]: *** [do_the_build] Error 2
+make: *** [all] Error 2
+15:03:16 **** Incremental Build of configuration Default for project wmsdk_bundle-3.3.33 ****
+make -j7 all 
+15:03:17 **** Incremental Build of configuration Default for project hiku ****
+make all 
+/Applications/Xcode.app/Contents/Developer/usr/bin/make APP=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/ BIN_DIR=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku//bin -I/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/inc -C../wmsdk_bundle-3.3.33 all
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/main.c
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/connection_manager.c
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/http_manager.c
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/ota_update.c
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/button_manager.c
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/button_manager.c: In function '_push_button_press_cb':
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/button_manager.c:76:3: warning: initialization from incompatible pointer type
+   .job_func = push_button_press_cb,
+   ^
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/button_manager.c:76:3: warning: (near initialization for 'job.job_func')
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/button_manager.c: At top level:
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/button_manager.c:43:13: warning: 'reset_to_factory_cb' defined but not used [-Wunused-function]
+ static void reset_to_factory_cb(int pin, void* data)
+             ^
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/hiku_board.c
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c: In function 'led_indicator_cb':
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c:167:4: warning: implicit declaration of function 'led_on' [-Wimplicit-function-declaration]
+    led_on(led_1);
+    ^
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c:170:4: warning: implicit declaration of function 'led_off' [-Wimplicit-function-declaration]
+    led_off(led_1);
+    ^
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c: In function 'aws_client_init':
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c:362:2: warning: implicit declaration of function 'configure_reset_to_factory' [-Wimplicit-function-declaration]
+  configure_reset_to_factory();
+  ^
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c:364:2: warning: implicit declaration of function 'configure_led_and_button' [-Wimplicit-function-declaration]
+  configure_led_and_button();
+  ^
+ [cc] sdk/src/boards/mw300_rd.c
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.axf
+bin/mw300_defconfig/objs//Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.o: In function `aws_client_init':
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c:362: undefined reference to `configure_reset_to_factory'
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c:364: undefined reference to `configure_led_and_button'
+collect2: error: ld returned 1 exit status
+make[2]: *** [/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.axf] Error 1
+make[1]: *** [do_the_build] Error 2
+make: *** [all] Error 2
+15:03:32 **** Incremental Build of configuration Default for project wmsdk_bundle-3.3.33 ****
+make -j7 all 
+15:03:33 **** Incremental Build of configuration Default for project hiku ****
+make all 
+/Applications/Xcode.app/Contents/Developer/usr/bin/make APP=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/ BIN_DIR=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku//bin -I/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/inc -C../wmsdk_bundle-3.3.33 all
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c: In function 'led_indicator_cb':
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c:167:4: warning: implicit declaration of function 'led_on' [-Wimplicit-function-declaration]
+    led_on(led_1);
+    ^
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c:170:4: warning: implicit declaration of function 'led_off' [-Wimplicit-function-declaration]
+    led_off(led_1);
+    ^
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.bin
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.ftfs
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/boot2.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/boot2.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/boot2.bin
+15:03:43 **** Clean-only build of configuration Default for project hiku ****
+make clean 
+/Applications/Xcode.app/Contents/Developer/usr/bin/make APP=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/ BIN_DIR=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku//bin -I/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/inc -C../wmsdk_bundle-3.3.33 clean
+ [clean] libaws_iot
+ [clean] libevrythng
+ [clean] libexpat-2.1.0
+ [clean] libfreertos
+ [clean] libxively
+ [clean] liblwip
+ [clean] libapp_framework
+ [clean] libcli
+ [clean] libdiagnostics
+ [clean] libhealthmon
+ [clean] libmdev
+ [clean] liboverlays
+ [clean] libpart
+ [clean] libpwrmgr
+ [clean] libutil
+ [clean] libwmstdio
+ [clean] libwmtime
+ [clean] libdrv
+ [clean] libled_indicator
+ [clean] libpush_button
+ [clean] libez_api
+ [clean] libc
+ [clean] libcacheprof
+ [clean] libwmcrypto
+ [clean] libaescrypto
+ [clean] libbn
+ [clean] libchacha-20
+ [clean] libcurve25519
+ [clean] libed25519
+ [clean] libhkdf-sha512
+ [clean] libpoly1305
+ [clean] libsrp6a
+ [clean] libdhcpd
+ [clean] libezxml
+ [clean] libftfs
+ [clean] libhttpclient
+ [clean] libhttpd
+ [clean] libjson_generator
+ [clean] libjson_parser
+ [clean] libmdns
+ [clean] libmfg
+ [clean] libnwutils
+ [clean] libprovisioning
+ [clean] libpsm
+ [clean] librfget
+ [clean] libsysinfo
+ [clean] libtelnetd
+ [clean] libtls
+ [clean] libttcp
+ [clean] libwebsocket
+ [clean] libxz
+ [clean] libnet
+ [clean] libos
+ [clean] libbtdriver
+ [clean] libwifidriver
+ [clean] libwlcmgr
+ [clean] hiku
+ [clean] boot2
+15:03:43 **** Clean-only build of configuration Default for project wmsdk_bundle-3.3.33 ****
+make -j7 clean 
+ [clean] libaws_iot
+ [clean] libevrythng
+ [clean] libexpat-2.1.0
+ [clean] libfreertos
+ [clean] libxively
+ [clean] liblwip
+ [clean] libapp_framework
+ [clean] libcli
+ [clean] libdiagnostics
+ [clean] libhealthmon
+ [clean] libmdev
+ [clean] liboverlays
+ [clean] libpart
+ [clean] libpwrmgr
+ [clean] libutil
+ [clean] libwmstdio
+ [clean] libwmtime
+ [clean] libdrv
+ [clean] libled_indicator
+ [clean] libpush_button
+ [clean] libez_api
+ [clean] libc
+ [clean] libcacheprof
+ [clean] libwmcrypto
+ [clean] libaescrypto
+ [clean] libbn
+ [clean] libchacha-20
+ [clean] libcurve25519
+ [clean] libed25519
+ [clean] libhkdf-sha512
+ [clean] libpoly1305
+ [clean] libsrp6a
+ [clean] libdhcpd
+ [clean] libezxml
+ [clean] libftfs
+ [clean] libhttpclient
+ [clean] libhttpd
+ [clean] libjson_generator
+ [clean] libjson_parser
+ [clean] libmdns
+ [clean] libmfg
+ [clean] libnwutils
+ [clean] libprovisioning
+ [clean] libpsm
+ [clean] librfget
+ [clean] libsysinfo
+ [clean] libtelnetd
+ [clean] libtls
+ [clean] libttcp
+ [clean] libwebsocket
+ [clean] libxz
+ [clean] libnet
+ [clean] libos
+ [clean] libbtdriver
+ [clean] libwifidriver
+ [clean] libwlcmgr
+ [clean] boot2
+ [clean] hello_world
+ [clean] baremetal
+ [clean] cert_demo
+ [clean] perf_demo
+ [clean] assembly_demo
+ [clean] arrayent_demo
+ [clean] aws_demo
+ [clean] evrythng_demo
+ [clean] xively_demo
+ [clean] adc_demo
+ [clean] gpio_demo
+ [clean] dac_demo
+ [clean] i2c_adv_master_demo
+ [clean] i2c_adv_slave_demo
+ [clean] i2c_simple_master_demo
+ [clean] i2c_simple_slave_demo
+ [clean] ssp_master_demo
+ [clean] ssp_slave_demo
+ [clean] ssp_full_duplex_demo
+ [clean] uart_dma_rx_demo
+ [clean] uart_dma_tx_demo
+ [clean] uart_echo_demo
+ [clean] deepsleep_pm4
+ [clean] pdn_pm4
+ [clean] uart_test
+ [clean] i2c_test
+ [clean] ssp_test
+ [clean] mutex_demo
+ [clean] semaphore_demo
+ [clean] timer_demo
+ [clean] cli_demo
+ [clean] psm_demo
+ [clean] webhandler_demo
+ [clean] websocket_demo
+ [clean] secure_fw_upgrade_demo
+ [clean] low_level_fw_upgrade_demo
+ [clean] fw_upgrade_demo
+ [clean] uart_wifi_bridge
+ [clean] fcc_app
+ [clean] ntpc_demo
+ [clean] server_demo
+ [clean] pm_mcu_wifi_demo
+ [clean] client_demo
+ [clean] all_in_one
+ [clean] qa1
+ [clean] qa2
+ [clean] qa3
+ [clean] qa4
+ [clean] rw_lock_demo
+ [clean] os_demo
+ [clean] heap_alloc_demo
+ [clean] pm_i2c_master_demo
+ [clean] pm_i2c_slave_demo
+ [clean] wifi_driver_demo
+ [clean] wlan_uap
+ [clean] wm_demo
+ [clean] wlan_11d
+ [clean] wlan_mac
+ [clean] wlan_eu_cert
+ [clean] wlan_cal
+ [clean] wlan_low_power
+ [clean] wlan_power_save
+ [clean] wlan_pdn
+ [clean] uap_prov
+ [clean] wlan_sniffer
+ [clean] wlan_trpc_demo
+ [clean] wlan_frame_inject_demo
+ [clean] test_subdir
+ [clean] smart_plug
+ [clean] 01app_framework
+ [clean] 02provisioning
+ [clean] 03provisioning_webapp
+ [clean] 04discovery
+ [clean] 05local_control
+ [clean] 07led_pushbutton
+ [clean] 06firmware_upgrades
+15:03:49 **** Build of configuration Default for project wmsdk_bundle-3.3.33 ****
+make -j7 all 
+ [cc] sample_apps//assembly_demo/src/main.c
+ [cc] sample_apps//assembly_demo/src/add_them.s
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//cloud_demo/arrayent_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//cloud_demo/aws_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/perf_demo.ftfs
+ [cc] sample_apps//cloud_demo/evrythng_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//cloud_demo/xively_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/adc/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/gpio/src/main.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/aws_demo.ftfs
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/dac_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/i2c/advanced/master_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/i2c/advanced/slave_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/i2c/simple/master_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/i2c/simple/slave_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/ssp/simple/master_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/ssp/simple/slave_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/ssp/ssp_full_duplex_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/uart/uart_dma_rx_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/uart/uart_dma_tx_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//io_demo/uart/uart_echo_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//power_profiles/deepsleep_pm4/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//power_profiles/pdn_pm4/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/io_demo/uart/uart_test/src/main.c
+ [cc] sample_apps//test_apps/io_demo/uart/uart_test/src/uart.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/io_demo/i2c/i2c_test/src/main.c
+ [cc] sample_apps//test_apps/io_demo/i2c/i2c_test/src/i2c.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/io_demo/ssp/ssp_test/src/main.c
+ [cc] sample_apps//test_apps/io_demo/ssp/ssp_test/src/ssp.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//os_api_demo/mutex_demo/src/main.c
+ [cc] sample_apps//os_api_demo/mutex_demo/src/mutex_demo.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//os_api_demo/semaphore_demo/src/main.c
+ [cc] sample_apps//os_api_demo/semaphore_demo/src/semaphore_demo.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//os_api_demo/timer_demo/src/main.c
+ [cc] sample_apps//os_api_demo/timer_demo/src/timer_demo.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//module_demo/cli_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//module_demo/psm_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//module_demo/webhandler_demo/src/main.c
+ [cc] sample_apps//module_demo/webhandler_demo/src/json_webhandler.c
+ [cc] sample_apps//module_demo/webhandler_demo/src/text_webhandler.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//module_demo/websocket_demo/src/main.c
+ [cc] sample_apps//module_demo/websocket_demo/src/websocket.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//module_demo/fw_upgrade/secure_fw_upgrade_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//module_demo/fw_upgrade/low_level_fw_upgrade_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//module_demo/fw_upgrade/fw_upgrade_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//mfg/uart_wifi_bridge/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//mfg/fcc_app/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//net_demo/ntpc_demo/src/main.c
+ [cc] sample_apps//net_demo/ntpc_demo/src/ntpc.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//net_demo/server_demo/src/main.c
+ [cc] sample_apps//net_demo/server_demo/src/server.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//net_demo/client_demo/src/main.c
+ [cc] sample_apps//net_demo/client_demo/src/client.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//power_measure_demo/pm_mcu_wifi_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/all_in_one/src/main.c
+ [cc] sample_apps//test_apps/all_in_one/src/reset_prov_helper.c
+ [cc] sample_apps//test_apps/all_in_one/src/wmcloud.c
+ [cc] sample_apps//test_apps/all_in_one/src/wmcloud_helper.c
+ [cc] sample_apps//test_apps/all_in_one/src/aio_wps_cli.c
+ [cc] sample_apps//test_apps/all_in_one/src/wmcloud_ws.c
+ [cc] sample_apps//test_apps/all_in_one/src/aio_cloud.c
+ [cc] sample_apps//test_apps/all_in_one/src/mdns_helper.c
+ [cc] sample_apps//test_apps/all_in_one/src/wps_helper.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/qa1/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/qa2/src/main.c
+ [cc] sample_apps//test_apps/qa2/src/aes_test_main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/qa3/src/main.c
+ [cc] sample_apps//test_apps/qa3/src/reset_prov_helper.c
+ [cc] sample_apps//test_apps/qa3/src/wps_helper.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/all_in_one.ftfs
+ [cc] sample_apps//test_apps/qa3/src/mdns_helper.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/qa4/src/main.c
+ [cc] sample_apps//test_apps/qa4/src/reset_prov_helper.c
+ [cc] sample_apps//test_apps/qa4/src/wps_helper.c
+ [cc] sample_apps//test_apps/qa4/src/mdns_helper.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa3.ftfs
+ [cc] sample_apps//test_apps/os/rw_lock_demo/src/main.c
+ [cc] sample_apps//test_apps/os/rw_lock_demo/src/rp_rw_demo.c
+ [cc] sample_apps//test_apps/os/rw_lock_demo/src/rw_lock_demo.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/os/recursive_mutex_demo/src/main.c
+ [cc] sample_apps//test_apps/os/recursive_mutex_demo/src/mutex_demo.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa4.ftfs
+ [cc] sample_apps//test_apps/os/heap_alloc_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/pm_i2c_demo/pm_i2c_master/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//test_apps/pm_i2c_demo/pm_i2c_slave/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wifi_driver_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_uap/src/main.c
+ [cc] sample_apps//wlan/wlan_uap/src/mdns_helper.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wm_demo/src/main.c
+ [cc] sample_apps//wlan/wm_demo/src/reset_prov_helper.c
+ [cc] sample_apps//wlan/wm_demo/src/led_indications.c
+ [cc] sample_apps//wlan/wm_demo/src/utility.c
+ [cc] sample_apps//wlan/wm_demo/src/mdns_helper.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_11d/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_mac/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_eu_cert/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_cal/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wm_demo.ftfs
+ [cc] sample_apps//wlan/wlan_low_power/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_power_save/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_pdn/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/uap_prov/src/main.c
+ [cc] sample_apps//wlan/uap_prov/src/reset_prov_helper.c
+ [cc] sample_apps//wlan/uap_prov/src/wps_helper.c
+ [cc] sample_apps//wlan/uap_prov/src/mdns_helper.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_sniffer/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_trpc_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//wlan/wlan_frame_inject_demo/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uap_prov.ftfs
+ [cc] sample_apps//test_apps/qa1/test_subdir/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//tutorials/00getting_started/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//tutorials/01app_framework/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//tutorials/02provisioning/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//tutorials/03provisioning_webapp/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//tutorials/04discovery/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//tutorials/05local_control/src/main.c
+ [cc] sample_apps//tutorials/05local_control/src/plug_handlers.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//tutorials/06firmware_upgrades/src/main.c
+ [cc] sample_apps//tutorials/06firmware_upgrades/src/plug_handlers.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/03provisioning_webapp.ftfs
+ [cc] sample_apps//tutorials/06firmware_upgrades/src/fw_upgrade.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/04discovery.ftfs
+ [cc] sample_apps//tutorials/07led_pushbutton/src/main.c
+ [cc] sample_apps//tutorials/07led_pushbutton/src/plug_handlers.c
+ [cc] sample_apps//tutorials/07led_pushbutton/src/fw_upgrade.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/05local_control.ftfs
+ [cc] boot2/src/mw300/main.c
+ [cc] boot2/src/mw300/boot2.c
+ [cc] boot2/src/mw300/../utils/crc32.c
+ [cc] boot2/src/mw300/aes.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/06firmware_upgrades.ftfs
+ [cc] boot2/src/mw300/secure_boot2.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTSerializePublish.c
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/07led_pushbutton.ftfs
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTUnsubscribeClient.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTConnectClient.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTPacket.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTSubscribeClient.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTFormat.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTSubscribeServer.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTConnectServer.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTUnsubscribeServer.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src/MQTTDeserializePublish.c
+ [cc] sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTClient-C/src/MQTTClient.c
+ [cc] sdk/external/aws_iot/aws_iot_src/protocol/mqtt/aws_iot_embedded_client_wrapper/aws_iot_mqtt_embedded_client_wrapper.c
+ [cc] sdk/external/aws_iot/aws_iot_src/utils/aws_iot_json_utils.c
+ [cc] sdk/external/aws_iot/aws_iot_src/protocol/mqtt/aws_iot_embedded_client_wrapper/platform_wmsdk/network_interface.c
+ [cc] sdk/external/aws_iot/aws_iot_src/shadow/aws_iot_shadow_json.c
+ [cc] sdk/external/aws_iot/aws_iot_src/shadow/aws_iot_shadow_actions.c
+ [cc] sdk/external/aws_iot/aws_iot_src/shadow/aws_iot_shadow.c
+ [cc] sdk/external/aws_iot/aws_iot_src/shadow/aws_iot_shadow_records.c
+ [cc] sdk/external/aws_iot/aws_iot_src/protocol/mqtt/aws_iot_embedded_client_wrapper/platform_wmsdk/timer.c
+ [cc] sdk/external/evrythng/src/evrythng.c
+ [cc] sdk/external/evrythng/mqtt/src/marvell_api.c
+ [cc] sdk/external/evrythng/mqtt/src/Clients.c
+ [cc] sdk/external/evrythng/mqtt/src/Heap.c
+ [cc] sdk/external/evrythng/mqtt/src/LinkedList.c
+ [cc] sdk/external/evrythng/mqtt/src/Messages.c
+ [cc] sdk/external/evrythng/mqtt/src/MQTTClient.c
+ [cc] boot2//src/mw300/bootrom_header/bootrom_header.c boot2//src/mw300/../utils/soft_crc16.c
+ [cc] sdk/external/evrythng/mqtt/src/MQTTPacket.c
+ [cc] sdk/external/evrythng/mqtt/src/MQTTPacketOut.c
+ [cc] sdk/external/evrythng/mqtt/src/MQTTProtocolClient.c
+ [cc] sdk/external/evrythng/mqtt/src/MQTTProtocolOut.c
+ [cc] sdk/external/evrythng/mqtt/src/SSLSocket.c
+ [cc] sdk/external/evrythng/mqtt/src/TLSSocket.c
+ [cc] sdk/external/evrythng/mqtt/src/Socket.c
+ [cc] sdk/external/evrythng/mqtt/src/SocketBuffer.c
+ [cc] sdk/external/evrythng/mqtt/src/Thread.c
+ [cc] sdk/external/evrythng/mqtt/src/Tree.c
+ [cc] sdk/external/evrythng/mqtt/src/utf-8.c
+ [cc] sdk/external/expat-2.1.0/lib/xmlparse.c
+ [cc] sdk/external/expat-2.1.0/lib/xmlrole.c
+ [cc] sdk/external/expat-2.1.0/lib/xmltok.c
+ [cc] sdk/external/expat-2.1.0/lib/xmltok_impl.c
+ [cc] sdk/external/expat-2.1.0/lib/xmltok_ns.c
+ [cc] sdk/external/freertos/Source/list.c
+ [cc] sdk/external/freertos/Source/queue.c
+ [cc] sdk/external/freertos/Source/tasks.c
+ [cc] sdk/external/freertos/Source/event_groups.c
+ [cc] sdk/external/freertos/Source/croutine.c
+ [cc] sdk/external/freertos/Source/timers.c
+ [cc] sdk/external/freertos/Source/portable/MemMang/heap_4.c
+ [cc] sdk/external/freertos/Source/FreeRTOS-openocd.c
+ [cc] sdk/external/freertos/Source/portable/GCC/ARM_CM4F/port.c
+ [cc] sdk/external/libxively/src/libxively/xi_time.c
+ [cc] sdk/external/libxively/src/libxively/xi_helpers.c
+ [cc] sdk/external/libxively/src/libxively/xively.c
+ [cc] sdk/external/libxively/src/libxively/xi_http_layer_constants.c
+ [cc] sdk/external/libxively/src/libxively/xi_generator.c
+ [cc] sdk/external/libxively/src/libxively/xi_globals.c
+ [cc] sdk/external/libxively/src/libxively/xi_csv_layer.c
+ [cc] sdk/external/libxively/src/libxively/xi_http_layer.c
+ [cc] sdk/external/libxively/src/libxively/xi_stated_sscanf.c
+ [cc] sdk/external/libxively/src/libxively/xi_err.c
+ [cc] sdk/external/libxively/src/libxively/io/posix/posix_io_layer.c
+ [cc] sdk/external/lwip/src/api/api_lib.c
+ [cc] sdk/external/lwip/src/api/api_msg.c
+ [cc] sdk/external/lwip/src/api/err.c
+ [cc] sdk/external/lwip/src/api/netbuf.c
+ [cc] sdk/external/lwip/src/api/netdb.c
+ [cc] sdk/external/lwip/src/api/netifapi.c
+ [cc] sdk/external/lwip/src/api/sockets.c
+ [cc] sdk/external/lwip/src/api/tcpip.c
+ [cc] sdk/external/lwip/src/core/dhcp.c
+ [cc] sdk/external/lwip/src/core/dns.c
+ [cc] sdk/external/lwip/src/core/init.c
+ [cc] sdk/external/lwip/src/core/ipv4/autoip.c
+ [cc] sdk/external/lwip/src/core/ipv4/icmp.c
+ [cc] sdk/external/lwip/src/core/ipv4/igmp.c
+ [cc] sdk/external/lwip/src/core/ipv4/ip4_addr.c
+ [cc] sdk/external/lwip/src/core/ipv4/ip4.c
+ [cc] sdk/external/lwip/src/core/ipv4/ip_frag.c
+ [cc] sdk/external/lwip/src/core/mem.c
+ [cc] sdk/external/lwip/src/core/memp.c
+ [cc] sdk/external/lwip/src/core/netif.c
+ [cc] sdk/external/lwip/src/core/pbuf.c
+ [cc] sdk/external/lwip/src/core/raw.c
+ [cc] sdk/external/lwip/src/core/stats.c
+ [cc] sdk/external/lwip/src/core/stats_display.c
+ [cc] sdk/external/lwip/src/core/sys.c
+ [cc] sdk/external/lwip/src/core/tcp.c
+ [cc] sdk/external/lwip/src/core/tcp_in.c
+ [cc] sdk/external/lwip/src/core/tcp_out.c
+ [cc] sdk/external/lwip/src/core/timers.c
+ [cc] sdk/external/lwip/src/core/udp.c
+ [cc] sdk/external/lwip/src/netif/etharp.c
+ [cc] sdk/external/lwip/contrib/port/FreeRTOS/wmsdk/sys_arch.c
+ [cc] sdk/external/lwip/src/core/def.c
+ [cc] sdk/external/lwip/src/core/inet_chksum.c
+ [cc] sdk/external/lwip/src/netif/ethernetif.c
+ [cc] sdk/external/lwip/src/core/ipv6/ip6.c
+ [cc] sdk/external/lwip/src/core/ipv6/nd6.c
+ [cc] sdk/external/lwip/src/core/ipv6/ethip6.c
+ [cc] sdk/external/lwip/src/core/ipv6/ip6_frag.c
+ [cc] sdk/external/lwip/src/core/ipv6/mld6.c
+ [cc] sdk/external/lwip/src/core/ipv6/dhcp6.c
+ [cc] sdk/external/lwip/src/core/ipv6/ip6_addr.c
+ [cc] sdk/external/lwip/src/core/ipv6/inet6.c
+ [cc] sdk/external/lwip/src/core/ipv6/icmp6.c
+ [cc] sdk/src/app_framework/app_main.c
+ [cc] sdk/src/app_framework/app_network_config.c
+ [cc] sdk/src/app_framework/app_fs.c
+ [cc] sdk/src/app_framework/app_provisioning.c
+ [cc] sdk/src/app_framework/app_tls.c
+ [cc] sdk/src/app_framework/app_network_mgr.c
+ [cc] sdk/src/app_framework/app_ctrl.c
+ [cc] sdk/src/app_framework/app_sys_http_handlers.c
+ [cc] sdk/src/app_framework/app_psm.c
+ [cc] sdk/src/app_framework/app_reboot.c
+ [cc] sdk/src/app_framework/app_cli.c
+ [cc] sdk/src/app_framework/app_mdns_services.c
+ [cc] sdk/src/app_framework/app_httpd.c
+ [cc] sdk/src/app_framework/app_ezconnect_provisioning.c
+ [cc] sdk/src/core/cli/cli.c
+ [cc] sdk/src/core/cli/cli_utils.c
+ [cc] sdk/src/core/cli/cli_mem_simple.c
+ [cc] sdk/src/core/diagnostics/diagnostics.c
+ [cc] sdk/src/core/healthmon/healthmon.c
+ [cc] sdk/src/core/healthmon/healthmon_cli.c
+ [cc] sdk/src/core/mdev/mdev.c
+ [cc] sdk/src/core/overlays/overlays.c
+ [cc] sdk/src/core/partition/partition.c
+ [cc] sdk/src/core/pwrmgr/pwrmgr.c
+ [cc] sdk/src/core/pwrmgr/pwrmgr_cli.c
+ [cc] sdk/src/core/util/boot_flags.c
+ [cc] sdk/src/core/util/flash.c
+ [cc] sdk/src/core/util/hexbin.c
+ [cc] sdk/src/core/util/dumphex.c
+ [cc] sdk/src/core/util/panic.c
+ [cc] sdk/src/core/util/crc/soft_crc32.c
+ [cc] sdk/src/core/util/crc/soft_crc16.c
+ [cc] sdk/src/core/util/crc/crc32.c
+ [cc] sdk/src/core/util/wm_utils.c
+ [cc] sdk/src/core/util/wm_wlan.c
+ [cc] sdk/src/core/util/block_alloc.c
+ [cc] sdk/src/core/util/critical_error.c
+ [cc] sdk/src/core/util/wmtlv.c
+ [cc] sdk/src/core/util/work-queue.c
+ [cc] sdk/src/core/util/system-work-queue.c
+ [cc] sdk/src/core/util/base64.c
+ [cc] sdk/src/core/util/keystore.c
+ [cc] sdk/src/core/wmstdio/wmstdio.c
+ [cc] sdk/src/core/wmstdio/console.c
+ [cc] sdk/src/core/wmstdio/wmassert.c
+ [cc] sdk/src/core/wmtime/wmtime.c
+ [cc] sdk/src/core/wmtime/wmtime_cli.c
+ [cc] sdk/src/core/wmtime/hwrtc.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_clock.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_driver.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_pinmux.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_gpio.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_pmu.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_sdio.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_flashc.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_flash.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_crc.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_aes.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_uart.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_ssp.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_i2c.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_adc.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_acomp.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_dac.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_dma.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_qspi.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_gpt.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_wdt.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_rtc.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_bg.c
+ [cc] sdk/src/drivers/mw300/lowlevel/mw300_spi_flash.c
+ [cc] sdk/src/drivers/mw300/../common/cyccnt.c
+ [cc] sdk/src/drivers/mw300/../common/mdev_wdt.c
+ [cc] sdk/src/drivers/mw300/../common/mdev_gpio.c
+ [cc] sdk/src/drivers/mw300/../common/mdev_gpt.c
+ [cc] sdk/src/drivers/mw300/../common/mdev_crc.c
+ [cc] sdk/src/drivers/mw300/../common/mdev_acomp.c
+ [cc] sdk/src/drivers/mw300/../common/mdev_dac.c
+ [cc] sdk/src/drivers/mw300/../common/mdev_aes.c
+ [cc] sdk/src/drivers/mw300/mdev_startup.c
+ [cc] sdk/src/drivers/mw300/mdev_pinmux.c
+ [cc] sdk/src/drivers/mw300/mdev_rtc.c
+ [cc] sdk/src/drivers/mw300/mdev_pm.c
+ [cc] sdk/src/drivers/mw300/mdev_sdio.c
+ [cc] sdk/src/drivers/mw300/mdev_uart.c
+ [cc] sdk/src/drivers/mw300/mdev_ssp.c
+ [cc] sdk/src/drivers/mw300/mdev_iflash.c
+ [cc] sdk/src/drivers/mw300/mdev_i2c.c
+ [cc] sdk/src/drivers/mw300/mdev_adc.c
+ [cc] sdk/src/drivers/mw300/mdev_dma.c
+ [cc] sdk/src/drivers/peripherals/led_indicator/led_indicator.c
+ [cc] sdk/src/drivers/peripherals/push_button/push_button.c
+ [cc] sdk/src/ez_api/wlan/wlan_highlevel.c
+ [cc] sdk/src/ez_api/cloud_utils/aws_utils.c
+ [cc] sdk/src/libc/src/atof.c
+ [cc] sdk/src/libc/src/atoi.c
+ [cc] sdk/src/libc/src/atol.c
+ [cc] sdk/src/libc/src/atoll.c
+ [cc] sdk/src/libc/src/jrand48.c
+ [cc] sdk/src/libc/src/lrand48.c
+ [cc] sdk/src/libc/src/mrand48.c
+ [cc] sdk/src/libc/src/nrand48.c
+ [cc] sdk/src/libc/src/seed48.c
+ [cc] sdk/src/libc/src/srand48.c
+ [cc] sdk/src/libc/src/bzero.c
+ [cc] sdk/src/libc/src/memccpy.c
+ [cc] sdk/src/libc/src/memswap.c
+ [cc] sdk/src/libc/src/memchr.c
+ [cc] sdk/src/libc/src/memrchr.c
+ [cc] sdk/src/libc/src/memmem.c
+ [cc] sdk/src/libc/src/memcmp.c
+ [cc] sdk/src/libc/src/bsearch.c
+ [cc] sdk/src/libc/src/qsort.c
+ [cc] sdk/src/libc/src/fnmatch.c
+ [cc] sdk/src/libc/src/snprintf.c
+ [cc] sdk/src/libc/src/sprintf.c
+ [cc] sdk/src/libc/src/sscanf.c
+ [cc] sdk/src/libc/src/vsnprintf.c
+ [cc] sdk/src/libc/src/vsprintf.c
+ [cc] sdk/src/libc/src/vsscanf.c
+ [cc] sdk/src/libc/src/strcmp.c
+ [cc] sdk/src/libc/src/strncmp.c
+ [cc] sdk/src/libc/src/strcasecmp.c
+ [cc] sdk/src/libc/src/strncasecmp.c
+ [cc] sdk/src/libc/src/strcpy.c
+ [cc] sdk/src/libc/src/strlcpy.c
+ [cc] sdk/src/libc/src/strncpy.c
+ [cc] sdk/src/libc/src/strcat.c
+ [cc] sdk/src/libc/src/strlcat.c
+ [cc] sdk/src/libc/src/strncat.c
+ [cc] sdk/src/libc/src/strlen.c
+ [cc] sdk/src/libc/src/strchr.c
+ [cc] sdk/src/libc/src/strnlen.c
+ [cc] sdk/src/libc/src/strrchr.c
+ [cc] sdk/src/libc/src/strsep.c
+ [cc] sdk/src/libc/src/strstr.c
+ [cc] sdk/src/libc/src/strcspn.c
+ [cc] sdk/src/libc/src/strspn.c
+ [cc] sdk/src/libc/src/strxspn.c
+ [cc] sdk/src/libc/src/strpbrk.c
+ [cc] sdk/src/libc/src/strtok.c
+ [cc] sdk/src/libc/src/strtok_r.c
+ [cc] sdk/src/libc/src/strtol.c
+ [cc] sdk/src/libc/src/strtoll.c
+ [cc] sdk/src/libc/src/strtoul.c
+ [cc] sdk/src/libc/src/strtoull.c
+ [cc] sdk/src/libc/src/strtoimax.c
+ [cc] sdk/src/libc/src/strtoumax.c
+ [cc] sdk/src/libc/src/strntoimax.c
+ [cc] sdk/src/libc/src/strntoumax.c
+ [cc] sdk/src/middleware/cache_profile/cache_profile.c
+ [cc] sdk/src/middleware/crypto/wmcrypto_mem.c
+ [cc] sdk/src/middleware/crypto/wmcrypto_tests.c
+ [cc] sdk/src/middleware/crypto/crypto_ctaocrypt.c
+ [cc] sdk/src/middleware/crypto/aescrypto/aes.c
+ [cc] sdk/src/middleware/crypto/aescrypto/aes_wrap.c
+ [cc] sdk/src/middleware/crypto/bn/bn_add.c
+ [cc] sdk/src/middleware/crypto/bn/bn_asm.c
+ [cc] sdk/src/middleware/crypto/bn/bn_ctx.c
+ [cc] sdk/src/middleware/crypto/bn/bn_div.c
+ [cc] sdk/src/middleware/crypto/bn/bn_exp.c
+ [cc] sdk/src/middleware/crypto/bn/bn_lib.c
+ [cc] sdk/src/middleware/crypto/bn/bn_mul.c
+ [cc] sdk/src/middleware/crypto/bn/bn_shift.c
+ [cc] sdk/src/middleware/crypto/bn/bn_sqr.c
+ [cc] sdk/src/middleware/crypto/chacha-20/chacha20.c
+ [cc] sdk/src/middleware/crypto/chacha-20/chacha.c
+ [cc] sdk/src/middleware/crypto/curve25519/curve25519-donna.c
+ [cc] sdk/src/middleware/crypto/ed25519/ed25519.c
+ [cc] sdk/src/middleware/crypto/hkdf-sha512/hkdf.c
+ [cc] sdk/src/middleware/crypto/hkdf-sha512/hkdf-hmac.c
+ [cc] sdk/src/middleware/crypto/hkdf-sha512/sha384-512.c
+ [cc] sdk/src/middleware/crypto/hkdf-sha512/usha.c
+ [cc] sdk/src/middleware/crypto/poly1305/poly1305-donna.c
+ [cc] sdk/src/middleware/crypto/srp6a/srp6a.c
+ [cc] sdk/src/middleware/dhcpd/dhcp-server.c
+ [cc] sdk/src/middleware/dhcpd/dhcp-server-main.c
+ [cc] sdk/src/middleware/dhcpd/dhcp-server-cli.c
+ [cc] sdk/src/middleware/ezxml/ezxml.c
+ [cc] sdk/src/middleware/ftfs/ftfs.c
+ [cc] sdk/src/middleware/ftfs/ftfs_tests.c
+ [cc] sdk/src/middleware/httpc/httpc.c
+ [cc] sdk/src/middleware/httpd/httpd.c
+ [cc] sdk/src/middleware/httpd/http_parse.c
+ [cc] sdk/src/middleware/httpd/httpd_handle.c
+ [cc] sdk/src/middleware/httpd/httpd_sys.c
+ [cc] sdk/src/middleware/httpd/http-strings.c
+ [cc] sdk/src/middleware/httpd/httpd_ssi.c
+ [cc] sdk/src/middleware/httpd/httpd_wsgi.c
+ [cc] sdk/src/middleware/httpd/httpd_test.c
+ [cc] sdk/src/middleware/httpd/httpd_handle_file.c
+ [cc] sdk/src/middleware/json_generator/json_generator.c
+ [cc] sdk/src/middleware/json_parser/jsmn.c
+ [cc] sdk/src/middleware/json_parser/json_wrappers.c
+ [cc] sdk/src/middleware/mdns/mdns_main.c
+ [cc] sdk/src/middleware/mdns/mdns.c
+ [cc] sdk/src/middleware/mdns/mdns_respond.c
+ [cc] sdk/src/middleware/mdns/mdns_respond_thread.c
+ [cc] sdk/src/middleware/mdns/mdns_query.c
+ [cc] sdk/src/middleware/mdns/mdns_cli.c
+ [cc] sdk/src/middleware/mdns/debug.c
+ [cc] sdk/src/middleware/mdns/dname.c
+ [cc] sdk/src/middleware/mfg/mfg_psm.c
+ [cc] sdk/src/middleware/nw_utils/ping.c
+ [cc] sdk/src/middleware/provisioning/provisioning.c
+ [cc] sdk/src/middleware/provisioning/provisioning_web_handlers.c
+ [cc] sdk/src/middleware/provisioning/provisioning_ezconnect.c
+ [cc] sdk/src/middleware/provisioning/wscan.c
+ [cc] sdk/src/middleware/provisioning/secure_provisioning_web_handlers.c
+ [cc] sdk/src/middleware/psm/psm-v2.c
+ [cc] sdk/src/middleware/psm/psm-wrapper.c
+ [cc] sdk/src/middleware/psm/psm-legacy.c
+ [cc] sdk/src/middleware/psm/psm-v2-secure.c
+ [cc] sdk/src/middleware/psm/tests/psm-test-main.c
+ [cc] sdk/src/middleware/psm/psm-utils.c
+ [cc] sdk/src/middleware/rfget/write_firmware.c
+ [cc] sdk/src/middleware/rfget/verify_firmware.c
+ [cc] sdk/src/middleware/rfget/write_fs.c
+ [cc] sdk/src/middleware/rfget/rfget.c
+ [cc] sdk/src/middleware/rfget/secure_upgrade.c
+ [cc] sdk/src/middleware/rfget/write_wifi_firmware.c
+ [cc] sdk/src/middleware/rfget/fw_upgrade_ed_chacha.c
+ [cc] sdk/src/middleware/sysinfo/sysinfo.c
+ [cc] sdk/src/middleware/telnetd/telnetd.c
+ [cc] sdk/src/middleware/tls/tls_common.c
+ [cc] sdk/src/middleware/tls/wm-tls.c
+ [cc] sdk/src/middleware/ttcp/ttcp.c
+ [cc] sdk/src/middleware/websockets/wslay_frame.c
+ [cc] sdk/src/middleware/websockets/websockets.c
+ [cc] sdk/src/middleware/xz/xz_crc32.c
+ [cc] sdk/src/middleware/xz/xz_dec_lzma2.c
+ [cc] sdk/src/middleware/xz/xz_dec_stream.c
+ [cc] sdk/src/middleware/xz/decompress.c
+ [cc] sdk/src/platform/net/lwip/net.c
+ [cc] sdk/src/platform/net/lwip/netif.c
+ [cc] sdk/src/platform/net/lwip/bcast_filter.c
+ [cc] sdk/src/platform/os/freertos/os.c
+ [cc] sdk/src/platform/os/freertos/os_cli.c
+ [cc] sdk/src/wlan/btdriver/bt.c
+ [cc] sdk/src/wlan/wifidriver/wifi-mem.c
+ [cc] sdk/src/wlan/wifidriver/wifi_pwrmgr.c
+ [cc] sdk/src/wlan/wifidriver/wifi.c
+ [cc] sdk/src/wlan/wifidriver/wifi-uap.c
+ [cc] sdk/src/wlan/wifidriver/wifi-debug.c
+ [cc] sdk/src/wlan/wifidriver/wifi-sdio.c
+ [cc] sdk/src/wlan/wifidriver/mlan_uap_ioctl.c
+ [cc] sdk/src/wlan/wifidriver/mlan_11n.c
+ [cc] sdk/src/wlan/wifidriver/mlan_11n_rxreorder.c
+ [cc] sdk/src/wlan/wifidriver/mlan_init.c
+ [cc] sdk/src/wlan/wifidriver/mlan_cmdevt.c
+ [cc] sdk/src/wlan/wifidriver/mlan_join.c
+ [cc] sdk/src/wlan/wifidriver/mlan_cfp.c
+ [cc] sdk/src/wlan/wifidriver/mlan_glue.c
+ [cc] sdk/src/wlan/wifidriver/mlan_txrx.c
+ [cc] sdk/src/wlan/wifidriver/mlan_sta_rx.c
+ [cc] sdk/src/wlan/wifidriver/mlan_misc.c
+ [cc] sdk/src/wlan/wifidriver/mlan_shim.c
+ [cc] sdk/src/wlan/wifidriver/mlan_wmm.c
+ [cc] sdk/src/wlan/wifidriver/mlan_11n_aggr.c
+ [cc] sdk/src/wlan/wifidriver/mlan_sta_cmd.c
+ [cc] sdk/src/wlan/wifidriver/mlan_sta_cmdresp.c
+ [cc] sdk/src/wlan/wifidriver/mlan_sta_event.c
+ [cc] sdk/src/wlan/wifidriver/mlan_wmsdk.c
+ [cc] sdk/src/wlan/wifidriver/mlan_11h.c
+ [cc] sdk/src/wlan/wifidriver/mlan_scan.c
+ [cc] sdk/src/wlan/wifidriver/mlan_11d.c
+ [cc] sdk/src/wlan/wifidriver/mlan_sta_ioctl.c
+ [cc] sdk/src/wlan/wifidriver/mlan_sdio.c
+ [cc] sdk/src/wlan/wifidriver/mlan_uap_cmdevent.c
+ [cc] sdk/src/wlan/wlcmgr/wlan.c
+ [cc] sdk/src/wlan/wlcmgr/wlan_smc.c
+ [cc] sdk/src/wlan/wlcmgr/fw_heartbeat.c
+ [cc] sdk/src/wlan/wlcmgr/wlan_tests.c
+ [cc] sdk/src/wlan/wlcmgr/wlan_basic_cli.c
+ [cc] sdk/src/wlan/wlcmgr/iw.c
+ [cc] sdk/src/wlan/wlcmgr/uaputl.c
+ [cc] sample_apps//hello_world/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//baremetal/src/main.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//cert_demo/src/http_handlers.c
+ [cc] sample_apps//cert_demo/src/main.c
+ [cc] sample_apps//cert_demo/src/event_handler.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [cc] sample_apps//perf_demo/src/main.c
+ [cc] sample_apps//perf_demo/src/event_handler.c
+ [cc] sample_apps//perf_demo/src/perf_demo_drv.c
+ [cc] sdk/src/boards/mw300_rd.c
+ [ar] bin/mw300_defconfig/libs/libaws_iot.a
+ [ar] bin/mw300_defconfig/libs/libevrythng.a
+ [ar] bin/mw300_defconfig/libs/libexpat-2.1.0.a
+ [ar] bin/mw300_defconfig/libs/libfreertos.a
+ [ar] bin/mw300_defconfig/libs/libxively.a
+ [ar] bin/mw300_defconfig/libs/liblwip.a
+ [ar] bin/mw300_defconfig/libs/libapp_framework.a
+ [ar] bin/mw300_defconfig/libs/libcli.a
+ [ar] bin/mw300_defconfig/libs/libdiagnostics.a
+ [ar] bin/mw300_defconfig/libs/libhealthmon.a
+ [ar] bin/mw300_defconfig/libs/libmdev.a
+ [ar] bin/mw300_defconfig/libs/liboverlays.a
+ [ar] bin/mw300_defconfig/libs/libpwrmgr.a
+ [ar] bin/mw300_defconfig/libs/libpart.a
+ [ar] bin/mw300_defconfig/libs/libutil.a
+ [ar] bin/mw300_defconfig/libs/libwmstdio.a
+ [ar] bin/mw300_defconfig/libs/libwmtime.a
+ [ar] bin/mw300_defconfig/libs/libdrv.a
+ [ar] bin/mw300_defconfig/libs/libled_indicator.a
+ [ar] bin/mw300_defconfig/libs/libpush_button.a
+ [ar] bin/mw300_defconfig/libs/libc.a
+ [ar] bin/mw300_defconfig/libs/libcacheprof.a
+ [ar] bin/mw300_defconfig/libs/libez_api.a
+ [ar] bin/mw300_defconfig/libs/libwmcrypto.a
+ [ar] bin/mw300_defconfig/libs/libbn.a
+ [ar] bin/mw300_defconfig/libs/libaescrypto.a
+ [ar] bin/mw300_defconfig/libs/libcurve25519.a
+ [ar] bin/mw300_defconfig/libs/libchacha-20.a
+ [ar] bin/mw300_defconfig/libs/libed25519.a
+ [ar] bin/mw300_defconfig/libs/libhkdf-sha512.a
+ [ar] bin/mw300_defconfig/libs/libpoly1305.a
+ [ar] bin/mw300_defconfig/libs/libsrp6a.a
+ [ar] bin/mw300_defconfig/libs/libdhcpd.a
+ [ar] bin/mw300_defconfig/libs/libftfs.a
+ [ar] bin/mw300_defconfig/libs/libezxml.a
+ [ar] bin/mw300_defconfig/libs/libhttpclient.a
+ [ar] bin/mw300_defconfig/libs/libhttpd.a
+ [ar] bin/mw300_defconfig/libs/libjson_generator.a
+ [ar] bin/mw300_defconfig/libs/libjson_parser.a
+ [ar] bin/mw300_defconfig/libs/libmfg.a
+ [ar] bin/mw300_defconfig/libs/libmdns.a
+ [ar] bin/mw300_defconfig/libs/libnwutils.a
+ [ar] bin/mw300_defconfig/libs/libprovisioning.a
+ [ar] bin/mw300_defconfig/libs/librfget.a
+ [ar] bin/mw300_defconfig/libs/libsysinfo.a
+ [ar] bin/mw300_defconfig/libs/libtelnetd.a
+ [ar] bin/mw300_defconfig/libs/libpsm.a
+ [ar] bin/mw300_defconfig/libs/libtls.a
+ [ar] bin/mw300_defconfig/libs/libttcp.a
+ [ar] bin/mw300_defconfig/libs/libbtdriver.a
+ [ar] bin/mw300_defconfig/libs/libnet.a
+ [ar] bin/mw300_defconfig/libs/libos.a
+ [ar] bin/mw300_defconfig/libs/libwifidriver.a
+ [ar] bin/mw300_defconfig/libs/libxz.a
+ [ar] bin/mw300_defconfig/libs/libwebsocket.a
+ [ar] bin/mw300_defconfig/libs/libwlcmgr.a
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/boot2.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/hello_world.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/baremetal.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/cert_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/perf_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/assembly_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/arrayent_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/assembly_demo.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/hello_world.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/aws_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/evrythng_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/baremetal.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/boot2.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/xively_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/adc_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/adc_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/gpio_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/gpio_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/dac_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/arrayent_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_adv_master_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/perf_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_adv_slave_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/cert_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_simple_master_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/xively_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_simple_slave_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/dac_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_master_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_adv_master_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_slave_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_adv_slave_demo.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/aws_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_full_duplex_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_dma_rx_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/evrythng_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_dma_tx_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_simple_master_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_echo_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_simple_slave_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/deepsleep_pm4.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_master_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pdn_pm4.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_slave_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_test.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_dma_rx_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_test.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_full_duplex_demo.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_dma_tx_demo.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_echo_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_test.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/mutex_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/semaphore_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_test.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/timer_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/semaphore_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/cli_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/mutex_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/psm_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_test.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_test.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/webhandler_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/websocket_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/timer_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/secure_fw_upgrade_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/cli_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/low_level_fw_upgrade_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/psm_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/fw_upgrade_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/deepsleep_pm4.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_wifi_bridge.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pdn_pm4.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/fcc_app.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/websocket_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ntpc_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/webhandler_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/server_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_wifi_bridge.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/client_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/fcc_app.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_mcu_wifi_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/low_level_fw_upgrade_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/all_in_one.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/secure_fw_upgrade_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa1.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/fw_upgrade_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa2.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa2.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa3.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ntpc_demo.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/server_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa4.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/rw_lock_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/client_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/os_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/rw_lock_demo.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa1.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/heap_alloc_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_i2c_master_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_mcu_wifi_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_i2c_slave_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/os_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wifi_driver_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_i2c_master_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_uap.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_i2c_slave_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wm_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/heap_alloc_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_11d.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa3.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/all_in_one.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_mac.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_eu_cert.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa4.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_cal.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wifi_driver_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_low_power.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_uap.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_power_save.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_11d.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_pdn.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wm_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uap_prov.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_mac.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_sniffer.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_eu_cert.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_trpc_demo.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_cal.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_low_power.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_frame_inject_demo.axf
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/test_subdir.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/test_subdir.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/smart_plug.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/smart_plug.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/01app_framework.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_power_save.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/02provisioning.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_pdn.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/03provisioning_webapp.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_sniffer.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/04discovery.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_trpc_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/05local_control.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uap_prov.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/06firmware_upgrades.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_frame_inject_demo.map
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/07led_pushbutton.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/01app_framework.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/boot2.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/hello_world.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/baremetal.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/cert_demo.bin
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/03provisioning_webapp.map
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/02provisioning.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/perf_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/assembly_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/arrayent_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/aws_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/evrythng_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/xively_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/adc_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/gpio_demo.bin
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/04discovery.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/dac_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_adv_master_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_simple_master_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_adv_slave_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_simple_slave_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_master_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_slave_demo.bin
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/05local_control.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_full_duplex_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_dma_rx_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_dma_tx_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/deepsleep_pm4.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pdn_pm4.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_echo_demo.bin
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/06firmware_upgrades.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_test.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/i2c_test.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ssp_test.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/mutex_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/semaphore_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/timer_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/psm_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/websocket_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/secure_fw_upgrade_demo.bin
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/07led_pushbutton.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/webhandler_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/cli_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/fw_upgrade_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/low_level_fw_upgrade_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/ntpc_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/fcc_app.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/server_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uart_wifi_bridge.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/client_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/all_in_one.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa1.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa2.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_mcu_wifi_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa3.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/qa4.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/os_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/rw_lock_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/heap_alloc_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_i2c_master_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/pm_i2c_slave_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wifi_driver_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_uap.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wm_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_11d.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_mac.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_eu_cert.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_cal.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_low_power.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_power_save.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/uap_prov.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_sniffer.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_pdn.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/smart_plug.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_trpc_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/test_subdir.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/wlan_frame_inject_demo.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/01app_framework.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/02provisioning.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/03provisioning_webapp.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/04discovery.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/05local_control.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/07led_pushbutton.bin
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/mw300_defconfig/mw300_rd/06firmware_upgrades.bin
+15:04:13 **** Build of configuration Default for project hiku ****
+make all 
+/Applications/Xcode.app/Contents/Developer/usr/bin/make APP=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/ BIN_DIR=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku//bin -I/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/inc -C../wmsdk_bundle-3.3.33 all
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/main.c
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/connection_manager.c
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/http_manager.c
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/ota_update.c
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/button_manager.c
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/button_manager.c: In function '_push_button_press_cb':
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/button_manager.c:76:3: warning: initialization from incompatible pointer type
+   .job_func = push_button_press_cb,
+   ^
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/button_manager.c:76:3: warning: (near initialization for 'job.job_func')
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/button_manager.c: At top level:
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/button_manager.c:43:13: warning: 'reset_to_factory_cb' defined but not used [-Wunused-function]
+ static void reset_to_factory_cb(int pin, void* data)
+             ^
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/hiku_board.c
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c: In function 'led_indicator_cb':
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c:167:4: warning: implicit declaration of function 'led_on' [-Wimplicit-function-declaration]
+    led_on(led_1);
+    ^
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c:170:4: warning: implicit declaration of function 'led_off' [-Wimplicit-function-declaration]
+    led_off(led_1);
+    ^
+ [cc] sdk/src/boards/mw300_rd.c
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.bin
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.ftfs
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/boot2.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/boot2.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/boot2.bin
+17:06:21 **** Incremental Build of configuration Default for project wmsdk_bundle-3.3.33 ****
+make -j7 all 
+17:06:21 **** Incremental Build of configuration Default for project hiku ****
+make all 
+/Applications/Xcode.app/Contents/Developer/usr/bin/make APP=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/ BIN_DIR=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku//bin -I/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/inc -C../wmsdk_bundle-3.3.33 all
+ [cc] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c: In function 'led_indicator_cb':
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c:167:4: warning: implicit declaration of function 'led_on' [-Wimplicit-function-declaration]
+    led_on(led_1);
+    ^
+/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/src/aws_client.c:170:4: warning: implicit declaration of function 'led_off' [-Wimplicit-function-declaration]
+    led_off(led_1);
+    ^
+ [axf] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.axf
+ [map] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.map
+ [bin] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.bin
+12:02:28 **** Incremental Build of configuration Default for project wmsdk_bundle-3.3.33 ****
+make -j7 all 
+12:02:31 **** Incremental Build of configuration Default for project hiku ****
+make all 
+/Applications/Xcode.app/Contents/Developer/usr/bin/make APP=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/ BIN_DIR=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku//bin -I/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/inc -C../wmsdk_bundle-3.3.33 all
+12:19:13 **** Incremental Build of configuration Default for project wmsdk_bundle-3.3.33 ****
+make -j7 all 
+12:19:14 **** Incremental Build of configuration Default for project hiku ****
+make all 
+/Applications/Xcode.app/Contents/Developer/usr/bin/make APP=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/ BIN_DIR=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku//bin -I/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/inc -C../wmsdk_bundle-3.3.33 all
+ [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.ftfs

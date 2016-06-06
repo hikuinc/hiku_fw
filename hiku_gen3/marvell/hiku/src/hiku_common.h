@@ -29,4 +29,7 @@
 #define hiku_b(...)				\
 	wmlog("hiku_button", ##__VA_ARGS__)
 
+#define hiku_a(...)				\
+	wmlog("hiku_aws", ##__VA_ARGS__)
+
 #endif /* INC_HIKU_COMMON_H_ */

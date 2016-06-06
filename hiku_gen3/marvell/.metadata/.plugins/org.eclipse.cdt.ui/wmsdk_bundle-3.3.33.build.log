@@ -1,5 +1,5 @@
-11:23:25 **** Incremental Build of configuration Default for project wmsdk_bundle-3.3.33 ****
+12:19:13 **** Incremental Build of configuration Default for project wmsdk_bundle-3.3.33 ****
 make -j7 all 
 
-11:23:25 Build Finished (took 490ms)
+12:19:14 Build Finished (took 655ms)
 
