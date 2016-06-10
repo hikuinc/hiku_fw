@@ -32,4 +32,7 @@
 #define hiku_a(...)				\
 	wmlog("hiku_aws", ##__VA_ARGS__)
 
+#define hiku_log(...)	\
+	wmlog(__FILE__,##__VA_ARGS__)
+
 #endif /* INC_HIKU_COMMON_H_ */

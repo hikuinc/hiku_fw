@@ -10,6 +10,7 @@
 #include "ota_update.h"
 #include "button_manager.h"
 #include "aws_client.h"
+#include "hiku_board.h"
 
 int main()
 {
@@ -17,15 +18,21 @@ int main()
 	wmstdio_init(UART0_ID, 0);
 	hiku_m("Initializing hiku!!\r\n");
 
-	if (aws_client_init()!= WM_SUCCESS)
-	{
-		hiku_m("Failed to initialize AWS Client!!\r\n");
-		return -WM_FAIL;
-	}
-
 	if (connection_manager_init() != WM_SUCCESS )
 	{
 		hiku_m("Failed to initialize Connection Manager!!\r\n");
+		return -WM_FAIL;
+	}
+
+	if (hiku_board_init() != WM_SUCCESS )
+	{
+		hiku_m("Failed to initalize hiku Board Init!\r\n");
+		return -WM_FAIL;
+	}
+
+	if (aws_client_init()!= WM_SUCCESS)
+	{
+		hiku_m("Failed to initialize AWS Client!!\r\n");
 		return -WM_FAIL;
 	}
 
