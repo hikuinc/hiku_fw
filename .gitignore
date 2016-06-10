@@ -15,3 +15,5 @@ hiku_gen3/marvell/*.axf
 hiku_gen3/marvell/*.o
 hiku_gen3/marvell/*.a
 hiku_gen3/marvell/.metadata
+hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/*
+
