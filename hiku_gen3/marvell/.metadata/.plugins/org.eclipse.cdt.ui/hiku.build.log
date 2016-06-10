@@ -1,7 +1,64 @@
-12:19:14 **** Incremental Build of configuration Default for project hiku ****
-make all 
-/Applications/Xcode.app/Contents/Developer/usr/bin/make APP=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/ BIN_DIR=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku//bin -I/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/inc -C../wmsdk_bundle-3.3.33 all
- [ftfs] /Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/bin/mw300_rd/hiku.ftfs
+14:09:41 **** Clean-only build of configuration Default for project hiku ****
+make clean 
+/Applications/Xcode.app/Contents/Developer/usr/bin/make APP=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/ BIN_DIR=/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku//bin -I/Users/rajan-work/hiku/hiku_fw/hiku_gen3/marvell/hiku/inc -C../wmsdk_bundle-3.3.33 clean
+ [clean] libaws_iot
+ [clean] libevrythng
+ [clean] libexpat-2.1.0
+ [clean] libfreertos
+ [clean] libxively
+ [clean] liblwip
+ [clean] libapp_framework
+ [clean] libcli
+ [clean] libdiagnostics
+ [clean] libhealthmon
+ [clean] libmdev
+ [clean] liboverlays
+ [clean] libpart
+ [clean] libpwrmgr
+ [clean] libutil
+ [clean] libwmstdio
+ [clean] libwmtime
+ [clean] libdrv
+ [clean] libled_indicator
+ [clean] libpush_button
+ [clean] libez_api
+ [clean] libc
+ [clean] libcacheprof
+ [clean] libwmcrypto
+ [clean] libaescrypto
+ [clean] libbn
+ [clean] libchacha-20
+ [clean] libcurve25519
+ [clean] libed25519
+ [clean] libhkdf-sha512
+ [clean] libpoly1305
+ [clean] libsrp6a
+ [clean] libdhcpd
+ [clean] libezxml
+ [clean] libftfs
+ [clean] libhttpclient
+ [clean] libhttpd
+ [clean] libjson_generator
+ [clean] libjson_parser
+ [clean] libmdns
+ [clean] libmfg
+ [clean] libnwutils
+ [clean] libprovisioning
+ [clean] libpsm
+ [clean] librfget
+ [clean] libsysinfo
+ [clean] libtelnetd
+ [clean] libtls
+ [clean] libttcp
+ [clean] libwebsocket
+ [clean] libxz
+ [clean] libnet
+ [clean] libos
+ [clean] libbtdriver
+ [clean] libwifidriver
+ [clean] libwlcmgr
+ [clean] hiku
+ [clean] boot2
 
-12:19:15 Build Finished (took 447ms)
+14:09:41 Build Finished (took 337ms)
 
