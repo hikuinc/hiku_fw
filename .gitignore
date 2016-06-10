@@ -7,3 +7,11 @@ hiku_gen3/baseline/Debug/hiku_gen3_freertos_sam4s.srec
 *.map
 hiku_gen3/baseline/Debug/hiku_gen3_freertos_sam4s.lss
 *.d
+
+hiku_gen3/marvell/*.log
+hiku_gen3/marvell/*.map
+hiku_gen3/marvell/*.elf
+hiku_gen3/marvell/*.axf
+hiku_gen3/marvell/*.o
+hiku_gen3/marvell/*.a
+hiku_gen3/marvell/.metadata
