@@ -12,8 +12,14 @@
 #include "aws_client.h"
 #include "hiku_board.h"
 
+extern unsigned long _bss1;
+extern unsigned long _ebss1;
+
 int main()
 {
+
+	memset(&_bss1, 0x00, ((unsigned)&_ebss1 - (unsigned)&_bss1));
+
 	/* Initialize console on uart0 */
 	wmstdio_init(UART0_ID, 0);
 	hiku_m("Initializing hiku!!\r\n");

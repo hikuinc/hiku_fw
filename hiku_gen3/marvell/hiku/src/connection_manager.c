@@ -9,6 +9,9 @@
 #include <wlan.h>
 #include "http_manager.h"
 #include "hiku_board.h"
+#ifdef FEATURE_HIKU_AWS
+#include "aws_client.h"
+#endif /*FEATURE_HIKU_AWS */
 
 
 /** Connection and WiFi event handler function forward declarations */
@@ -55,9 +58,22 @@ int common_event_handler(int event, void *data)
 			break;
 		case AF_EVT_NORMAL_CONNECTED:
 			event_wifi_connected(data);
+#ifdef FEATURE_HIKU_AWS
+			aws_wlan_event_normal_connected(data);
+#endif /* FEATURE_HIKU_AWS */
 			break;
 		case AF_EVT_NORMAL_CONNECTING:
 			event_wifi_connecting(data);
+			break;
+		case AF_EVT_NORMAL_CONNECT_FAILED:
+#ifdef FEATURE_HIKU_AWS
+			aws_wlan_event_normal_connect_failed(data);
+#endif /* FEATURE_HIKU_AWS */
+			break;
+		case AF_EVT_NORMAL_LINK_LOST:
+#ifdef FEATURE_HIKU_AWS
+			aws_wlan_event_normal_link_lost(data);
+#endif /* FEATURE_HIKU_AWS */
 			break;
 		default:
 			break;
@@ -77,6 +93,8 @@ static void event_wlan_init_done(void *data)
 {
 	int provisioned = (int)data;
 	//app_ftfs_init(FTFS_API_VERSION, FTFS_PART_NAME, &fs_handle);
+	char buf[16];
+	hiku_board_get_serial(buf);
 
 	if (http_manager_init() != WM_SUCCESS)
 	{
@@ -169,7 +187,7 @@ int connection_manager_init(void)
 	if (app_framework_start(common_event_handler) != WM_SUCCESS)
 	{
 		hiku_c("Failed to start the application framework\r\n");
-		return WM_FAIL;
+		return -WM_FAIL;
 	}
 	return WM_SUCCESS;
 }

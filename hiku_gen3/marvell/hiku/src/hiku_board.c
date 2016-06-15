@@ -15,21 +15,26 @@
 int hiku_board_init(void)
 {
 	char buf[16];
-	hiku_log("Initializing!!!\r\n");
-	hiku_board_get_serial(buf);
+	hiku_brd("Initializing!!!\r\n");
+	if (hiku_board_get_serial(buf) != WM_SUCCESS)
+	{
+		hiku_brd("Failed to read serial number!\r\n");
+	}
+	hiku_brd("Read Serial Number: %s\r\n",buf);
+
 	return WM_SUCCESS;
 }
 
 int hiku_board_get_serial(char * buf)
 {
-	static char serial[SERIAL_PREFIX_LEN + MAC_ADDRESS_STR_LEN] = "0000000000000000";
+	static char serial[SERIAL_PREFIX_LEN + MAC_ADDRESS_STR_LEN+1] = "0000000000000000\0";
 
 	if (serial[0] == '0')
 	{
 		unsigned char mac[MLAN_MAC_ADDR_LENGTH];
 		if (wlan_get_mac_address(mac) != WM_SUCCESS)
 		{
-			hiku_log("Failed to read mac address!!\r\n");
+			hiku_brd("Failed to read mac address!!\r\n");
 			return -WM_FAIL;
 		}
 
@@ -37,7 +42,6 @@ int hiku_board_get_serial(char * buf)
 	}
 
 	strncpy(buf,serial, strlen(serial));
-	hiku_log("Returning Serial: %s",serial);
-
+	hiku_brd("Returning Serial: %s\r\n",serial);
 	return WM_SUCCESS;
 }

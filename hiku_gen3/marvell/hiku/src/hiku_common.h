@@ -14,6 +14,7 @@
 #include <app_framework.h>
 #include <wmlog.h>
 
+
 #define hiku_m(...)				\
 	wmlog("hiku_main", ##__VA_ARGS__)
 
@@ -32,7 +33,7 @@
 #define hiku_a(...)				\
 	wmlog("hiku_aws", ##__VA_ARGS__)
 
-#define hiku_log(...)	\
-	wmlog(__FILE__,##__VA_ARGS__)
+#define hiku_brd(...)	\
+	wmlog("hiku_board",##__VA_ARGS__)
 
 #endif /* INC_HIKU_COMMON_H_ */

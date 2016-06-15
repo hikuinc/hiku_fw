@@ -30,4 +30,8 @@ enum state {
 
 int aws_client_init(void);
 
+void aws_wlan_event_normal_link_lost(void *data);
+void aws_wlan_event_normal_connect_failed(void *data);
+void aws_wlan_event_normal_connected(void *data);
+
 #endif /* SRC_AWS_CLIENT_H_ */

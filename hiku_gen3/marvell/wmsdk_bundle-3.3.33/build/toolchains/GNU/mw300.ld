@@ -97,6 +97,14 @@ SECTIONS
 		. = ALIGN(8);
 		_etext = .;
 	} > SRAM0
+	
+   .bss1 (NOLOAD):
+   {
+      _bss1 = .;
+      *liblwip.a:(.bss .bss.*)
+      . = ALIGN(4);
+      _ebss1 = .;
+   } > SRAM0
 
 	/* Contains information for unwinding the stack */
 	.ARM.exidx (_etext)   :

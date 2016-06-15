@@ -17,3 +17,13 @@ hiku_gen3/marvell/*.a
 hiku_gen3/marvell/.metadata
 hiku_gen3/marvell/wmsdk_bundle-3.3.33/bin/*
 
+
+*.index
+
+hiku_gen3/marvell/.metadata/.log
+
+*.index
+
+*.snap
+
+*.log

@@ -24,13 +24,8 @@ int aws_publish_property_state(ShadowParameters_t *sp);
 static void aws_thread(os_thread_arg_t data);
 /** global variable declarations */
 
-/* These hold each pushbutton's count, updated in the callback ISR */
-static volatile bool led_state;
-static volatile bool led_requested_state;
-static output_gpio_cfg_t led_1;
-
 static MQTTClient_t mqtt_client;
-static enum state device_state;
+static enum state device_state = AWS_DISCONNECTED;
 
 /* Thread handle */
 static os_thread_t aws_starter_thread;
@@ -51,11 +46,11 @@ static char url[128];
 
 
 
-static char client_cert_buffer[AWS_PUB_CERT_SIZE];
-static char private_key_buffer[AWS_PRIV_KEY_SIZE];
+static char client_cert_buffer[AWS_PUB_CERT_SIZE] = {};
+static char private_key_buffer[AWS_PRIV_KEY_SIZE] = {};
 #define THING_LEN 126
 #define REGION_LEN 16
-static char thing_name[THING_LEN];
+static char thing_name[THING_LEN] = {};
 
 
 /** implementations */
@@ -161,7 +156,7 @@ void led_indicator_cb(const char *p_json_string,
 		      uint32_t json_string_datalen,
 		      jsonStruct_t *p_context) {
 	int state;
-	if (p_context != NULL) {
+/*	if (p_context != NULL) {
 		state = *(int *)(p_context->pData);
 		if (state) {
 			led_on(led_1);
@@ -170,7 +165,7 @@ void led_indicator_cb(const char *p_json_string,
 			led_off(led_1);
 			led_requested_state = 0;
 		}
-	}
+	}*/
 }
 
 /* Publish thing state to shadow */
@@ -183,7 +178,7 @@ int aws_publish_property_state(ShadowParameters_t *sp)
 	 * the state of the led on the board in callback function and
 	 * publish updated state on configured topic.
 	 */
-	if (led_requested_state != led_state) {
+/*	if (led_requested_state != led_state) {
 		led_state = led_requested_state;
 		snprintf(buf_out, BUFSIZE, "{\"state\": {\"reported\":{"
 			 "\"%s\":%d}}}", VAR_LED_1_PROPERTY, led_state);
@@ -198,11 +193,7 @@ int aws_publish_property_state(ShadowParameters_t *sp)
 				 "the led\r\n");
 			return ret;
 		}
-		if (led_state)
-			led_on(led_1);
-		else
-			led_off(led_1);
-	}
+	}*/
 	return ret;
 }
 
@@ -287,14 +278,14 @@ out:
 	return;
 }
 
-void wlan_event_normal_link_lost(void *data)
+void aws_wlan_event_normal_link_lost(void *data)
 {
 	/* led indication to indicate link loss */
 	aws_iot_shadow_disconnect(&mqtt_client);
 	device_state = AWS_DISCONNECTED;
 }
 
-void wlan_event_normal_connect_failed(void *data)
+void aws_wlan_event_normal_connect_failed(void *data)
 {
 	/* led indication to indicate connect failed */
 	aws_iot_shadow_disconnect(&mqtt_client);
@@ -304,7 +295,7 @@ void wlan_event_normal_connect_failed(void *data)
 /* This function gets invoked when station interface connects to home AP.
  * Network dependent services can be started here.
  */
-void wlan_event_normal_connected(void *data)
+void aws_wlan_event_normal_connected(void *data)
 {
 	int ret;
 	/* Default time set to 1 October 2015 */
