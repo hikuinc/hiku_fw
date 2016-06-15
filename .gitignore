@@ -27,3 +27,7 @@ hiku_gen3/marvell/.metadata/.log
 *.snap
 
 *.log
+
+*.xmi
+
+*.log
