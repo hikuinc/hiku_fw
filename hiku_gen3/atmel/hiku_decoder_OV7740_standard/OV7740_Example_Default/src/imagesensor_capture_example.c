@@ -116,6 +116,7 @@ static volatile uint32_t g_ul_push_button_trigger = false;
 /* Vsync signal information (true if it's triggered and false otherwise) */
 static volatile uint32_t g_ul_vsync_flag = false;
 
+static volatile uint32_t g_display_splash = false;
 /**
  * \brief Handler for vertical synchronisation using by the OV7740 image
  * sensor.
@@ -136,7 +137,15 @@ static void button_handler(uint32_t ul_id, uint32_t ul_mask)
 	unused(ul_id);
 	unused(ul_mask);
 
-	g_ul_push_button_trigger = true;
+	if (g_ul_push_button_trigger){
+		g_ul_push_button_trigger = false;
+		g_display_splash = true;
+
+	} else {
+		g_ul_push_button_trigger = true;
+	}
+
+
 }
 
 /**
@@ -626,76 +635,78 @@ int main(void)
 	capture_init();
 
 	/* LCD display information*/
-	ili9325_fill(COLOR_YELLOW);
+	ili9325_fill(COLOR_TURQUOISE);
 	ili9325_draw_string(0, 20,
 			(uint8_t *)"OV7740 image sensor\ncapture example");
 	ili9325_draw_string(0, 80,
-			(uint8_t *)"Please Press button\nto take and display\na picture");
+			(uint8_t *)"Please Press button\nto start processing\n barcodes");
 
 	while (1) {
-		while (!g_ul_push_button_trigger) { /* Press push button to get
-			                             * out */
-		}
+		//while (!g_ul_push_button_trigger) { /* Press push button to get
+		//	                             * out */
+		//}
 		/* Reset push button trigger flag */
-		g_ul_push_button_trigger = false;
+		//g_ul_push_button_trigger = false;
 
-		/* Capture a picture and send corresponding data to external
-		 * memory */
-		start_capture();
+		if (g_ul_push_button_trigger) {
 
-		/* Load picture data from external memory and display it on the
-		 * LCD */
-		_display();
+			/* Capture a picture and send corresponding data to external
+			 * memory */
+			start_capture();
+
+			/* Load picture data from external memory and display it on the
+			 * LCD */
+			_display();
 
 
-		zbar_image_scanner_t *scanner = NULL;
-		/* create a reader */
-		scanner = zbar_image_scanner_create();
-		/* configure the reader */
-		zbar_image_scanner_set_config(scanner, 0, ZBAR_CFG_ENABLE, 1);
+			zbar_image_scanner_t *scanner = NULL;
+			/* create a reader */
+			scanner = zbar_image_scanner_create();
+			/* configure the reader */
+			zbar_image_scanner_set_config(scanner, 0, ZBAR_CFG_ENABLE, 1);
 	
-		//uint8_t * temp = teststring;	
-		//zbar_image_t *image = zbar_image_create();
-		//zbar_image_set_format(image, zbar_fourcc('Y','8','0','0'));
-		//zbar_image_set_size(image, 6, 190);
-		//zbar_image_set_data(image, temp, 6 * 190, zbar_image_free_data);
+			//uint8_t * temp = teststring;	
+			//zbar_image_t *image = zbar_image_create();
+			//zbar_image_set_format(image, zbar_fourcc('Y','8','0','0'));
+			//zbar_image_set_size(image, 6, 190);
+			//zbar_image_set_data(image, temp, 6 * 190, zbar_image_free_data);
 
-		uint8_t * temp = (uint8_t *)CAP_DEST;
-		zbar_image_t *image = zbar_image_create();
-		zbar_image_set_format(image, zbar_fourcc('G','R','E','Y'));
-		zbar_image_set_size(image, IMAGE_WIDTH, IMAGE_HEIGHT);
-		zbar_image_set_data(image, temp, IMAGE_WIDTH * IMAGE_HEIGHT, zbar_image_free_data);
+			uint8_t * temp = (uint8_t *)CAP_DEST;
+			zbar_image_t *image = zbar_image_create();
+			zbar_image_set_format(image, zbar_fourcc('G','R','E','Y'));
+			zbar_image_set_size(image, IMAGE_WIDTH, IMAGE_HEIGHT);
+			zbar_image_set_data(image, temp, IMAGE_WIDTH * IMAGE_HEIGHT, zbar_image_free_data);
 
 
-		/* scan the image for barcodes */
-		int n = zbar_scan_image(scanner, image);
+			/* scan the image for barcodes */
+			int n = zbar_scan_image(scanner, image);
 
-		/* extract results */
-		const zbar_symbol_t *symbol = zbar_image_first_symbol(image);
-		for(; symbol; symbol = zbar_symbol_next(symbol)) {
-			/* print the results */
-			zbar_symbol_type_t typ = zbar_symbol_get_type(symbol);
-			volatile const char *data = zbar_symbol_get_data(symbol);
+			/* extract results */
+			const zbar_symbol_t *symbol = zbar_image_first_symbol(image);
+			for(; symbol; symbol = zbar_symbol_next(symbol)) {
+				/* print the results */
+				zbar_symbol_type_t typ = zbar_symbol_get_type(symbol);
+				volatile const char *data = zbar_symbol_get_data(symbol);
 		
-			//printf("decoded %s symbol \"%s\"\n", zbar_get_symbol_name(typ), data);
+				//printf("decoded %s symbol \"%s\"\n", zbar_get_symbol_name(typ), data);
+				display_init();
+				ili9325_fill(COLOR_BLUE);
+				ili9325_draw_string(0, 20, data);
+				ili9325_draw_string(0, 80, zbar_get_symbol_name(typ));
+				
+				g_ul_push_button_trigger = false;
+
+
+			}
+
+		} 
+		
+		if (g_display_splash) {
 			display_init();
-			ili9325_fill(COLOR_YELLOW);
-			ili9325_draw_string(0, 20, data);
-			ili9325_draw_string(0, 80, zbar_get_symbol_name(typ));
-			//ili9325_draw_string(0, 80, (uint8_t *)"Please 123 button\nto take and display\na picture");
-			delay_ms(3000);
+			ili9325_fill(COLOR_TOMATO);
+			ili9325_draw_string(0, 80, (uint8_t *)"Press button\nto start decoding \nbrah!");
+			g_display_splash = false;
 		}
-
-
-
-
-
-
-
-
-
-
-
 
 	}
 }
