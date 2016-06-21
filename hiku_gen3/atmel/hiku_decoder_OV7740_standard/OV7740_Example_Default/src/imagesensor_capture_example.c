@@ -597,6 +597,50 @@ static void draw_frame_yuv_bw8( void )
 
 #endif
 
+uint32_t ul_capture_time = 0;
+
+static void configure_rtt(void)
+{
+	uint32_t ul_previous_time;
+
+	/* Configure RTT for a 1 second tick interrupt */
+	#if SAM4N || SAM4S || SAM4E || SAM4C || SAM4CP || SAM4CM || SAMV71 || SAMV70 || SAME70 || SAMS70
+	rtt_sel_source(RTT, false);
+	#endif
+	rtt_init(RTT, 32768);
+
+	ul_previous_time = rtt_read_timer_value(RTT);
+	while (ul_previous_time == rtt_read_timer_value(RTT));
+
+	/* Enable RTT interrupt */
+	//NVIC_DisableIRQ(RTT_IRQn);
+	//NVIC_ClearPendingIRQ(RTT_IRQn);
+	//NVIC_SetPriority(RTT_IRQn, 0);
+	//NVIC_EnableIRQ(RTT_IRQn);
+	//rtt_enable_interrupt(RTT, RTT_MR_RTTINCIEN);
+}
+
+
+
+volatile uint32_t g_ms_ticks = 0;
+
+void SysTick_Handler(void)
+{
+    g_ms_ticks++;
+}
+
+void time_tick_init(void)
+{
+    g_ms_ticks = 0;
+    SysTick_Config(sysclk_get_cpu_hz() / 1000); 
+}
+
+uint32_t time_tick_get(void)
+{
+    return g_ms_ticks;
+}
+
+
 /**
  * \brief Application entry point for image sensor capture example.
  *
@@ -640,24 +684,22 @@ int main(void)
 			(uint8_t *)"OV7740 image sensor\ncapture example");
 	ili9325_draw_string(0, 80,
 			(uint8_t *)"Please Press button\nto start processing\n barcodes");
+	
+	time_tick_init();
 
 	while (1) {
-		//while (!g_ul_push_button_trigger) { /* Press push button to get
-		//	                             * out */
-		//}
-		/* Reset push button trigger flag */
-		//g_ul_push_button_trigger = false;
-
+			
 		if (g_ul_push_button_trigger) {
 
 			/* Capture a picture and send corresponding data to external
 			 * memory */
 			start_capture();
 
+			ul_capture_time = time_tick_get();
+			
 			/* Load picture data from external memory and display it on the
 			 * LCD */
 			_display();
-
 
 			zbar_image_scanner_t *scanner = NULL;
 			/* create a reader */
@@ -684,16 +726,23 @@ int main(void)
 			/* extract results */
 			const zbar_symbol_t *symbol = zbar_image_first_symbol(image);
 			for(; symbol; symbol = zbar_symbol_next(symbol)) {
+
+				volatile char elapsed_time[50];
+				volatile uint32_t current_time = time_tick_get();
+				volatile uint32_t elapsed = current_time - ul_capture_time;
+				sprintf(elapsed_time, "%u ms", elapsed);
+
 				/* print the results */
 				zbar_symbol_type_t typ = zbar_symbol_get_type(symbol);
 				volatile const char *data = zbar_symbol_get_data(symbol);
-		
+	
 				//printf("decoded %s symbol \"%s\"\n", zbar_get_symbol_name(typ), data);
 				display_init();
 				ili9325_fill(COLOR_BLUE);
 				ili9325_draw_string(0, 20, data);
 				ili9325_draw_string(0, 80, zbar_get_symbol_name(typ));
-				
+				ili9325_draw_string(0, 100, elapsed_time );
+
 				g_ul_push_button_trigger = false;
 
 

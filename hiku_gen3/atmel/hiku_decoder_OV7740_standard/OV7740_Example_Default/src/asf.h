@@ -90,6 +90,9 @@
 // From module: Part identification macros
 #include <parts.h>
 
+// From module: RTT - Real Time Timer
+#include <rtt.h>
+
 // From module: SAM4S-WPIR-RD LED support enabled
 #include <led.h>
 
