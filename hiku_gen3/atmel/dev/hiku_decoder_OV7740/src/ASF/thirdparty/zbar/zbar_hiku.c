@@ -12,7 +12,9 @@
  #include <zbar.h>
  #include <conf_board.h>
 
- void zbar_hiku_process(void){
+ uint8_t zbar_hiku_process(char *barcode_val, char *barcode_typ){
+
+			uint8_t barcode_matches = 0;
 
 			zbar_image_scanner_t *scanner = NULL;
 			scanner = zbar_image_scanner_create();
@@ -29,32 +31,16 @@
 			const zbar_symbol_t *symbol = zbar_image_first_symbol(image);
 			for(; symbol; symbol = zbar_symbol_next(symbol)) {
 				
-//				g_ul_end_process_time = time_tick_get();
-
-				char capture_time[32];
-				char process_time[32];
-				char total_time[32];
-				
-//				sprintf(capture_time, "%u ms", g_ul_end_capture_time - g_ul_begin_capture_time);
-//				sprintf(process_time, "%u ms", g_ul_end_process_time - g_ul_begin_process_time);
-//				sprintf(total_time, "%u ms", time_tick_get() - g_ul_begin_capture_time);
+				barcode_matches++;
 
 				zbar_symbol_type_t typ = zbar_symbol_get_type(symbol);
 				volatile const char *data = zbar_symbol_get_data(symbol);
 	
-				//printf("decoded %s symbol \"%s\"\n", zbar_get_symbol_name(typ), data);
-//				display_init();
-				ili9325_fill(COLOR_BLUE);
-				ili9325_draw_string(0, 20, (uint8_t *)data);
-				ili9325_draw_string(0, 80, (uint8_t *)zbar_get_symbol_name(typ));
-				ili9325_draw_string(0, 100, (uint8_t *)capture_time );
-				ili9325_draw_string(0, 120, (uint8_t *)process_time );
-				ili9325_draw_string(0, 140, (uint8_t *)total_time );
-
-				delay_ms(3000);
-//				g_ul_push_button_trigger = false;
-
+				strcpy(barcode_val, data);
+				strcpy(barcode_typ, (uint8_t *)zbar_get_symbol_name(typ));
 
 			}
+
+			return barcode_matches;
 			
 }

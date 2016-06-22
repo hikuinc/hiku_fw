@@ -477,6 +477,13 @@ static void draw_frame_yuv_bw8( void )
 
 #endif
 
+char barcode[50];
+char barcode_type[50];
+
+char capture_time[32];
+char process_time[32];
+char total_time[32];
+
 uint32_t g_ul_begin_capture_time = 0;
 uint32_t g_ul_end_capture_time = 0;
 uint32_t g_ul_begin_process_time = 0;
@@ -502,7 +509,7 @@ uint32_t time_tick_get(void)
 }
 
 
-extern "C" void zbar_hiku_process(void);
+extern "C" uint8_t zbar_hiku_process(char *barcode_val, char *barcode_typ);
 
 /*void zbar_process(void){
 
@@ -621,9 +628,31 @@ int main(void)
 
 			g_ul_begin_process_time = time_tick_get();
 
-			zbar_hiku_process();
-			IplImage *IgradX = 0;
-			IgradX = cvCreateImage(cvSize(320,240),IPL_DEPTH_16S, 1);
+			if ( zbar_hiku_process(barcode, barcode_type) > 0 ){
+
+				g_ul_end_process_time = time_tick_get();
+				sprintf(capture_time, "%u ms", g_ul_end_capture_time - g_ul_begin_capture_time);
+				sprintf(process_time, "%u ms", g_ul_end_process_time - g_ul_begin_process_time);
+				sprintf(total_time, "%u ms", time_tick_get() - g_ul_begin_capture_time);
+
+
+				//printf("decoded %s symbol \"%s\"\n", zbar_get_symbol_name(typ), data);
+				display_init();
+				ili9325_fill(COLOR_BLUE);
+				ili9325_draw_string(0, 20, (uint8_t *)barcode);
+				ili9325_draw_string(0, 80, (uint8_t *)barcode_type);
+
+
+				ili9325_draw_string(0, 100, (uint8_t *)capture_time );
+				ili9325_draw_string(0, 120, (uint8_t *)process_time );
+				ili9325_draw_string(0, 140, (uint8_t *)total_time );
+
+				g_ul_push_button_trigger = false;
+			}
+
+
+//			IplImage *IgradX = 0;
+//			IgradX = cvCreateImage(cvSize(320,240),IPL_DEPTH_16S, 1);
 
 //			zbar_image_scanner_t *scanner = NULL;
 			/* create a reader */

@@ -11,7 +11,7 @@
 
  #include <zbar.h>
 
-extern void zbar_hiku_process(void);
+extern uint8_t zbar_hiku_process(char *barcode_val, char *barcode_typ);
 
 
 #endif /* ZBAR_HIKU_H_ */
