@@ -599,6 +599,8 @@ static void draw_frame_yuv_bw8( void )
 
 uint32_t g_ul_begin_capture_time = 0;
 uint32_t g_ul_end_capture_time = 0;
+uint32_t g_ul_begin_cv_time = 0;
+uint32_t g_ul_end_cv_time = 0;
 uint32_t g_ul_begin_process_time = 0;
 uint32_t g_ul_end_process_time = 0;
 uint32_t g_ul_elapsed_time = 0;
@@ -626,14 +628,11 @@ uint32_t time_tick_get(void)
 
 void threshold_otsu(void){
 	
-	 uint32_t ul_cursor;
-	 uint8_t *p_uc_data;
-
-
+	uint32_t ul_cursor;
+	uint8_t *p_uc_data;
 
 	volatile int32_t histogram[256] = {0};
 	volatile int32_t histogram_total = 0;
-
 	volatile float wSumTotal = 0;
 	volatile float wSumBg = 0;
 	volatile int32_t wB = 0;
@@ -643,20 +642,7 @@ void threshold_otsu(void){
 	volatile float varMax = 0;
 	volatile float varBetweenClass = 0;
 	volatile float otsu_threshold = 0;
-	
 	volatile int32_t totalPixels = 76800;
-
-/*	char thresh[32];
-	char hist1[10];
-	char hist2[10];
-	char hist3[10];
-	char wSumT[32];
-	char wbg[32];
-	char wfg[32];
-	char mbg[32];
-	char mfg[32];
-	char otsu[32];
-*/
 
 	//clear histogram
 	for (int t = 0; t < 256; t++) {
@@ -670,17 +656,6 @@ void threshold_otsu(void){
 		histogram[*p_uc_data] = histogram[*p_uc_data] + 1;
 	}
 
-//	sprintf(hist1, "hist1 = %u", histogram[1]);
-//	sprintf(hist2, "hist2 = %u", histogram[125]);
-//	sprintf(hist3, "hist3 = %u", histogram[254]);
-	//sprintf(wSumT, "wSumT = %4.1f", wSumTotal);
-
-//	display_init();
-//	ili9325_draw_string(0, 20, hist1);
-//	ili9325_draw_string(0, 40, hist2);
-//	ili9325_draw_string(0, 60, hist3);
-	//ili9325_draw_string(0, 180, wSumT);
-
 	//calculate the total weighted sum (numerator)
 	for (int t = 0; t < 256; t++) {
 		wSumTotal = wSumTotal + (t * histogram[t]);
@@ -692,7 +667,6 @@ void threshold_otsu(void){
 		wB = wB + (int32_t)histogram[t];
 		wF = totalPixels - wB;
 		if (wB != 0 && wF > 0){
-
 
 			//calculate the total weighted background sum (numerator)
 			wSumBg = wSumBg + (t * histogram[t]);
@@ -706,26 +680,8 @@ void threshold_otsu(void){
 				varMax = varBetweenClass; 
 				otsu_threshold = t;
 			}
-
-			/*sprintf(wbg, "wbg = %d", wB);
-			sprintf(wfg, "wfg = %d", wF);
-			sprintf(mbg, "mbg = %4.1f", mB);
-			sprintf(mfg, "mfg = %4.1f", mF);
-
-			display_init();
-			ili9325_draw_string(0, 200, wbg);
-			ili9325_draw_string(0, 220, wfg);
-			ili9325_draw_string(0, 240, mbg);
-			ili9325_draw_string(0, 260, mfg);*/
-
 		}
-
 	}
-
-//	sprintf(otsu, "otsu = %d", otsu_threshold);
-
-//	display_init();
-//	ili9325_draw_string(0, 200, otsu);
 
 	//run otsu threshold on captured image
 	p_uc_data = (uint8_t *)CAP_DEST;
@@ -797,7 +753,9 @@ int main(void)
 			start_capture();
 			g_ul_end_capture_time = time_tick_get();
 			
+			g_ul_begin_cv_time = time_tick_get();
 			threshold_otsu();
+			g_ul_end_cv_time = time_tick_get();
 
 			/* Load picture data from external memory and display it on the
 			 * LCD */
@@ -805,10 +763,11 @@ int main(void)
 
 
 			g_ul_begin_process_time = time_tick_get();
+			
 			zbar_image_scanner_t *scanner = NULL;
-			/* create a reader */
+			// create a reader 
 			scanner = zbar_image_scanner_create();
-			/* configure the reader */
+			// configure the reader 
 			zbar_image_scanner_set_config(scanner, 0, ZBAR_CFG_ENABLE, 1);
 	
 			//uint8_t * temp = teststring;	
@@ -824,24 +783,26 @@ int main(void)
 			zbar_image_set_data(image, temp, IMAGE_WIDTH * IMAGE_HEIGHT, zbar_image_free_data);
 
 
-			/* scan the image for barcodes */
+			// scan the image for barcodes 
 			int n = zbar_scan_image(scanner, image);
 
-			/* extract results */
+			// extract results 
 			const zbar_symbol_t *symbol = zbar_image_first_symbol(image);
 			for(; symbol; symbol = zbar_symbol_next(symbol)) {
 				
 				g_ul_end_process_time = time_tick_get();
 
 				char capture_time[32];
+				char cv_time[32];
 				char process_time[32];
 				char total_time[32];
 				
-				sprintf(capture_time, "%u ms", g_ul_end_capture_time - g_ul_begin_capture_time);
-				sprintf(process_time, "%u ms", g_ul_end_process_time - g_ul_begin_process_time);
-				sprintf(total_time, "%u ms", time_tick_get() - g_ul_begin_capture_time);
+				sprintf(capture_time, "cap = %u ms", g_ul_end_capture_time - g_ul_begin_capture_time);
+				sprintf(cv_time, "cv = %u ms", g_ul_end_cv_time - g_ul_begin_cv_time);				
+				sprintf(process_time, "zbar = %u ms", g_ul_end_process_time - g_ul_begin_process_time);
+				sprintf(total_time, "total = %u ms", time_tick_get() - g_ul_begin_capture_time);
 
-				/* print the results */
+				// print the results 
 				zbar_symbol_type_t typ = zbar_symbol_get_type(symbol);
 				volatile const char *data = zbar_symbol_get_data(symbol);
 	
@@ -849,10 +810,11 @@ int main(void)
 				display_init();
 				ili9325_fill(COLOR_BLUE);
 				ili9325_draw_string(0, 20, data);
-				ili9325_draw_string(0, 80, zbar_get_symbol_name(typ));
+				ili9325_draw_string(0, 40, zbar_get_symbol_name(typ));
 				ili9325_draw_string(0, 100, capture_time );
-				ili9325_draw_string(0, 120, process_time );
-				ili9325_draw_string(0, 140, total_time );
+				ili9325_draw_string(0, 120, cv_time );
+				ili9325_draw_string(0, 140, process_time );
+				ili9325_draw_string(0, 160, total_time );
 
 				g_ul_push_button_trigger = false;
 
