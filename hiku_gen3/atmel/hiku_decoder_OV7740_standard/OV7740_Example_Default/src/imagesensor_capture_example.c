@@ -622,39 +622,31 @@ uint32_t time_tick_get(void)
 }
 
 
-uint8_t histogram[256] = {0};
 
-float wSumTotal = 0;
-float wSumBg = 0;
-int32_t wB = 0;
-int32_t wF = 0;
-float mB = 0;
-float mF = 0;
-int32_t totalPixels = 76800;
-
-float varMax = 0;
-float varBetweenClass = 0;
-float otsu_threshold = 0;
 
 void threshold_otsu(void){
 	
-	uint32_t ul_cursor;
-	uint8_t *p_uc_data;
-
-	p_uc_data = (uint8_t *)CAP_DEST;
-
-	volatile wSumTotal = 0;
-	volatile wSumBg = 0;
-	volatile wB = 0;
-	volatile wF = 0;
-	volatile mB = 0;
-	volatile mF = 0;
-	volatile varMax = 0;
-	volatile varBetweenClass = 0;
-	volatile otsu_threshold = 0;
+	 uint32_t ul_cursor;
+	 uint8_t *p_uc_data;
 
 
-	char thresh[32];
+
+	volatile int32_t histogram[256] = {0};
+	volatile int32_t histogram_total = 0;
+
+	volatile float wSumTotal = 0;
+	volatile float wSumBg = 0;
+	volatile int32_t wB = 0;
+	volatile int32_t wF = 0;
+	volatile float mB = 0;
+	volatile float mF = 0;
+	volatile float varMax = 0;
+	volatile float varBetweenClass = 0;
+	volatile float otsu_threshold = 0;
+	
+	volatile int32_t totalPixels = 76800;
+
+/*	char thresh[32];
 	char hist1[10];
 	char hist2[10];
 	char hist3[10];
@@ -664,7 +656,15 @@ void threshold_otsu(void){
 	char mbg[32];
 	char mfg[32];
 	char otsu[32];
+*/
 
+	//clear histogram
+	for (int t = 0; t < 256; t++) {
+		histogram[t] = 0x00;
+	}
+
+	//generate histogram
+	p_uc_data = (uint8_t *)CAP_DEST;	
 	for (ul_cursor = IMAGE_WIDTH * IMAGE_HEIGHT; ul_cursor != 0; ul_cursor--, p_uc_data++) {
 		//calculate histogram
 		histogram[*p_uc_data] = histogram[*p_uc_data] + 1;
@@ -681,40 +681,44 @@ void threshold_otsu(void){
 //	ili9325_draw_string(0, 60, hist3);
 	//ili9325_draw_string(0, 180, wSumT);
 
+	//calculate the total weighted sum (numerator)
 	for (int t = 0; t < 256; t++) {
 		wSumTotal = wSumTotal + (t * histogram[t]);
+		histogram_total = histogram_total + histogram[t];
 	}
 	
 	for (int t = 0; t < 256; t++) {
 
 		wB = wB + (int32_t)histogram[t];
 		wF = totalPixels - wB;
-		if (wF <= 0){
-			return;
+		if (wB != 0 && wF > 0){
+
+
+			//calculate the total weighted background sum (numerator)
+			wSumBg = wSumBg + (t * histogram[t]);
+
+			mB = wSumBg / wB;
+			mF = (wSumTotal - wSumBg) / wF; 
+
+			varBetweenClass = (wB) * (wF) * (mB - mF) * (mB - mF);
+
+			if (varBetweenClass >= varMax){
+				varMax = varBetweenClass; 
+				otsu_threshold = t;
+			}
+
+			/*sprintf(wbg, "wbg = %d", wB);
+			sprintf(wfg, "wfg = %d", wF);
+			sprintf(mbg, "mbg = %4.1f", mB);
+			sprintf(mfg, "mfg = %4.1f", mF);
+
+			display_init();
+			ili9325_draw_string(0, 200, wbg);
+			ili9325_draw_string(0, 220, wfg);
+			ili9325_draw_string(0, 240, mbg);
+			ili9325_draw_string(0, 260, mfg);*/
+
 		}
-
-		wSumBg = wSumBg + (t * histogram[t]);
-
-		mB = wSumBg / wB;
-		mF = (wSumTotal - wSumBg) / wF; 
-
-		varBetweenClass = wB * wF * (mB - mF) * (mB - mF);
-
-		if (varBetweenClass > varMax){
-			varMax = varBetweenClass; 
-			otsu_threshold = t;
-		}
-
-		/*sprintf(wbg, "wbg = %d", wB);
-		sprintf(wfg, "wfg = %d", wF);
-		sprintf(mbg, "mbg = %4.1f", mB);
-		sprintf(mfg, "mfg = %4.1f", mF);
-
-		display_init();
-		ili9325_draw_string(0, 200, wbg);
-		ili9325_draw_string(0, 220, wfg);
-		ili9325_draw_string(0, 240, mbg);
-		ili9325_draw_string(0, 260, mfg);*/
 
 	}
 
@@ -723,8 +727,8 @@ void threshold_otsu(void){
 //	display_init();
 //	ili9325_draw_string(0, 200, otsu);
 
+	//run otsu threshold on captured image
 	p_uc_data = (uint8_t *)CAP_DEST;
-
 	for (ul_cursor = IMAGE_WIDTH * IMAGE_HEIGHT; ul_cursor != 0; ul_cursor--, p_uc_data++) {
 		if ( (*p_uc_data) >= otsu_threshold){
 			p_uc_data[0] = 0xFF;
