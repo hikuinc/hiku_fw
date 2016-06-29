@@ -16,11 +16,11 @@
 /** forward declarations */
 
 static void set_button_state_cb(int pin, void * data);
-static void reset_to_factory_cb(int pin, void * data);
-static void reset_device_cb(int pin, void* data);
+//static void reset_to_factory_cb(int pin, void * data);
+//static void reset_device_cb(int pin, void* data);
 static void init_button_state(void);
 static void _push_button_press_cb(int pin, void *data);
-static void push_button_press_cb(void * data);
+static int push_button_press_cb(void * data);
 
 /** global variable definitions */
 
@@ -40,7 +40,7 @@ static void set_button_state_cb(int pin, void* data)
 	hiku_b("set_button_state_cb <button_state=%s>",(button_state?"BUTTON_RELEASED":"BUTTON_PRESSED"));
 }
 
-static void reset_to_factory_cb(int pin, void* data)
+/*static void reset_to_factory_cb(int pin, void* data)
 {
 	// this is the function that will be called when the user presses it long enough to
 	// go back to factory configuration
@@ -55,15 +55,15 @@ static void reset_to_factory_cb(int pin, void* data)
 		hiku_b("erased the psm and re-initialized!!\r\n");
 	}
 	reset_device_cb(pin, data);
-}
+}*/
 
-static void reset_device_cb(int pin, void* data)
+/*static void reset_device_cb(int pin, void* data)
 {
 	// this is the function that will reboot the device, we may not need this as well as we
 	// might do that in hardware, just use it as a callback
 	hiku_b("resetting device!!\r\n");
 	pm_reboot_soc();
-}
+}*/
 
 static void _push_button_press_cb(int pin, void *data)
 {
@@ -92,10 +92,11 @@ static void _push_button_press_cb(int pin, void *data)
 				_push_button_press_cb);
 }
 
-static void push_button_press_cb(void * data)
+static int push_button_press_cb(void * data)
 {
 	// This is where you handle the push button interrupt once it gets passed through the work queue
 	set_button_state_cb(pushbutton.gpio, data);
+	return WM_SUCCESS;
 }
 
 static void init_button_state(void)

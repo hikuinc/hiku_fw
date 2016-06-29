@@ -2,15 +2,25 @@
 <section name="Workbench">
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
 		<item value="false" key="isRegEx"/>
-		<item value="hiku_a" key="selection"/>
+		<item value="hiku_c(&quot;AWS: " key="selection"/>
 		<item value="false" key="casesensitive"/>
 		<item value="false" key="incremental"/>
 		<item value="true" key="wrap"/>
 		<item value="false" key="wholeword"/>
 		<list key="findhistory">
-			<item value="wmprintf"/>
+			<item value="hiku_a(&quot;"/>
+			<item value="event_wifi_link"/>
+			<item value="hiku_a"/>
+			<item value="UDP"/>
+			<item value="TCP"/>
+			<item value="_actual_heap_size"/>
+			<item value="actual_heap"/>
+			<item value="_heap1"/>
 		</list>
 		<list key="replacehistory">
+			<item value="hiku_c(&quot;AWS: "/>
+			<item value="hiku_c"/>
+			<item value="FEATURE_HIKU_AWS"/>
 			<item value="hiku_a"/>
 		</list>
 	</section>
@@ -18,7 +28,7 @@
 		<item value="265" key="DIALOG_WIDTH"/>
 		<item value="1|.SF NS Text|11.0|0|COCOA|1|.SFNSText-Regular" key="DIALOG_FONT_NAME"/>
 		<item value="399" key="DIALOG_HEIGHT"/>
-		<item value="1148" key="DIALOG_X_ORIGIN"/>
-		<item value="262" key="DIALOG_Y_ORIGIN"/>
+		<item value="1640" key="DIALOG_X_ORIGIN"/>
+		<item value="252" key="DIALOG_Y_ORIGIN"/>
 	</section>
 </section>

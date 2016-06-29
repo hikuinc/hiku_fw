@@ -101,7 +101,7 @@ SECTIONS
    .bss1 (NOLOAD):
    {
       _bss1 = .;
-      *liblwip.a:(.bss .bss.*)
+      *libwifidriver.a:(.bss .bss.*)
       . = ALIGN(4);
       _ebss1 = .;
    } > SRAM0

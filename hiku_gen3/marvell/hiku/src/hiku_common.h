@@ -30,9 +30,6 @@
 #define hiku_b(...)				\
 	wmlog("hiku_button", ##__VA_ARGS__)
 
-#define hiku_a(...)				\
-	wmlog("hiku_aws", ##__VA_ARGS__)
-
 #define hiku_brd(...)	\
 	wmlog("hiku_board",##__VA_ARGS__)
 

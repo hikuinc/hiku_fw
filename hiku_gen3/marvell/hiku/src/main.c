@@ -9,7 +9,6 @@
 #include "connection_manager.h"
 #include "ota_update.h"
 #include "button_manager.h"
-#include "aws_client.h"
 #include "hiku_board.h"
 
 extern unsigned long _bss1;
@@ -33,12 +32,6 @@ int main()
 	if (hiku_board_init() != WM_SUCCESS )
 	{
 		hiku_m("Failed to initalize hiku Board Init!\r\n");
-		return -WM_FAIL;
-	}
-
-	if (aws_client_init()!= WM_SUCCESS)
-	{
-		hiku_m("Failed to initialize AWS Client!!\r\n");
 		return -WM_FAIL;
 	}
 
