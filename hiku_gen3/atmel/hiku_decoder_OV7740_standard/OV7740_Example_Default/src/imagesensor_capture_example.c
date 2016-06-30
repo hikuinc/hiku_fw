@@ -650,26 +650,14 @@ void edge_detect_sobel(void){
 
 	int32_t sobel_Gx, sobel_Gy = 0;
 
-	int32_t sobel_height = 10;
-	int32_t sobel_width = 80;
+	int32_t sobel_height = 50;
+	int32_t sobel_width = 150;
+
+	int32_t sobel_sum = 0;
 
 	int32_t t = 0;
 
 	uint8_t sobel_values[sobel_width * sobel_height];
-
-	/*int32_t sobel_kernel_left[3] =
-	{
-		-1,
-		-2,
-		-1
-	};
-
-	int32_t sobel_kernel_right[3] =
-	{
-		1,
-		2,
-		1
-	};*/
 
 	p_uc_data = (uint8_t *)CAP_DEST + 0x7080 + (IMAGE_WIDTH - sobel_width)/2;	//start at 19200 + 19200/2 pixels
 	for ( ul_row = 0; ul_row < sobel_height; ul_row++, p_uc_data+=(IMAGE_WIDTH - sobel_width) ){
@@ -687,74 +675,31 @@ void edge_detect_sobel(void){
 			kernel_buffer[8] = *(p_uc_data + IMAGE_WIDTH + 1);
 
 			sobel_Gx = kernel_buffer[2] + 2 * kernel_buffer[5] + kernel_buffer[8] - kernel_buffer[0] - 2* kernel_buffer[3] - kernel_buffer[6];
-			sobel_Gy = kernel_buffer[0] + 2 * kernel_buffer[1] + kernel_buffer[2] - kernel_buffer[6] - 2* kernel_buffer[7] - kernel_buffer[8];
+			sobel_Gy = 0;//kernel_buffer[0] + 2 * kernel_buffer[1] + kernel_buffer[2] - kernel_buffer[6] - 2* kernel_buffer[7] - kernel_buffer[8];
 
 			//sobel_mag = sqrt(sobel_Gx * sobel_Gx + sobel_Gy * sobel_Gy);
 			sobel_values[t] = clip32_to_8( abs(sobel_Gx) + abs(sobel_Gy) );
-			
-			//sobel_values[t] = 0;//*p_uc_data;
+			sobel_sum+=sobel_values[t];
+
 			t++;
-			//*p_sobel = clip32_to_8(sobel_mag);
-
-			//test only
-			//*p_sobel = *p_uc_data;
-			//*p_uc_data = *p_sobel;
-			//p_sobel++;
-
 		}
-
 	}
 
 	t = 0;
 	p_uc_data = (uint8_t *)CAP_DEST + 0x7080 + (IMAGE_WIDTH - sobel_width)/2;	//start at 19200 + 19200/2 pixels
 	for ( ul_row = 0; ul_row < sobel_height; ul_row++, p_uc_data+=(IMAGE_WIDTH - sobel_width) ){
 		for (ul_col = 0; ul_col < sobel_width; ul_col++, p_uc_data++){
-
 			*p_uc_data = (sobel_values[t]);
-
-			//*p_uc_data = *p_sobel;
-			//p_sobel++;
 			t++;
 		}
 	}
 
 
-
-/*	for (ul_cursor = 0; ul_cursor < 19200; ul_cursor++, p_uc_data++) {
-
-
-		uint8_t sobel_filter_left[3] = 
-		{
-			*(p_uc_data - 320-1),
-			*(p_uc_data - 1),
-			*(p_uc_data + 320-1),
-		};
-
-		uint8_t sobel_filter_right[3] =
-		{
-			*(p_uc_data - 320+1),
-			*(p_uc_data + 1),
-			*(p_uc_data + 320+1),
-		};
-
-		sobel_temp =	(int32_t) sobel_kernel_left[0] * sobel_filter_left[0] + 
-									(int32_t) sobel_kernel_left[1] * sobel_filter_left[1] + 
-									(int32_t) sobel_kernel_left[2] * sobel_filter_left[2] + 
-									(int32_t) sobel_kernel_right[0] * sobel_filter_right[0] + 
-									(int32_t) sobel_kernel_right[1] * sobel_filter_right[1] + 
-									(int32_t) sobel_kernel_right[2] * sobel_filter_right[2];
-		
-		*p_uc_data = clip32_to_8( abs(sobel_temp) );
-
-		//sobel_image[ul_cursor] = 255;
-
-	}*/
-
-	//p_uc_data = (uint8_t *)CAP_DEST + 0x7080;	//start at 19200 + 19200/2 pixels
-	//for (ul_cursor = 0; ul_cursor < 100; ul_cursor++, p_uc_data++) {
-	//	*p_uc_data = clip32_to_8( abs(sobel_image[ul_cursor]) );
-	//}
-
+	/*char sobel_agg[32];
+	sprintf(sobel_agg, "sobel = %d ms", sobel_sum);				
+	display_init();
+	ili9325_draw_string(0, 20, sobel_agg);
+	delay_ms(500);*/
 }
 
 
