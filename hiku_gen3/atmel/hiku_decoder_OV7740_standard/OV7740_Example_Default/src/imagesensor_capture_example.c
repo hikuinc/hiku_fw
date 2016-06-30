@@ -405,7 +405,6 @@ static void board_configure_sram( void )
 			| SMC_MODE_WRITE_MODE);
 }
 
-#ifdef DEFAULT_MODE_COLORED
 
 /**
  * \brief Take a 32 bit variable in parameters and returns a value between 0 and
@@ -427,68 +426,7 @@ static inline uint8_t clip32_to_8( int32_t i )
 	return (uint8_t)i;
 }
 
-/**
- * \brief Draw LCD in color with integral algorithm.
- */
-//static void draw_frame_yuv_color_int( void )
-//{
-	//uint32_t ul_cursor;
-	//int32_t l_y1;
-	//int32_t l_y2;
-	//int32_t l_v;
-	//int32_t l_u;
-	//int32_t l_blue;
-	//int32_t l_green;
-	//int32_t l_red;
-	//uint8_t *p_uc_data;
-//
-	//p_uc_data = (uint8_t *)g_p_uc_cap_dest_buf;
-//
-	///* Configure LCD to draw captured picture */
-	//LCD_IR(0);
-	//LCD_IR(ILI9325_ENTRY_MODE);
-	//LCD_WD(((ILI9325_ENTRY_MODE_BGR | ILI9325_ENTRY_MODE_AM |
-			//ILI9325_ENTRY_MODE_DFM | ILI9325_ENTRY_MODE_TRI |
-			//ILI9325_ENTRY_MODE_ORG) >> 8) & 0xFF);
-	//LCD_WD((ILI9325_ENTRY_MODE_BGR | ILI9325_ENTRY_MODE_AM |
-			//ILI9325_ENTRY_MODE_DFM | ILI9325_ENTRY_MODE_TRI |
-			//ILI9325_ENTRY_MODE_ORG) & 0xFF);
-	//ili9325_draw_prepare(0, 0, IMAGE_HEIGHT, IMAGE_WIDTH);
-//
-	///* OV7740 Color format is YUV422. In this format pixel has 4 bytes
-	 //* length (Y1,U,Y2,V).
-	 //* To display it on LCD,these pixel need to be converted in RGB format.
-	 //* The output of this conversion is two 3 bytes pixels in (B,G,R)
-	 //* format. First one is calculed using Y1,U,V and the other one with
-	 //* Y2,U,V. For that reason cap_line is twice bigger in color mode
-	 //* than in black and white mode. */
-	//for (ul_cursor = IMAGE_WIDTH * IMAGE_HEIGHT; ul_cursor != 0;
-			//ul_cursor -= 2, p_uc_data += 4) {
-		//l_y1 = p_uc_data[0]; /* Y1 */
-		//l_y1 -= 16;
-		//l_v = p_uc_data[3]; /* V */
-		//l_v -= 128;
-		//l_u = p_uc_data[1]; /* U */
-		//l_u -= 128;
-//
-		//l_blue = 516 * l_v + 128;
-		//l_green = -100 * l_v - 208 * l_u + 128;
-		//l_red = 409 * l_u + 128;
-//
-		///* BLUE */
-		//LCD_WD( clip32_to_8((298 * l_y1 + l_blue) >> 8));
-		///* GREEN */
-		//LCD_WD( clip32_to_8((298 * l_y1 + l_green) >> 8));
-		///* RED */
-		//LCD_WD( clip32_to_8((298 * l_y1 + l_red) >> 8));
-//
-		//l_y2 = p_uc_data[2]; /* Y2 */
-		//l_y2 -= 16;
-		//LCD_WD( clip32_to_8((298 * l_y2 + l_blue) >> 8));
-		//LCD_WD( clip32_to_8((298 * l_y2 + l_green) >> 8));
-		//LCD_WD( clip32_to_8((298 * l_y2 + l_red) >> 8));
-	//}
-//}
+#ifdef DEFAULT_MODE_COLORED
 
 static void draw_frame_yuv_color_int( void )
 {
@@ -697,6 +635,130 @@ void threshold_otsu(void){
 }
 
 
+void edge_detect_sobel(void){
+
+	//uint8_t *p_sobel;
+	//*p_sobel =  (uint8_t *)(0x60000000UL + 0x12C00UL); 
+	uint8_t *p_uc_data;
+
+	uint32_t ul_col;
+	uint32_t ul_row;
+	uint8_t kernel_buffer[9];
+	int32_t sobel_mag = 0;
+
+	int32_t sobel_temp = 0;
+
+	int32_t sobel_Gx, sobel_Gy = 0;
+
+	int32_t sobel_height = 10;
+	int32_t sobel_width = 80;
+
+	int32_t t = 0;
+
+	uint8_t sobel_values[sobel_width * sobel_height];
+
+	/*int32_t sobel_kernel_left[3] =
+	{
+		-1,
+		-2,
+		-1
+	};
+
+	int32_t sobel_kernel_right[3] =
+	{
+		1,
+		2,
+		1
+	};*/
+
+	p_uc_data = (uint8_t *)CAP_DEST + 0x7080 + (IMAGE_WIDTH - sobel_width)/2;	//start at 19200 + 19200/2 pixels
+	for ( ul_row = 0; ul_row < sobel_height; ul_row++, p_uc_data+=(IMAGE_WIDTH - sobel_width) ){
+
+		for (ul_col = 0; ul_col < sobel_width; ul_col++, p_uc_data++){
+
+			kernel_buffer[0] = *(p_uc_data - IMAGE_WIDTH - 1);
+			kernel_buffer[1] = *(p_uc_data - IMAGE_WIDTH);
+			kernel_buffer[2] = *(p_uc_data - IMAGE_WIDTH + 1);
+			kernel_buffer[3] = *(p_uc_data - 1);
+			kernel_buffer[4] = *(p_uc_data);
+			kernel_buffer[5] = *(p_uc_data + 1);
+			kernel_buffer[6] = *(p_uc_data + IMAGE_WIDTH - 1);
+			kernel_buffer[7] = *(p_uc_data + IMAGE_WIDTH);
+			kernel_buffer[8] = *(p_uc_data + IMAGE_WIDTH + 1);
+
+			sobel_Gx = kernel_buffer[2] + 2 * kernel_buffer[5] + kernel_buffer[8] - kernel_buffer[0] - 2* kernel_buffer[3] - kernel_buffer[6];
+			sobel_Gy = kernel_buffer[0] + 2 * kernel_buffer[1] + kernel_buffer[2] - kernel_buffer[6] - 2* kernel_buffer[7] - kernel_buffer[8];
+
+			//sobel_mag = sqrt(sobel_Gx * sobel_Gx + sobel_Gy * sobel_Gy);
+			sobel_values[t] = clip32_to_8( abs(sobel_Gx) + abs(sobel_Gy) );
+			
+			//sobel_values[t] = 0;//*p_uc_data;
+			t++;
+			//*p_sobel = clip32_to_8(sobel_mag);
+
+			//test only
+			//*p_sobel = *p_uc_data;
+			//*p_uc_data = *p_sobel;
+			//p_sobel++;
+
+		}
+
+	}
+
+	t = 0;
+	p_uc_data = (uint8_t *)CAP_DEST + 0x7080 + (IMAGE_WIDTH - sobel_width)/2;	//start at 19200 + 19200/2 pixels
+	for ( ul_row = 0; ul_row < sobel_height; ul_row++, p_uc_data+=(IMAGE_WIDTH - sobel_width) ){
+		for (ul_col = 0; ul_col < sobel_width; ul_col++, p_uc_data++){
+
+			*p_uc_data = (sobel_values[t]);
+
+			//*p_uc_data = *p_sobel;
+			//p_sobel++;
+			t++;
+		}
+	}
+
+
+
+/*	for (ul_cursor = 0; ul_cursor < 19200; ul_cursor++, p_uc_data++) {
+
+
+		uint8_t sobel_filter_left[3] = 
+		{
+			*(p_uc_data - 320-1),
+			*(p_uc_data - 1),
+			*(p_uc_data + 320-1),
+		};
+
+		uint8_t sobel_filter_right[3] =
+		{
+			*(p_uc_data - 320+1),
+			*(p_uc_data + 1),
+			*(p_uc_data + 320+1),
+		};
+
+		sobel_temp =	(int32_t) sobel_kernel_left[0] * sobel_filter_left[0] + 
+									(int32_t) sobel_kernel_left[1] * sobel_filter_left[1] + 
+									(int32_t) sobel_kernel_left[2] * sobel_filter_left[2] + 
+									(int32_t) sobel_kernel_right[0] * sobel_filter_right[0] + 
+									(int32_t) sobel_kernel_right[1] * sobel_filter_right[1] + 
+									(int32_t) sobel_kernel_right[2] * sobel_filter_right[2];
+		
+		*p_uc_data = clip32_to_8( abs(sobel_temp) );
+
+		//sobel_image[ul_cursor] = 255;
+
+	}*/
+
+	//p_uc_data = (uint8_t *)CAP_DEST + 0x7080;	//start at 19200 + 19200/2 pixels
+	//for (ul_cursor = 0; ul_cursor < 100; ul_cursor++, p_uc_data++) {
+	//	*p_uc_data = clip32_to_8( abs(sobel_image[ul_cursor]) );
+	//}
+
+}
+
+
+
 /**
  * \brief Application entry point for image sensor capture example.
  *
@@ -754,8 +816,11 @@ int main(void)
 			g_ul_end_capture_time = time_tick_get();
 			
 			g_ul_begin_cv_time = time_tick_get();
-			threshold_otsu();
+			//threshold_otsu();
 			g_ul_end_cv_time = time_tick_get();
+
+
+			edge_detect_sobel();
 
 			/* Load picture data from external memory and display it on the
 			 * LCD */
@@ -764,7 +829,7 @@ int main(void)
 
 			g_ul_begin_process_time = time_tick_get();
 			
-			zbar_image_scanner_t *scanner = NULL;
+			/*zbar_image_scanner_t *scanner = NULL;
 			// create a reader 
 			scanner = zbar_image_scanner_create();
 			// configure the reader 
@@ -819,7 +884,7 @@ int main(void)
 				g_ul_push_button_trigger = false;
 
 
-			}
+			}*/
 
 		} 
 		
