@@ -539,6 +539,8 @@ uint32_t g_ul_begin_capture_time = 0;
 uint32_t g_ul_end_capture_time = 0;
 uint32_t g_ul_begin_cv_time = 0;
 uint32_t g_ul_end_cv_time = 0;
+uint32_t g_ul_begin_sobel_time = 0;
+uint32_t g_ul_end_sobel_time = 0;
 uint32_t g_ul_begin_process_time = 0;
 uint32_t g_ul_end_process_time = 0;
 uint32_t g_ul_elapsed_time = 0;
@@ -580,7 +582,7 @@ void threshold_otsu(void){
 	volatile float varMax = 0;
 	volatile float varBetweenClass = 0;
 	volatile float otsu_threshold = 0;
-	volatile int32_t totalPixels = 76800;
+	volatile int32_t totalPixels = 19200;//76800;
 
 	//clear histogram
 	for (int t = 0; t < 256; t++) {
@@ -588,8 +590,12 @@ void threshold_otsu(void){
 	}
 
 	//generate histogram
-	p_uc_data = (uint8_t *)CAP_DEST;	
-	for (ul_cursor = IMAGE_WIDTH * IMAGE_HEIGHT; ul_cursor != 0; ul_cursor--, p_uc_data++) {
+//	p_uc_data = (uint8_t *)CAP_DEST;	
+//	for (ul_cursor = IMAGE_WIDTH * IMAGE_HEIGHT; ul_cursor != 0; ul_cursor--, p_uc_data++) {
+
+	p_uc_data = (uint8_t *)CAP_DEST + 0x7080;	//start at 19200 + 19200/2 pixels
+	for (ul_cursor = 320 * 60; ul_cursor != 0; ul_cursor--, p_uc_data++) {
+
 		//calculate histogram
 		histogram[*p_uc_data] = histogram[*p_uc_data] + 1;
 	}
@@ -622,8 +628,12 @@ void threshold_otsu(void){
 	}
 
 	//run otsu threshold on captured image
-	p_uc_data = (uint8_t *)CAP_DEST;
-	for (ul_cursor = IMAGE_WIDTH * IMAGE_HEIGHT; ul_cursor != 0; ul_cursor--, p_uc_data++) {
+//	p_uc_data = (uint8_t *)CAP_DEST;
+//	for (ul_cursor = IMAGE_WIDTH * IMAGE_HEIGHT; ul_cursor != 0; ul_cursor--, p_uc_data++) {
+
+	p_uc_data = (uint8_t *)CAP_DEST + 0x7080;	//start at 19200 + 19200/2 pixels
+	for (ul_cursor = 320 * 60; ul_cursor != 0; ul_cursor--, p_uc_data++) {
+
 		if ( (*p_uc_data) >= otsu_threshold){
 			p_uc_data[0] = 0xFF;
 		} else {
@@ -634,7 +644,7 @@ void threshold_otsu(void){
 
 }
 
-
+bool g_sobel_detect = false;
 void edge_detect_sobel(void){
 
 	//uint8_t *p_sobel;
@@ -685,15 +695,20 @@ void edge_detect_sobel(void){
 		}
 	}
 
-	t = 0;
-	p_uc_data = (uint8_t *)CAP_DEST + 0x7080 + (IMAGE_WIDTH - sobel_width)/2;	//start at 19200 + 19200/2 pixels
-	for ( ul_row = 0; ul_row < sobel_height; ul_row++, p_uc_data+=(IMAGE_WIDTH - sobel_width) ){
-		for (ul_col = 0; ul_col < sobel_width; ul_col++, p_uc_data++){
-			*p_uc_data = (sobel_values[t]);
-			t++;
-		}
-	}
+//	t = 0;
+//	p_uc_data = (uint8_t *)CAP_DEST + 0x7080 + (IMAGE_WIDTH - sobel_width)/2;	//start at 19200 + 19200/2 pixels
+//	for ( ul_row = 0; ul_row < sobel_height; ul_row++, p_uc_data+=(IMAGE_WIDTH - sobel_width) ){
+//		for (ul_col = 0; ul_col < sobel_width; ul_col++, p_uc_data++){
+//			*p_uc_data = (sobel_values[t]);
+//			t++;
+//		}
+//	}
 
+	if (sobel_sum > 500000) {
+		g_sobel_detect = true;
+	} else {
+		g_sobel_detect = false;
+	}
 
 	/*char sobel_agg[32];
 	sprintf(sobel_agg, "sobel = %d ms", sobel_sum);				
@@ -760,77 +775,88 @@ int main(void)
 			start_capture();
 			g_ul_end_capture_time = time_tick_get();
 			
-			g_ul_begin_cv_time = time_tick_get();
-			//threshold_otsu();
-			g_ul_end_cv_time = time_tick_get();
-
-
-			edge_detect_sobel();
-
 			/* Load picture data from external memory and display it on the
-			 * LCD */
+			* LCD */
 			_display();
 
+			g_ul_begin_sobel_time = time_tick_get();
+			edge_detect_sobel();
+			g_ul_end_sobel_time = time_tick_get();
 
-			g_ul_begin_process_time = time_tick_get();
+			//g_sobel_detect = true;
+			if (g_sobel_detect){
+				g_ul_begin_cv_time = time_tick_get();
+				threshold_otsu();
+				g_ul_end_cv_time = time_tick_get();
+
+				_display();
+
+
+				g_ul_begin_process_time = time_tick_get();
 			
-			/*zbar_image_scanner_t *scanner = NULL;
-			// create a reader 
-			scanner = zbar_image_scanner_create();
-			// configure the reader 
-			zbar_image_scanner_set_config(scanner, 0, ZBAR_CFG_ENABLE, 1);
+				zbar_image_scanner_t *scanner = NULL;
+				// create a reader 
+				scanner = zbar_image_scanner_create();
+				// configure the reader 
+				zbar_image_scanner_set_config(scanner, 0, ZBAR_CFG_ENABLE, 1);
 	
-			//uint8_t * temp = teststring;	
-			//zbar_image_t *image = zbar_image_create();
-			//zbar_image_set_format(image, zbar_fourcc('Y','8','0','0'));
-			//zbar_image_set_size(image, 6, 190);
-			//zbar_image_set_data(image, temp, 6 * 190, zbar_image_free_data);
+				//uint8_t * temp = teststring;	
+				//zbar_image_t *image = zbar_image_create();
+				//zbar_image_set_format(image, zbar_fourcc('Y','8','0','0'));
+				//zbar_image_set_size(image, 6, 190);
+				//zbar_image_set_data(image, temp, 6 * 190, zbar_image_free_data);
 
-			uint8_t * temp = (uint8_t *)CAP_DEST;
-			zbar_image_t *image = zbar_image_create();
-			zbar_image_set_format(image, zbar_fourcc('G','R','E','Y'));
-			zbar_image_set_size(image, IMAGE_WIDTH, IMAGE_HEIGHT);
-			zbar_image_set_data(image, temp, IMAGE_WIDTH * IMAGE_HEIGHT, zbar_image_free_data);
+//				uint8_t * temp = (uint8_t *)CAP_DEST;
+				uint8_t * temp = (uint8_t *)CAP_DEST + 0x7080;	//start at 19200 + 19200/2 pixels
+				zbar_image_t *image = zbar_image_create();
+				zbar_image_set_format(image, zbar_fourcc('G','R','E','Y'));
+//				zbar_image_set_size(image, IMAGE_WIDTH, IMAGE_HEIGHT);
+//				zbar_image_set_data(image, temp, IMAGE_WIDTH * IMAGE_HEIGHT, zbar_image_free_data);
+				zbar_image_set_size(image, 320, 60);
+				zbar_image_set_data(image, temp, 320 * 60, zbar_image_free_data);
 
 
-			// scan the image for barcodes 
-			int n = zbar_scan_image(scanner, image);
+				// scan the image for barcodes 
+				int n = zbar_scan_image(scanner, image);
 
-			// extract results 
-			const zbar_symbol_t *symbol = zbar_image_first_symbol(image);
-			for(; symbol; symbol = zbar_symbol_next(symbol)) {
+				// extract results 
+				const zbar_symbol_t *symbol = zbar_image_first_symbol(image);
+				for(; symbol; symbol = zbar_symbol_next(symbol)) {
 				
-				g_ul_end_process_time = time_tick_get();
+					g_ul_end_process_time = time_tick_get();
 
-				char capture_time[32];
-				char cv_time[32];
-				char process_time[32];
-				char total_time[32];
+					char capture_time[32];
+					char sobel_time[32];
+					char cv_time[32];
+					char process_time[32];
+					char total_time[32];
 				
-				sprintf(capture_time, "cap = %u ms", g_ul_end_capture_time - g_ul_begin_capture_time);
-				sprintf(cv_time, "cv = %u ms", g_ul_end_cv_time - g_ul_begin_cv_time);				
-				sprintf(process_time, "zbar = %u ms", g_ul_end_process_time - g_ul_begin_process_time);
-				sprintf(total_time, "total = %u ms", time_tick_get() - g_ul_begin_capture_time);
+					sprintf(capture_time, "cap = %u ms", g_ul_end_capture_time - g_ul_begin_capture_time);
+					sprintf(sobel_time, "sobel = %u ms", g_ul_end_sobel_time - g_ul_begin_sobel_time);			
+					sprintf(cv_time, "otsu = %u ms", g_ul_end_cv_time - g_ul_begin_cv_time);						
+					sprintf(process_time, "zbar = %u ms", g_ul_end_process_time - g_ul_begin_process_time);
+					sprintf(total_time, "total = %u ms", time_tick_get() - g_ul_begin_capture_time);
 
-				// print the results 
-				zbar_symbol_type_t typ = zbar_symbol_get_type(symbol);
-				volatile const char *data = zbar_symbol_get_data(symbol);
+					// print the results 
+					zbar_symbol_type_t typ = zbar_symbol_get_type(symbol);
+					volatile const char *data = zbar_symbol_get_data(symbol);
 	
-				//printf("decoded %s symbol \"%s\"\n", zbar_get_symbol_name(typ), data);
-				display_init();
-				ili9325_fill(COLOR_BLUE);
-				ili9325_draw_string(0, 20, data);
-				ili9325_draw_string(0, 40, zbar_get_symbol_name(typ));
-				ili9325_draw_string(0, 100, capture_time );
-				ili9325_draw_string(0, 120, cv_time );
-				ili9325_draw_string(0, 140, process_time );
-				ili9325_draw_string(0, 160, total_time );
+					//printf("decoded %s symbol \"%s\"\n", zbar_get_symbol_name(typ), data);
+					display_init();
+					ili9325_fill(COLOR_BLUE);
+					ili9325_draw_string(0, 20, data);
+					ili9325_draw_string(0, 40, zbar_get_symbol_name(typ));
+					ili9325_draw_string(0, 100, capture_time );
+					ili9325_draw_string(0, 120, sobel_time );
+					ili9325_draw_string(0, 140, cv_time );
+					ili9325_draw_string(0, 160, process_time );
+					ili9325_draw_string(0, 180, total_time );
 
-				g_ul_push_button_trigger = false;
+					g_ul_push_button_trigger = false;
 
 
-			}*/
-
+				}
+			}
 		} 
 		
 		if (g_display_splash) {
