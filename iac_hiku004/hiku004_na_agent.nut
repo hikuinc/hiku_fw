@@ -43,7 +43,7 @@ gLogTable <- [{count=0,data=""},
 
 server.log(format("Agent started, external URL=%s at time=%ds", http.agenturl(), time()));
 
-gAgentVersion <- "2.1.05";
+gAgentVersion <- "2.1.06";
 
 gAudioState <- AudioStates.AudioError;
 gAudioAbort <- false;
