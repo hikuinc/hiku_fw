@@ -2,6 +2,12 @@
 // Constants & Globals
 const WAV_HEADER_SIZE = 44; // Number of bytes in a WAV file header (for PCM encoding)
 
+incomingAudioFlag <- 0;     // Flag to indicate in Audio Stream from backend is active
+audioChunkSeq <- 0;         // Chunk sequence number to kepe track of incoming audio from backend
+prevaudioChunkSeq <- 0;         // Chunk sequence number to kepe track of incoming audio from backend
+audioChunkValid <- 0;
+audioChunkSize <- 0;
+
 maxFileSize <- 0;           // Flash storage size (reported by device)
 chunkSize   <- 0;
 buf <- null;                // Buffer for user-supplied audio
@@ -11,6 +17,178 @@ params <- {
     sampleRate  = null
 }
 
+
+function processIncomingAudio(wav) {
+    server.log("in processIncomingAudio");
+    server.log("audioChunkSeq == " + audioChunkSeq);
+    
+    if (audioChunkValid && audioChunkSeq == 1){
+
+        local datasize = wav.len();
+        local seqDataSize = 0;
+        
+        buf = blob(datasize);
+        buf.writestring(wav);
+        buf.seek(0);
+        
+        local chunkID = buf.readstring(4);
+        local filesize = buf.readn('i');
+        local format = buf.readstring(4);
+        server.log("Total filesize: " + filesize);
+        server.log("Total datasize: " + datasize);        
+
+        
+        // Check required headers for a PCM WAV
+        // "RIFF" (0x 52 49 46 46)
+        // file size w/o RIFF header (4 bytes)
+        // "WAVE" (0x 57 41 56 45)
+        // "fmt " (0x 66 6d 74 d0)
+        if (chunkID != "RIFF" || format != "WAVE" || buf.readstring(4) != "fmt ") {
+            server.error("Incompatible headers");
+            return false;
+        }
+        // get size of wave type format header
+        // size of wave type format (2 byte type format + 4 byte sample rate + 
+        //     4 byte bytes per sec + 2 byte block alignment + 2 byte bits per sample);
+        //     wave type format size typically 16
+        local fmtSize = buf.readn('i');
+        server.log("format chunk size: "+fmtSize);
+        local compressionType = buf.readn('w');
+        
+        // Check for mono/stereo
+        params.numChannels = buf.readn('w');
+        if (params.numChannels != 1 && params.numChannels != 2) {
+            server.error("Invalid number of channels ("+params.numChannels+")");
+            return false;
+        }
+        server.log("Channels: "+params.numChannels);
+        // Check sample rate, skip ByteRate and BlockAlign
+        params.sampleRate = buf.readn('i');
+        server.log("Sample Rate: "+params.sampleRate);
+        buf.seek(buf.tell() + 6);
+        // Check # bits per sample
+        local bitsPerSample = buf.readn('w');
+        server.log("Bits Per Sample: "+bitsPerSample);
+        if (bitsPerSample != 16) {
+            server.error("Invalid number of bits per sample: "+bitsPerSample+" (must be 16)");
+            return false;
+        }
+        // Examine data section
+        // we assume RIFF header is 20 bytes, read format header size from RIFF header
+        // we also assume data header comes next (RIFF spec doesn't guarantee chunk order)
+        buf.seek(20 + fmtSize);
+        server.log(buf.tell());
+        if (buf.readstring(4) != "data") { 
+            server.error("Failed to find data header");
+            return false; 
+        }
+        params.wavSize = buf.readn('i');
+        
+        seqDataSize = datasize - WAV_HEADER_SIZE
+        server.log("Total audio size: " + params.wavSize);
+        server.log("Seq audio size: " + seqDataSize);
+        server.log("Audio starts from: " + (buf.len() - buf.tell()));
+        
+        /*if (buf.len() - buf.tell() < params.wavSize) {
+            server.error("WAV filesize mismatch");
+            return false;
+        }
+        if (params.wavSize / params.numChannels > maxFileSize) {
+            if (maxFileSize == 0) {
+                server.error("Device hasn't reported flash size - is it online?");
+            } else {
+                server.error("WAV file too big to fit on flash");
+            }
+            return false;
+        }*/
+        
+        //Extract any audio portion in sequence #1    
+        server.log("Extracting raw audio from seq #1...");
+        local temp = null;
+        local end = buf.len();
+        
+        local stereo = params.numChannels == 2 ? true : false;
+        local w = 0;
+    
+        for (local r = WAV_HEADER_SIZE; r < end; r += 2) {
+            buf.seek(r);                    // Seek to read pointer
+            temp = buf.readn('s') + 32768;  // Read sample and convert to unsigned
+            // If stereo, scale each channel to 1/2 and sum them
+            if (stereo) {
+                temp = temp/2 + (buf.readn('s')+32768)/2;
+                r += 2;
+            }
+            buf.seek(w);                    // Seek to write pointer
+            buf.writen(temp, 'w');          // Write sample
+            w += 2;                         // Increment write pointer
+        }
+    
+        // Shrink buffer to match size of audio data
+        seqDataSize = seqDataSize / params.numChannels;
+        buf.resize(seqDataSize);        
+        
+        server.log(buf[0]);
+        server.log(buf[1]);
+        server.log(buf[2]);
+        server.log(buf[3]);
+        
+        prevaudioChunkSeq = audioChunkSeq;
+        
+        return true;
+        
+    } else if (audioChunkValid && audioChunkSeq > 1) {
+        
+        //Extract any audio portion in remaining sequence    
+        server.log("Extracting raw audio from remaining seq#...");
+        
+        local seqDataSize = wav.len();
+        local existingDataSize = buf.len();
+        
+        server.log("seqDataSize = " + seqDataSize);
+        server.log("existingDataSize = " + existingDataSize);        
+        
+        local temp = null;
+        local currSample = 0;
+        
+        temp = blob(wav.len());
+        temp.writestring(wav);
+        temp.seek(0);        
+        
+        local end = temp.len();
+        
+        local stereo = params.numChannels == 2 ? true : false;
+        local w = 0;
+    
+        for (local r = 0; r < end; r += 2) {
+            currSample = temp.readn('s') + 32768;  // Read sample and convert to unsigned
+            // If stereo, scale each channel to 1/2 and sum them
+            if (stereo) {
+                currSample = currSample/2 + (temp.readn('s')+32768)/2;
+                r += 2;
+            }
+            buf.seek(buf.tell());           // Seek to read pointer
+            buf.writen(currSample, 'w');          // Write sample
+            w += 2;                         // Increment write pointer
+        }
+    
+        server.log("resized buffer len = " + ((existingDataSize + seqDataSize) / params.numChannels));
+    
+        // Shrink buffer to match size of audio data
+        buf.resize((existingDataSize + seqDataSize) / params.numChannels);        
+        prevaudioChunkSeq = audioChunkSeq;
+        
+        return true;
+    } else {
+        server.log ("prevchunkseq=" + prevaudioChunkSeq);
+        if (audioChunkSeq == (prevaudioChunkSeq + 1)){
+            server.log("sending to device");
+            device.send("newAudio", params);
+            return true;
+        }
+    }
+    
+    
+}
 
 function getRawAudio() { 
     server.log("in getRawAudio - Extracting raw audio...");
@@ -1427,10 +1605,23 @@ http.onrequest(function (req, res)
           
         if (req.path == "/play") {
             server.log("checking");
-            if (req.body.len() >= WAV_HEADER_SIZE && processWAV(req.body)) {
+            server.log("seq= " +  req.query["sequence"] + " " + "valid= " + req.query["valid"] + " " + "size= " + req.query["size"]);
+            
+            audioChunkSeq = (req.query["sequence"]).tointeger();
+            audioChunkValid = (req.query["valid"] == "True") ? true : false;
+            audioChunkSize = (req.query["size"]).tointeger();
+            
+            server.log (audioChunkSeq + " " + audioChunkValid + " " + audioChunkSize);
+            
+            
+            incomingAudioFlag = 1;
+            
+            //if (req.body.len() >= WAV_HEADER_SIZE && processIncomingAudio(req.body)) {
+            if (processIncomingAudio(req.body)) {
                 res.send(200, "Received valid WAV file.\n");
             } else {
                 res.send(500, "Invalid WAV file yo!\n");
+                #server.log(req.body);
             }          
         }  
           
