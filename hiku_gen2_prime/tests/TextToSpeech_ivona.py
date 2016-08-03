@@ -30,25 +30,25 @@ class AudioUploadThread(Thread):
         print ('testing wavToRawData')
 
     def run(self):
-    	valid = True
+        valid = True
 
-    	while valid: 
-	        sequence, audio, valid = self.queue.get()
-	        #print ('Uploading', audio)
+        while valid: 
+            sequence, audio, valid = self.queue.get()
+            #print ('Uploading', audio)
 
-	        
-	        payload = {'sequence': sequence, 'valid': valid, 'size': sys.getsizeof(audio)}
+            
+            payload = {'sequence': sequence, 'valid': valid, 'size': sys.getsizeof(audio)}
 
-	       	logger.info('seq={}, valid={}, chunksize={}'.format(sequence, valid, sys.getsizeof(audio)))
+            logger.info('seq={}, valid={}, chunksize={}'.format(sequence, valid, sys.getsizeof(audio)))
 
-	       	#if valid: 
-	        r = requests.put('https://agent.electricimp.com/bDpYGqlCeeC_/play', data=audio, params=payload)
-	        print (r.text)
-	        print ('sending http request to agent')
+            #if valid: 
+            r = requests.put('https://agent.electricimp.com/bDpYGqlCeeC_/play', data=audio, params=payload)
+            print (r.text)
+            print ('sending http request to agent')
 
-	        self.queue.task_done()
+            self.queue.task_done()
 
-	    #print('Exiting Upload Thread')
+        #print('Exiting Upload Thread')
 
 
 class TextToSpeechThread(Thread):
@@ -93,7 +93,7 @@ class TextToSpeechThread(Thread):
         # Create a hash for the jsonified request content
         d = {
             'Input' : {
-                'Data' : "Hello world. This is haiku.",
+                'Data' : "Hello world. This is haiku. Sorry, I didn't hear that. Can you please try again? What is your name? I added apples to Trader Joe's list",
                 'Type' : "application/ssml+xml",
             }
         }            
@@ -152,11 +152,24 @@ class TextToSpeechThread(Thread):
         print ('\n' + 'BEGIN REQUEST++++++++++++++++++++++++++++++++++++')
         print ('Request URL = ' + endpoint)
 
-        r = requests.post(endpoint, data=request_parameters, headers=headers)
+        r = requests.post(endpoint, data=request_parameters, headers=headers, stream=True)
 
         print ('\n' + 'RESPONSE++++++++++++++++++++++++++++++++++++')
         print ('Response code: %d\n' % r.status_code)
- 
+
+        i = 0
+        filename = 'test'
+        file_extension = ".{}".format('mp3')
+        filename += file_extension if not filename.endswith(
+            file_extension) else ""
+        with open(filename, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=None):
+                if chunk:
+                    i+=1
+                    f.write(chunk)
+                    print (i)
+
+
     def run(self):
         self.sign_request()
 
@@ -183,16 +196,16 @@ def main():
     queue = Queue()
 
     '''for x in range(1):
-    	worker = AudioUploadThread(queue)
-    	#worker.daemon = True		#look into this later
-    	worker.start()
+        worker = AudioUploadThread(queue)
+        #worker.daemon = True       #look into this later
+        worker.start()
 
     with open('amy5.wav', 'rb') as f:
         #data = f.read()
-    	records = iter(partial(f.read, 5000), b'')
-    	for chunk in records:
-    		seq+=1
-    		queue.put((seq, chunk, True))
+        records = iter(partial(f.read, 5000), b'')
+        for chunk in records:
+            seq+=1
+            queue.put((seq, chunk, True))
     '''
 
     worker = TextToSpeechThread()
