@@ -4,7 +4,7 @@ const WAV_HEADER_SIZE = 44; // Number of bytes in a WAV file header (for PCM enc
 
 incomingAudioFlag <- 0;     // Flag to indicate in Audio Stream from backend is active
 audioChunkSeq <- 0;         // Chunk sequence number to kepe track of incoming audio from backend
-prevaudioChunkSeq <- 0;         // Chunk sequence number to kepe track of incoming audio from backend
+prevaudioChunkSeq <- 0;     // Chunk sequence number to kepe track of incoming audio from backend
 audioChunkValid <- 0;
 audioChunkSize <- 0;
 
@@ -18,6 +18,10 @@ params <- {
 }
 
 
+// This function examines the user-submitted file to make sure it is a valid WAV
+// It will fail on any discrepancy or unsupported format
+// We can play 16-bit PCM 1-2 channel (mono/stereo) audio
+// Sample rate is minimum 8KHz, with no upper limit (apart from flash size)
 function processIncomingAudio(wav) {
     server.log("in processIncomingAudio");
     server.log("audioChunkSeq == " + audioChunkSeq);
@@ -428,8 +432,8 @@ const MIX_PANEL_EVENT_STATUS = "DeviceStatus";
 const MIX_PANEL_EVENT_BUTTON_TIMEOUT = "DeviceButtonTimeout";
 
 // Heroku server base URL   
-//gBaseUrl <- "https://app-staging.hiku.us/api/v1";
-gBaseUrl <- "https://app.hiku.us/api/v1";
+gBaseUrl <- "https://app-staging.hiku.us/api/v1";
+//gBaseUrl <- "https://app.hiku.us/api/v1";
 gFactoryUrl <- "https://hiku-mfgdb.herokuapp.com/api/v1";
 
 gServerUrl <- gBaseUrl + "/list";   
