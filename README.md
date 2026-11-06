@@ -7,9 +7,7 @@ Welcome to the hiku open source project!
 To get started you will need a hiku device and an Electric Imp account to load new firmware onto the device. 
 Create an Electric Imp account if you don’t already have one, https://developer.electricimp.com/gettingstarted/explorer/account
 Download the Electric Imp mobile app for iOS https://apps.apple.com/us/app/electric-imp/id547133856, or Android https://play.google.com/store/apps/details?id=com.electricimp.electricimp
-Unlock your devices. Out of the box, hiku devices are tied to hiku production firmware, and need to be unlocked to load your own firmware (‘unblessed’ in Electric Imp parlance). To do that, please send your device serial numbers to rob at hiku dot us with the subject line ‘Device unlock request’. 
-
-Your device serial number is located on the box label as ‘MAC address’. You can also find it in the hiku mobile app if you already connected hiku to Wi-Fi using the hiku mobile app. 
+Unlock your devices. Out of the box, hiku devices are tied to hiku production firmware, and need to be unlocked to load your own firmware (‘unblessed’ in Electric Imp parlance). To do that, please send your device serial numbers or MAC addresses to rob dot katcher at gmail dot com with the subject line ‘Device unlock request’. 
 
 After your device is unlocked you are ready to load your own firmware. Sign into your Electric Imp account, and follow their instructions for loading new firmware onto a device using BlinkUp using the Electric Imp mobile app or SDK. 
 https://impcentral.electricimp.com/login#
@@ -34,8 +32,7 @@ The hiku_stm32_fw binary is loaded onto the STM32 microntroller via device code 
 Learn more
 ----------------------
 
-Slyce purchased the hiku mobile app and server software in October 2018. You can read more about the hiku server API here 
-https://github.com/Slyce-Inc/hiku_shared
+Slyce purchased the hiku mobile app and server software in October 2018. 
 
 
 ----------------------
